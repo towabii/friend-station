@@ -1,0 +1,1162 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"><title>Friend Station</title>
+    <link rel="icon" href="./tag.jpg" type="image/jpeg">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://api.toway.space/socket.io/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <style>
+        :root { 
+            --bg-dark: #000000; 
+            --bg-panel: #16181c; 
+            --bg-hover: #202327; 
+            --text-main: #e7e9ea; 
+            --text-sub: #71767b; 
+            --border: #2f3336; 
+            --accent: #2ecc71; 
+            --accent-glow: rgba(46, 204, 113, 0.2);
+            --danger: #e74c3c; 
+            --success: #2ecc71; 
+        }
+        *{margin:0;padding:0;box-sizing:border-box; -webkit-tap-highlight-color: transparent;} 
+        body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg-dark);color:var(--text-main);height:100vh;overflow:hidden;display:flex;}
+        
+        .hidden{display:none!important} 
+
+        /* スクロールバーのモダン化 */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-thumb { background: #3f4347; border-radius: 3px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+
+        input,select,textarea {
+            width:100%; padding:14px 16px; margin-bottom:10px; 
+            border:1px solid var(--border); border-radius:12px; 
+            background:var(--bg-panel); color:var(--text-main); 
+            outline:none; font-size:15px; transition:all 0.3s ease;
+        } 
+        input:focus,textarea:focus { border-color:var(--accent); box-shadow: 0 0 0 2px var(--accent-glow); }
+        
+        button {
+            padding:12px 20px; border:none; border-radius:12px; 
+            background:var(--accent); color:#fff; cursor:pointer; 
+            font-weight:600; font-size:15px; transition:all 0.3s ease;
+        } 
+        button:hover { transform: translateY(-2px); box-shadow: 0 4px 12px var(--accent-glow); }
+        button.danger { background:var(--danger); }
+        button.danger:hover { box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3); }
+        button.success { background:var(--success); }
+        
+        button[style*="background:transparent"], .emoji-btn, .msg-react-btn { box-shadow: none !important; }
+        button[style*="background:transparent"]:hover, .emoji-btn:hover { transform: scale(1.1); }
+
+        i.fa-solid, i.fa-regular { font-size: 1.1em; }
+        .nav-btn i { width: 26px; text-align: center; }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- Auth & Pending --- */
+        #scr-auth, #scr-pending {width:100%;max-width:420px;margin:auto;background:var(--bg-panel);padding:40px 30px;border-radius:24px;border:1px solid var(--border);box-shadow:0 15px 50px rgba(0,0,0,0.8); animation: slideUp 0.4s ease-out;}
+        #scr-auth h2{text-align:center;margin-bottom:25px;font-family:cursive;font-size:2.2em;color:var(--accent);}
+        .auth-link{background:none;color:var(--accent);text-decoration:none;font-size:14px;padding:10px 0;width:100%;text-align:center;display:block;} .auth-link:hover{text-decoration:underline; transform:none;}
+        
+        .loader { margin:20px auto; border:4px solid var(--border); border-top:4px solid var(--accent); border-radius:50%; width:40px; height:40px; animation:spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .reg-step h3 { font-size: 1.1em; margin-bottom: 20px; color: var(--accent); text-align: center; }
+        .reg-step button { margin-top: 15px; width: 100%; }
+
+        /* --- Main Layout --- */
+        #scr-main{display:flex;width:100%;height:100%;position:relative; animation: fadeIn 0.4s ease;}
+        .sidebar{width:240px;background:var(--bg-dark);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:20px;gap:10px;z-index:10;}
+        .brand{font-size:22px;font-weight:bold;color:var(--accent);margin-bottom:25px;font-family:cursive;padding-left:10px; display:flex; align-items:center;}
+        .nav-btn{display:flex;align-items:center;gap:15px;background:transparent;color:var(--text-main);font-size:18px;padding:14px 15px;justify-content:flex-start;border-radius:25px;position:relative;}
+        .nav-btn:hover{background:var(--bg-hover); transform:none;} .nav-btn.active{font-weight:bold;color:var(--accent);} 
+        .badge{position:absolute;top:5px;right:15px;background:var(--danger);font-size:11px;padding:2px 6px;border-radius:10px;color:#fff;}
+        @media(max-width: 768px){ .sidebar{width:70px;padding:20px 10px;align-items:center;} .brand{display:none;} .nav-btn span{display:none;} .nav-btn{padding:12px;} .badge{right:5px;} }
+        
+        #slide-menu{position:absolute;top:0;left:240px;width:280px;height:100%;background:var(--bg-panel);border-right:1px solid var(--border);transform:translateX(-100%);transition:transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);z-index:9;padding:25px 20px;display:flex;flex-direction:column;gap:12px; box-shadow: 10px 0 30px rgba(0,0,0,0.5);}
+        @media(max-width: 768px){ #slide-menu{left:70px;} }
+        #slide-menu.open{transform:translateX(0);}
+        .menu-item{padding:14px;border-radius:12px;cursor:pointer;font-weight:bold;display:flex;align-items:center;gap:15px; transition:all 0.2s;} .menu-item:hover{background:var(--bg-hover);color:var(--accent);}
+        .menu-item i { width: 20px; text-align:center; }
+
+        /* --- List Panel --- */
+        .list-panel{width:350px;background:var(--bg-dark);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:5;transition:width 0.3s;}
+        .panel-header{padding:20px;font-size:1.4em;font-weight:bold;border-bottom:1px solid var(--border);background:rgba(0,0,0,0.8);backdrop-filter:blur(10px);position:sticky;top:0;z-index:2;}
+        .scroll-area{flex:1;overflow-y:auto;}
+        
+        /* 修正: 吹き出しが見切れないように、notes-list 自身の内側上部に padding-top を設定 */
+        .notes-area{padding:20px 20px 15px 20px; border-bottom:1px solid var(--border); min-height: 140px;}
+        .notes-list{display:flex;gap:15px;overflow-x:auto;padding-top:25px;padding-bottom:10px;scrollbar-width:none;} .notes-list::-webkit-scrollbar{display:none;}
+        .note-item{display:flex;flex-direction:column;align-items:center;width:70px;flex-shrink:0;position:relative;cursor:pointer;}
+        .note-img-wrap{width:64px;height:64px;border-radius:50%;background:var(--accent);padding:3px;display:flex;align-items:center;justify-content:center;}
+        .note-item img{width:100%;height:100%;border-radius:50%;object-fit:cover;border:2px solid var(--bg-dark);}
+        .note-bubble{position:absolute;top:-15px;right:-15px;background:var(--bg-panel);border:1px solid var(--border);border-radius:15px;padding:4px 8px;font-size:11px;white-space:nowrap;max-width:80px;overflow:hidden;text-overflow:ellipsis;z-index:2;color:var(--text-main); box-shadow:0 2px 5px rgba(0,0,0,0.5);}
+        
+        .room-item{padding:15px 20px;display:flex;align-items:center;gap:15px;cursor:pointer; transition:background 0.2s;} .room-item:hover{background:var(--bg-hover);} 
+        .room-item img{width:52px;height:52px;border-radius:50%;object-fit:cover;}
+
+        /* --- Main Panel (SPA) --- */
+        .main-panel-container{flex:1;position:relative;background:var(--bg-dark);display:flex;flex-direction:column;}
+        .main-screen{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;background:var(--bg-dark);z-index:1;}
+        .main-screen.active{z-index:2; animation: fadeIn 0.3s ease-out;}
+        @media(max-width: 768px){
+            .list-panel{width:100%; position:absolute; left:70px; height:100%;}
+            .main-panel-container{position:absolute; left:70px; width:calc(100% - 70px); height:100%; z-index:6; transform:translateX(100%); transition:transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);}
+            .main-panel-container.active{transform:translateX(0);}
+        }
+
+        /* --- Chat --- */
+        .chat-header{padding:12px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,0.8);backdrop-filter:blur(10px);z-index:2;}
+        .chat-box{flex:1;padding:20px;overflow-y:auto;display:flex;flex-direction:column;gap:20px;}
+        .msg-wrap{display:flex;flex-direction:column;max-width:75%;position:relative;} .my-msg{align-self:flex-end;} .other-msg{align-self:flex-start;}
+        .reply-banner{font-size:12px;color:var(--text-sub);background:var(--bg-hover);padding:6px 10px;border-radius:12px;margin-bottom:-10px;z-index:1;display:inline-flex; align-items:center; gap:5px; align-self:flex-start;}
+        .msg{padding:12px 16px;border-radius:20px;word-wrap:break-word;position:relative;z-index:2;user-select:none; font-size:15px; line-height:1.4;} 
+        .my-msg .msg{background:var(--accent);color:#fff;border-bottom-right-radius:4px;} .other-msg .msg{background:var(--bg-panel);border:1px solid var(--border);border-bottom-left-radius:4px;}
+        .msg img, .msg video{max-width:100%;border-radius:12px;margin-top:8px;cursor:pointer;}
+        .msg-info{font-size:0.75em;color:var(--text-sub);margin-top:6px;} .is-read{color:var(--accent);margin-right:5px;}
+        .reactions-badge{position:absolute;bottom:-12px;right:10px;background:var(--bg-panel);border:1px solid var(--border);border-radius:12px;padding:3px 8px;font-size:12px;display:flex;gap:4px;z-index:3; box-shadow:0 2px 5px rgba(0,0,0,0.5);}
+        .msg-react-btn { background:transparent; border:none; font-size:18px; cursor:pointer; opacity:0.5; transition:0.2s; padding:0 5px; } .msg-react-btn:hover { opacity:1; transform:scale(1.2); }
+        .chat-search-bar{padding:8px 12px;background:var(--bg-panel);border-radius:20px;display:flex;gap:8px;margin-right:15px;align-items:center; border:1px solid var(--border);}
+        .chat-search-bar input{margin:0;padding:4px;background:transparent;border:none;font-size:14px;width:130px;}
+        
+        .chat-input-area{padding:15px 20px;background:var(--bg-dark);border-top:1px solid var(--border);display:flex;flex-direction:column;gap:8px;}
+        #reply-preview{background:var(--bg-hover);padding:10px 15px;border-radius:12px;font-size:13px;display:flex;justify-content:space-between;align-items:center;color:var(--text-sub);}
+        .chat-input-row{display:flex;align-items:center;gap:12px;} .chat-input-row input{margin:0;flex:1;border-radius:24px;background:var(--bg-panel);padding:12px 18px;}
+        .file-status{font-size:12px;color:var(--accent);white-space:nowrap;}
+
+        /* --- Home Timeline (X風) --- */
+        .post-card{border-bottom:1px solid var(--border);padding:20px;transition:background 0.2s;position:relative;} .post-card:hover{background:rgba(255,255,255,0.02);}
+        .post-header{display:flex;align-items:center;gap:12px;margin-bottom:10px;} .post-header img{width:44px;height:44px;border-radius:50%;object-fit:cover;cursor:pointer;}
+        .post-content{font-size:16px;line-height:1.5;margin-bottom:12px;white-space:pre-wrap;word-break:break-word;cursor:pointer;}
+        .post-media{width:100%;max-width:500px;border-radius:16px;margin-bottom:12px;border:1px solid var(--border);cursor:pointer;}
+        .post-actions{display:flex;justify-content:space-between;max-width:250px;color:var(--text-sub);font-size:15px;margin-top:12px;} 
+        .post-actions div{cursor:pointer;display:flex;align-items:center;gap:8px; transition:color 0.2s;} .post-actions div:hover{color:var(--accent);} .liked{color:var(--danger) !important;}
+        .del-post-btn{position:absolute;top:20px;right:20px;color:var(--text-sub);cursor:pointer;font-size:18px; transition:color 0.2s;} .del-post-btn:hover{color:var(--danger);}
+
+        /* --- Modals & Context --- */
+        .modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:2000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(5px);}
+        .modal-overlay:not(.hidden) .modal { animation: slideUp 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); }
+        .modal{background:var(--bg-panel);padding:25px;border-radius:20px;border:1px solid var(--border);width:95%;max-width:420px;max-height:85vh;display:flex;flex-direction:column;position:relative; box-shadow:0 15px 50px rgba(0,0,0,0.8);}
+        .close-btn{position:absolute;top:15px;right:20px;font-size:24px;cursor:pointer;color:var(--text-sub); transition:color 0.2s;} .close-btn:hover{color:var(--text-main);}
+        .modal img.prof-lg{width:100px;height:100px;border-radius:50%;object-fit:cover;margin:0 auto 15px;display:block;border:3px solid var(--accent);}
+        
+        #comments-list{flex:1;overflow-y:auto;margin:15px 0;display:flex;flex-direction:column;gap:15px;}
+        .comment-item{display:flex;gap:12px;font-size:15px;} .comment-item img.c-ic{width:36px;height:36px;border-radius:50%;}
+        .comment-item img.c-media{max-width:200px;border-radius:12px;margin-top:8px;border:1px solid var(--border);}
+        
+        #context-menu{position:fixed;background:var(--bg-panel);border:1px solid var(--border);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,0.8);z-index:2500;padding:8px;display:flex;flex-direction:column;gap:4px;}
+        .ctx-item{padding:12px 16px;cursor:pointer;border-radius:8px;display:flex;align-items:center;gap:12px; font-size:15px; transition:background 0.2s;} .ctx-item:hover{background:var(--bg-hover);}
+        .emoji-btn{background:none;border:none;font-size:26px;cursor:pointer;}
+        
+        .saved-check{color:var(--accent);font-size:13px;margin-left:12px;opacity:0;transition:opacity 0.3s;} .saved-check.show{opacity:1;}
+        
+        #text-call-overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:var(--bg-dark);z-index:100;display:flex;flex-direction:column;padding:25px;}
+        .tc-box{flex:1;background:var(--bg-panel);padding:25px;border-radius:20px;overflow-y:auto;border:1px solid var(--border);font-size:32px; line-height:1.4;}
+        #tc-local-input{flex:1;font-size:32px;padding:25px;border-radius:20px;border:2px solid var(--accent);background:var(--bg-dark);resize:none;color:var(--text-main); line-height:1.4;}
+        #video-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:#000;z-index:3000;display:flex;align-items:center;justify-content:center} 
+        #remote-video{width:100%;height:100%;object-fit:contain} 
+        #local-video{position:absolute;bottom:30px;right:30px;width:140px;border:2px solid var(--accent);border-radius:12px;object-fit:cover;} 
+        .call-controls{position:absolute;bottom:40px;display:flex;gap:15px;background:rgba(0,0,0,0.6);backdrop-filter:blur(10px);padding:15px 25px;border-radius:40px;}
+    </style>
+</head>
+<body>
+
+<div id="scr-auth">
+    <h2 id="auth-title">Friend Station</h2><div id="auth-msg" style="color:var(--danger);margin-bottom:10px;text-align:center;"></div>
+    
+    <form onsubmit="return false;" id="form-login">
+        <input type="text" id="l-user" placeholder="ユーザーID" required>
+        <input type="password" id="l-pass" placeholder="パスワード" required>
+        <button type="submit" style="width:100%;">ログイン</button>
+        <div style="margin-top:20px;text-align:center;">
+            <button type="button" class="auth-link" onclick="event.preventDefault(); toggleAuth('reg')">アカウント作成</button>
+            <button type="button" class="auth-link" onclick="event.preventDefault(); toggleAuth('trans')">データ引き出し(移行)</button>
+        </div>
+    </form>
+
+    <form onsubmit="return false;" id="form-reg" class="hidden">
+        <div id="step1" class="reg-step">
+            <h3><i class="fa-solid fa-id-card"></i> まずは本人確認をします</h3>
+            <div style="display:flex;gap:10px;">
+                <input type="text" id="r-fn" placeholder="姓" required>
+                <input type="text" id="r-ln" placeholder="名" required>
+            </div>
+            <button type="button" onclick="event.preventDefault(); nextStep(2)">次へ</button>
+            <button type="button" class="auth-link" onclick="event.preventDefault(); toggleAuth('login')">戻る</button>
+        </div>
+
+        <div id="step2" class="reg-step hidden">
+            <h3><i class="fa-solid fa-school"></i> 学校情報を入力してください</h3>
+            <input type="text" id="r-school" placeholder="学校名" required>
+            <div style="display:flex;gap:10px;">
+                <input type="text" id="r-grade" placeholder="学年" required>
+                <input type="text" id="r-class" placeholder="組" required>
+                <input type="text" id="r-att" placeholder="出席番号" required>
+            </div>
+            <button type="button" onclick="event.preventDefault(); nextStep(3)">次へ</button>
+            <button type="button" class="auth-link" onclick="event.preventDefault(); nextStep(1)">戻る</button>
+        </div>
+
+        <div id="step3" class="reg-step hidden">
+            <h3><i class="fa-solid fa-user-gear"></i> ユーザー設定をします</h3>
+            <input type="text" id="r-user" placeholder="ユーザーID (半角英数字)" required>
+            <input type="text" id="r-nick" placeholder="ニックネーム" required>
+            <button type="button" onclick="event.preventDefault(); nextStep(4)">次へ</button>
+            <button type="button" class="auth-link" onclick="event.preventDefault(); nextStep(2)">戻る</button>
+        </div>
+
+        <div id="step4" class="reg-step hidden">
+            <h3><i class="fa-solid fa-lock"></i> パスワードと生年月日</h3>
+            <input type="password" id="r-pass" placeholder="パスワード" required>
+            <label style="font-size:0.8em;color:var(--text-sub);margin-bottom:5px;display:block;">生年月日</label>
+            <input type="date" id="r-birth" required>
+            
+            <div class="terms-scroll" style="height:120px; overflow-y:auto; border:1px solid var(--border); padding:12px; font-size:12px; color:var(--text-sub); margin:10px 0; border-radius:8px; background:var(--bg-dark); line-height:1.6;">
+                <h4 style="color:var(--text-main); margin-bottom:5px;">Friend Station 利用規約</h4>
+                <p>本規約は、Toway（以下「当運営」）が提供するSNS「Friend Station」（以下「本サービス」）の利用条件を定めるものです。ユーザーは本サービスに登録した時点で、本規約に同意したものとみなされます。</p>
+                <br>
+                <strong style="color:var(--text-main);">第1条（アカウントの登録・承認）</strong><br>
+                本サービスは完全承認制です。管理者は、当運営の判断により、理由を予告することなく承認の拒否、または既存アカウントの停止・削除を行う権利を有します。<br><br>
+                <strong style="color:var(--text-main);">第2条（禁止事項）</strong><br>
+                ・他のユーザー等に対する誹謗中傷、脅迫、いやがらせ等の行為。<br>
+                ・個人情報を本人の許可なく公開する行為。<br>
+                ・サーバーに過度な負荷をかける行為（1日5回を超える過剰投稿等）。<br><br>
+                <strong style="color:var(--danger);">第3条（管理権限およびコンテンツの監視）</strong><br>
+                当運営は、健全な運営のためにダイレクトメッセージを含むすべての通信・投稿内容をシステム上で閲覧、監視、および記録できるものとします。ユーザーは完全な秘密性を期待しないものとします。<br><br>
+                <h4 style="color:var(--text-main); margin-bottom:5px;">プライバシーポリシー</h4>
+                <p>Toway Friend Station Groupは、収集した情報をアカウント管理、ユーザー間の円滑な通信、および安全性維持（メッセージ内容の確認・不正監視）のためにのみ使用します。</p>
+            </div>
+            
+            <label style="font-size:12px;color:var(--text-main);display:flex;align-items:center;gap:8px;margin-bottom:15px;"><input type="checkbox" id="r-agree" required style="width:auto;margin:0;accent-color:var(--accent);">利用規約およびプライバシーポリシーに同意する</label>
+            
+            <button type="submit" style="width:100%;">登録</button>
+            <button type="button" class="auth-link" onclick="event.preventDefault(); nextStep(3)">戻る</button>
+        </div>
+    </form>
+
+    <form onsubmit="return false;" id="form-trans" class="hidden"><input type="text" id="t-user" placeholder="ユーザーID" required><input type="text" id="t-code" placeholder="引継ぎコード" required><button type="submit" style="width:100%;">復元ログイン</button><button type="button" class="auth-link" onclick="event.preventDefault(); toggleAuth('login')" style="width:100%;margin-top:15px;">戻る</button></form>
+</div>
+
+<div id="scr-pending" class="hidden">
+    <h2 style="color:var(--accent);margin-bottom:15px;font-size:2em;text-align:center;">承認待ち</h2>
+    <div class="loader"></div>
+    <p style="color:var(--text-main);margin-bottom:10px;text-align:center;font-weight:bold;">管理者の承認を待っています...</p>
+    <p style="font-size:13px;color:var(--text-sub);margin-bottom:25px;text-align:center;line-height:1.5;">この画面のままお待ちください。<br>承認されると自動的にログインします。</p>
+    <button type="button" onclick="event.preventDefault(); logout()" class="danger" style="width:100%;">キャンセルして戻る</button>
+</div>
+
+<div id="scr-main" class="hidden">
+    <div class="sidebar">
+        <div class="brand"><img src="./tag.jpg" style="width:28px;height:28px;border-radius:6px;margin-right:10px;">Friend Station</div>
+        <button type="button" class="nav-btn" id="nav-home" onclick="event.preventDefault(); switchNav('home')"><i class="fa-solid fa-house"></i> <span>ホーム</span></button>
+        <button type="button" class="nav-btn" id="nav-chat" onclick="event.preventDefault(); switchNav('chat')"><i class="fa-solid fa-message"></i> <span>メッセージ</span><div id="notif-badge" class="badge hidden">0</div></button>
+        <button type="button" class="nav-btn" id="nav-search" onclick="event.preventDefault(); switchNav('search')"><i class="fa-solid fa-magnifying-glass"></i> <span>検索</span></button>
+        <button type="button" class="nav-btn" id="nav-notif" onclick="event.preventDefault(); switchNav('notif')"><i class="fa-solid fa-bell"></i> <span>通知</span><div id="notif-bell-badge" class="badge hidden">!</div></button>
+        <button type="button" class="nav-btn" onclick="event.preventDefault(); toggleMenu()" style="margin-top:auto;"><i class="fa-solid fa-bars"></i> <span>その他</span></button>
+    </div>
+
+    <div id="slide-menu">
+        <h3 style="margin-bottom:15px;border-bottom:1px solid var(--border);padding-bottom:15px;">メニュー</h3>
+        <div class="menu-item" onclick="event.preventDefault(); openProfileModal(myInfo.id, myInfo.username, myInfo.nickname, myInfo.icon_url, myInfo.status_message)"><i class="fa-solid fa-user"></i> プロフィール</div>
+        <div class="menu-item" onclick="event.preventDefault(); switchMainPanel('settings')"><i class="fa-solid fa-gear"></i> 設定・移行</div>
+        <div class="menu-item" onclick="event.preventDefault(); switchMainPanel('qr')"><i class="fa-solid fa-mobile-screen"></i> My QR</div>
+        <div class="menu-item" onclick="event.preventDefault(); openSelectFriendsModal('group')"><i class="fa-solid fa-user-group"></i> グループ作成</div>
+        <div class="menu-item" onclick="event.preventDefault(); openSelectFriendsModal('close')"><i class="fa-solid fa-lock"></i> 親しい友達リスト設定</div>
+        <div class="menu-item" onclick="event.preventDefault(); showTermsModal()"><i class="fa-solid fa-file-contract"></i> 利用規約・プライバシー</div>
+        <div class="menu-item danger" onclick="event.preventDefault(); logout()" style="margin-top:auto;color:#fff;"><i class="fa-solid fa-right-from-bracket"></i> ログアウト</div>
+    </div>
+
+    <div class="list-panel" id="list-panel">
+        <div id="panel-chat" class="scroll-area">
+            <div class="panel-header">メッセージ</div>
+            <div class="notes-area">
+                <form onsubmit="return false;" id="form-note" style="display:flex;gap:8px;margin-bottom:10px;">
+                    <select id="note-vis" style="border-radius:20px;padding:8px 12px;width:auto;background:var(--bg-panel);color:var(--text-main);border:1px solid var(--border);"><option value="public">全体</option><option value="close">親しい</option></select>
+                    <input type="text" id="note-input" placeholder="いまの気分を投稿..." maxlength="60" style="padding:10px 15px;margin:0;border-radius:20px;flex:1;" required>
+                    <button type="submit" style="padding:10px 16px;border-radius:20px;"><i class="fa-solid fa-plus"></i></button>
+                </form>
+                <div class="notes-list" id="ui-notes"></div>
+            </div>
+            <div class="room-list" id="ui-rooms"></div>
+            <div class="room-list" id="ui-groups" style="border-top:1px solid var(--border);"></div>
+        </div>
+        <div id="panel-search" class="hidden scroll-area">
+            <div class="panel-header">ユーザー検索</div>
+            <div style="padding:20px;"><form onsubmit="return false;" id="form-search" style="display:flex;gap:8px;"><input type="text" id="s-query" placeholder="キーワード..." style="margin:0;border-radius:20px;" required><button type="submit" style="border-radius:20px;">検索</button></form><div id="ui-search-res" style="margin-top:25px;"></div></div>
+        </div>
+        <div id="panel-notif" class="hidden scroll-area">
+            <div class="panel-header">通知</div>
+            <ul id="ui-notifs" style="list-style:none;padding:0;"></ul>
+        </div>
+    </div>
+
+    <div class="main-panel-container" id="main-container">
+        <div id="main-chat" class="main-screen active">
+            <button type="button" id="btn-back-chat" class="hidden" onclick="event.preventDefault(); closeChatMobile()" style="position:absolute;top:15px;left:15px;z-index:10;background:rgba(0,0,0,0.6);backdrop-filter:blur(5px);border-radius:50%;width:44px;height:44px;padding:0;"><i class="fa-solid fa-arrow-left"></i></button>
+            <div id="chat-empty" style="flex:1; background:var(--bg-dark);"></div>
+            <div id="chat-active" class="hidden" style="display:flex;flex-direction:column;height:100%;">
+                <div class="chat-header">
+                    <div style="display:flex;align-items:center;gap:15px;cursor:pointer;margin-left:45px;" onclick="event.preventDefault(); showCurrentProfile()">
+                        <img id="chat-target-icon" src="" style="width:44px;height:44px;border-radius:50%;object-fit:cover;">
+                        <div><h3 id="chat-title" style="font-size:18px;">相手</h3></div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:12px;">
+                        <form onsubmit="return false;" id="form-chat-search" class="chat-search-bar hidden"><input type="text" id="chat-s-query" placeholder="履歴検索" required><span onclick="event.preventDefault(); hide('form-chat-search');show('btn-chat-search')" style="cursor:pointer;padding:0 5px;"><i class="fa-solid fa-xmark"></i></span></form>
+                        <button type="button" id="btn-chat-search" onclick="event.preventDefault(); show('form-chat-search');hide('btn-chat-search')" style="background:transparent;font-size:18px;padding:5px;"><i class="fa-solid fa-magnifying-glass"></i></button>
+                        <button type="button" onclick="event.preventDefault(); startTextCall()" style="background:transparent;font-size:20px;padding:5px;"><i class="fa-solid fa-message"></i></button>
+                        <button type="button" onclick="event.preventDefault(); startCall(false)" style="background:transparent;font-size:20px;padding:5px;"><i class="fa-solid fa-phone"></i></button> 
+                        <button type="button" onclick="event.preventDefault(); startCall(true)" style="background:transparent;font-size:20px;padding:5px;"><i class="fa-solid fa-video"></i></button>
+                    </div>
+                </div>
+                <div class="chat-box" id="ui-msgs" onscroll="saveScroll('chat', this)"></div>
+                <div class="chat-input-area">
+                    <div id="reply-preview" class="hidden"><span>返信先: <strong id="rp-name" style="color:var(--accent);"></strong> <span id="rp-text"></span></span><span style="cursor:pointer;font-size:18px;padding:0 8px;" onclick="event.preventDefault(); cancelReply()"><i class="fa-solid fa-xmark"></i></span></div>
+                    <div id="typing-indicator" style="font-size:12px;color:var(--accent);height:14px;margin-bottom:4px;"></div>
+                    <div class="chat-input-row">
+                        <label style="cursor:pointer;font-size:22px;margin-bottom:0;color:var(--accent);"><i class="fa-solid fa-image"></i><input type="file" id="chat-file" accept="image/*,video/*" class="hidden" onchange="previewChatFile(this)"></label>
+                        <img id="chat-file-preview" src="" style="width:40px;height:40px;object-fit:cover;border-radius:8px;display:none;border:1px solid var(--border);">
+                        <span id="chat-f-status" class="file-status"></span>
+                        <input type="text" id="msg-input" placeholder="メッセージを入力..." autocomplete="off">
+                        <button type="button" id="btn-send-msg" style="border-radius:24px;padding:12px 24px;">送信</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="main-home" class="main-screen hidden scroll-area" onscroll="saveScroll('home', this)">
+            <div style="padding:20px 25px;font-size:1.6em;font-weight:bold;border-bottom:1px solid var(--border);position:sticky;top:0;background:rgba(0,0,0,0.8);backdrop-filter:blur(10px);z-index:2;">ホーム</div>
+            <div style="padding:20px 25px;border-bottom:1px solid var(--border);">
+                <div style="display:flex;gap:15px;">
+                    <img id="home-my-icon" src="" style="width:50px;height:50px;border-radius:50%;object-fit:cover;">
+                    <div style="flex:1;">
+                        <textarea id="post-text" placeholder="いまどうしてる？ (1日5回まで)" rows="2" style="border:none;background:transparent;resize:none;font-size:18px;padding:5px 0;"></textarea>
+                        <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--border);padding-top:15px;margin-top:5px;">
+                            <div style="display:flex;align-items:center;gap:15px;">
+                                <label style="cursor:pointer;color:var(--accent);font-size:22px;"><i class="fa-solid fa-image"></i><input type="file" id="post-file" accept="image/*,video/*" class="hidden" onchange="previewPostFile(this)"></label>
+                                <img id="post-file-preview" src="" style="width:50px;height:50px;object-fit:cover;border-radius:10px;display:none;border:1px solid var(--border);">
+                                <select id="post-vis" style="border-radius:20px;padding:8px 12px;width:auto;background:var(--bg-panel);color:var(--text-main);border:1px solid var(--border);"><option value="public">全体</option><option value="close">親しい友達</option></select>
+                                <span id="post-f-status" class="file-status"></span>
+                            </div>
+                            <button type="button" onclick="event.preventDefault(); submitPost();" style="border-radius:24px;padding:10px 20px;">ポストする</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="ui-timeline"></div>
+        </div>
+
+        <div id="main-settings" class="main-screen hidden scroll-area" style="padding:40px;">
+            <h2 style="margin-bottom:25px;border-bottom:1px solid var(--border);padding-bottom:15px;">設定・プロフィール</h2>
+            <div style="margin-bottom:30px;display:flex;align-items:center;gap:20px;">
+                <img id="my-icon-set" src="" style="width:90px;height:90px;border-radius:50%;object-fit:cover;border:3px solid var(--accent);">
+                <label style="cursor:pointer;color:var(--accent);font-weight:bold;padding:12px 20px;border:1px solid var(--accent);border-radius:24px;transition:all 0.3s;">アイコン変更<input type="file" accept="image/*" class="hidden" onchange="event.preventDefault(); uploadIcon(this)"></label>
+            </div>
+            <label style="font-size:13px;color:var(--text-sub);">ユーザーID (変更は30日に1回のみ)</label>
+            <div style="display:flex;gap:12px;align-items:center;margin-bottom:15px;"><input type="text" id="set-id" style="margin:0;"><button type="button" onclick="event.preventDefault(); updateProfile('username', id('set-id').value)">保存</button><span class="saved-check" id="sc-id">✔ 保存済</span></div>
+            <label style="font-size:13px;color:var(--text-sub);">ニックネーム</label>
+            <div style="display:flex;gap:12px;align-items:center;margin-bottom:15px;"><input type="text" id="set-nick" style="margin:0;"><button type="button" onclick="event.preventDefault(); updateProfile('nickname', id('set-nick').value)">保存</button><span class="saved-check" id="sc-nick">✔ 保存済</span></div>
+            <label style="font-size:13px;color:var(--text-sub);">自己紹介</label>
+            <div style="display:flex;gap:12px;align-items:flex-start;"><textarea id="set-status" rows="3" style="margin:0;"></textarea><button type="button" onclick="event.preventDefault(); updateProfile('status_message', id('set-status').value)">保存</button><span class="saved-check" id="sc-status">✔ 保存済</span></div>
+            
+            <h3 style="margin-top:40px;margin-bottom:15px;border-bottom:1px solid var(--border);padding-bottom:10px;">セキュリティ</h3>
+            <form onsubmit="return false;" id="form-pw-req" style="display:flex;gap:12px;margin-top:15px;"><input type="password" id="set-new-pw" placeholder="新しいパスワード" required style="margin:0;"><button type="submit">変更申請</button></form>
+
+            <h3 style="margin-top:40px;margin-bottom:15px;border-bottom:1px solid var(--border);padding-bottom:10px;">データ移行 (預け入れ)</h3>
+            <p style="font-size:14px;color:var(--text-sub);margin-bottom:15px;line-height:1.5;">ブラウザ内の全チャット履歴をサーバーに一時預かりします。新端末で引き出すと自動で削除されます。</p>
+            <button type="button" onclick="event.preventDefault(); pushBackup()" style="width:100%;border-radius:16px;padding:16px;font-size:16px;"><i class="fa-solid fa-box-archive"></i> IndexedDBデータをサーバーに預ける</button>
+            <div id="transfer-code" style="text-align:center;font-size:1.8em;color:var(--accent);font-weight:bold;margin:25px;letter-spacing:2px;"></div>
+        </div>
+
+        <div id="main-qr" class="main-screen hidden scroll-area" style="padding:40px;text-align:center;">
+            <h2 style="margin-bottom:25px;">My QRコード</h2><p style="color:var(--text-sub);margin-bottom:30px;font-size:16px;">ID: <strong id="my-id-disp" style="color:var(--text-main);"></strong></p>
+            <div style="background:#fff;padding:20px;border-radius:20px;display:inline-block;margin-bottom:40px;box-shadow:0 10px 30px rgba(0,0,0,0.5);"><canvas id="my-qr"></canvas></div>
+            <div style="border-top:1px solid var(--border);padding-top:30px;">
+                <button type="button" onclick="event.preventDefault(); startQRScanner()" style="border-radius:24px;width:100%;max-width:300px;padding:15px;font-size:16px;"><i class="fa-solid fa-camera"></i> QRを読み込む</button>
+                <div id="reader" class="hidden" style="margin-top:20px;border-radius:16px;overflow:hidden;border:1px solid var(--border);"></div>
+            </div>
+        </div>
+
+        <div id="text-call-overlay" class="hidden">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:25px;">
+                <h2><span id="tc-target-name">相手</span> <span style="color:var(--accent);font-size:15px;margin-left:10px;">● 通話中</span></h2>
+                <button type="button" class="danger" onclick="event.preventDefault(); endTextCall()" style="border-radius:20px;padding:10px 25px;">終了</button>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:20px;">
+                <div class="tc-box"><div style="font-size:14px;color:var(--text-sub);margin-bottom:10px;">相手の入力...</div><div id="tc-remote-text"></div></div>
+                <div style="font-size:14px;color:var(--text-sub);margin-bottom:-10px;">自分</div>
+                <textarea id="tc-local-input" placeholder="ここに入力するとリアルタイムに伝わります..."></textarea>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="context-menu" class="hidden">
+    <div class="ctx-item" id="ctx-reply"><i class="fa-solid fa-reply"></i> リプライ</div>
+</div>
+
+<div id="reaction-menu" class="hidden" style="position:fixed;background:var(--bg-panel);border:1px solid var(--border);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,0.8);z-index:2500;padding:8px;display:flex;gap:8px;">
+    <button type="button" class="emoji-btn" onclick="event.preventDefault(); sendReaction('❤️')">❤️</button>
+    <button type="button" class="emoji-btn" onclick="event.preventDefault(); sendReaction('😂')">😂</button>
+    <button type="button" class="emoji-btn" onclick="event.preventDefault(); sendReaction('😮')">😮</button>
+    <button type="button" class="emoji-btn" onclick="event.preventDefault(); sendReaction('😢')">😢</button>
+    <button type="button" class="emoji-btn" onclick="event.preventDefault(); sendReaction('👍')">👍</button>
+</div>
+
+<div id="modal-prof" class="modal-overlay hidden" onclick="if(event.target===this)hide('modal-prof')">
+    <div class="modal">
+        <span class="close-btn" onclick="event.preventDefault(); hide('modal-prof')"><i class="fa-solid fa-xmark"></i></span>
+        <img id="mp-icon" class="prof-lg" src="">
+        <h2 id="mp-name" style="margin-bottom:8px;text-align:center;"></h2><p style="color:var(--text-sub);margin-bottom:20px;font-size:15px;text-align:center;">@<span id="mp-id"></span></p>
+        <p id="mp-status" style="font-size:16px;word-break:break-word;margin-bottom:20px;line-height:1.5;text-align:center;padding:0 15px;"></p>
+    </div>
+</div>
+
+<div id="modal-select-friends" class="modal-overlay hidden" onclick="if(event.target===this)hide('modal-select-friends')">
+    <div class="modal">
+        <span class="close-btn" onclick="event.preventDefault(); hide('modal-select-friends')"><i class="fa-solid fa-xmark"></i></span>
+        <h3 id="msf-title" style="margin-bottom:15px;"></h3>
+        <div id="msf-extra-input"></div>
+        <div id="msf-list" style="max-height:40vh;overflow-y:auto;margin:20px 0;display:flex;flex-direction:column;gap:10px;"></div>
+        <button type="button" id="msf-submit" style="width:100%;border-radius:12px;padding:14px;font-size:16px;">決定</button>
+    </div>
+</div>
+
+<div id="modal-comments" class="modal-overlay hidden" onclick="if(event.target===this)hide('modal-comments')">
+    <div class="modal" style="height:85vh;max-width:500px;">
+        <span class="close-btn" onclick="event.preventDefault(); hide('modal-comments')"><i class="fa-solid fa-xmark"></i></span>
+        <h3 style="margin-bottom:15px;border-bottom:1px solid var(--border);padding-bottom:15px;">コメント</h3>
+        <div id="comments-list"></div>
+        <div style="display:flex;align-items:center;gap:12px;border-top:1px solid var(--border);padding-top:15px;">
+            <form onsubmit="return false;" id="form-comment" style="display:flex;width:100%;align-items:center;gap:12px;">
+                <label style="cursor:pointer;font-size:24px;margin:0;color:var(--accent);"><i class="fa-solid fa-camera"></i><input type="file" id="c-file" accept="image/*" class="hidden" onchange="previewCommentFile(this)"></label>
+                <img id="c-file-preview" src="" style="width:44px;height:44px;object-fit:cover;border-radius:8px;display:none;border:1px solid var(--border);">
+                <span id="c-f-status" class="file-status"></span>
+                <input type="text" id="c-text" placeholder="コメントを追加..." style="margin:0;border-radius:24px;flex:1;padding:12px 18px;">
+                <button type="submit" style="border-radius:24px;padding:12px 20px;">送信</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div id="modal-interactions" class="modal-overlay hidden" onclick="if(event.target===this)hide('modal-interactions')">
+    <div class="modal" style="max-height:60vh;">
+        <span class="close-btn" onclick="event.preventDefault(); hide('modal-interactions')"><i class="fa-solid fa-xmark"></i></span>
+        <h3 style="margin-bottom:15px;border-bottom:1px solid var(--border);padding-bottom:15px;">アクション</h3>
+        <div id="interactions-list" style="flex:1;overflow-y:auto;text-align:left;font-size:15px;line-height:1.6;"></div>
+    </div>
+</div>
+
+<div id="modal-search-res" class="modal-overlay hidden" onclick="if(event.target===this)hide('modal-search-res')">
+    <div class="modal" style="max-height:80vh;overflow-y:auto;text-align:left;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;"><h3 style="font-size:1.4em;">検索結果</h3><span class="close-btn" style="position:static;" onclick="event.preventDefault(); hide('modal-search-res')"><i class="fa-solid fa-xmark"></i></span></div>
+        <div id="chat-search-out"></div>
+    </div>
+</div>
+
+<div id="modal-calling" class="modal-overlay hidden">
+    <div class="modal" style="text-align:center;padding:40px 20px;">
+        <h3 id="calling-name" style="margin-bottom:15px;font-size:28px;"></h3>
+        <p style="color:var(--accent);margin-bottom:35px;font-weight:bold;font-size:18px;letter-spacing:1px;"><i class="fa-solid fa-phone-volume fa-shake"></i> 発信中...</p>
+        <button type="button" class="danger" onclick="event.preventDefault(); cancelCall()" style="border-radius:24px;padding:14px 40px;font-size:16px;">キャンセル</button>
+    </div>
+</div>
+
+<div id="modal-incoming" class="modal-overlay hidden">
+    <div class="modal" style="text-align:center;padding:40px 20px;">
+        <h3 id="caller-name" style="margin-bottom:15px;font-size:28px;"></h3><p id="call-type-txt" style="color:var(--accent);margin-bottom:35px;font-weight:bold;font-size:18px;"></p>
+        <div style="display:flex;gap:20px;justify-content:center;"><button type="button" class="danger" onclick="event.preventDefault(); answerCall(false)" style="flex:1;max-width:150px;border-radius:24px;padding:14px;font-size:16px;">拒否</button><button type="button" class="success" onclick="event.preventDefault(); answerCall(true)" style="flex:1;max-width:150px;border-radius:24px;padding:14px;font-size:16px;">応答</button></div>
+    </div>
+</div>
+
+<div id="modal-terms" class="modal-overlay hidden" onclick="if(event.target===this)hide('modal-terms')">
+    <div class="modal" style="max-height:85vh; overflow-y:auto; text-align:left; max-width:600px; padding:30px;">
+        <span class="close-btn" onclick="event.preventDefault(); hide('modal-terms')"><i class="fa-solid fa-xmark"></i></span>
+        <h2 style="margin-bottom:20px; border-bottom:1px solid var(--border); padding-bottom:15px; text-align:center;">利用規約・プライバシーポリシー</h2>
+        
+        <div style="font-size:14px; line-height:1.7; color:var(--text-sub);">
+            <h3 style="color:var(--text-main); margin-top:15px; font-size:16px;">Friend Station 利用規約</h3>
+            <p>本規約は、Toway（以下「当運営」）が提供するSNS「Friend Station」（以下「本サービス」）の利用条件を定めるものです。ユーザーは本サービスに登録した時点で、本規約に同意したものとみなされます。</p>
+            
+            <h4 style="color:var(--text-main); margin-top:20px;">第1条（アカウントの登録・承認）</h4>
+            <p>本サービスは完全承認制です。ユーザーは真実かつ正確な情報を提供して登録申請を行い、管理者の承認を得る必要があります。<br>管理者は、当運営の判断により、理由を予告することなく承認の拒否、または既存アカウントの停止・削除を行う権利を有します。</p>
+
+            <h4 style="color:var(--text-main); margin-top:20px;">第2条（禁止事項）</h4>
+            <p>ユーザーは、本サービスの利用にあたり、以下の行為を行ってはなりません。</p>
+            <ul style="margin-left:25px; margin-bottom:15px; list-style-type:disc;">
+                <li style="margin-bottom:5px;">他のユーザー、第三者、または当運営に対する誹謗中傷、脅迫、いやがらせ、および名誉・信用を毀損する行為。</li>
+                <li style="margin-bottom:5px;">本名、学校名、住所等の個人情報を本人の許可なく公開する行為。</li>
+                <li style="margin-bottom:5px;">法令、公序良俗に反する行為、またはそれらを助長する行為。</li>
+                <li style="margin-bottom:5px;">サーバーに過度な負荷をかける行為（1日5回を超える過剰な投稿、自動化スクリプトの使用等）。</li>
+                <li style="margin-bottom:5px;">本サービスの脆弱性を突く行為、およびリバースエンジニアリング。</li>
+            </ul>
+
+            <h4 style="color:var(--text-main); margin-top:20px;">第3条（管理権限およびコンテンツの閲覧・監視）</h4>
+            <p><strong style="color:var(--danger);">【重要】</strong>当運営は、本サービスの健全な運営、ユーザー間のトラブル防止、および法令遵守のために、ダイレクトメッセージ（チャット）を含むすべての通信・投稿内容をシステム上で閲覧、監視、および記録できるものとします。<br>規約違反またはその疑いがあると判断した場合、当運営は事前の通知なく当該コンテンツの削除や利用制限を行うことができます。<br>ユーザーは、本サービス内での通信に「完全な秘密性」を期待しないものとし、上記監視権限に同意の上で利用するものとします。</p>
+
+            <h4 style="color:var(--text-main); margin-top:20px;">第4条（サービスの変更・中断・終了）</h4>
+            <p>当運営は、ユーザーへの事前通知なく、本サービスの内容を変更し、または提供を中止・終了することができるものとします。<br>当運営は、本サービスの利用により発生した損害について、一切の責任を負いません。</p>
+
+            <hr style="border:0; border-top:1px solid var(--border); margin:30px 0;">
+
+            <h3 style="color:var(--text-main); margin-top:15px; font-size:16px;">プライバシーポリシー</h3>
+            <p>Toway Friend Station Group（以下「当運営」）は、ユーザーの個人情報の重要性を認識し、以下の通りプライバシーポリシーを定めます。</p>
+
+            <h4 style="color:var(--text-main); margin-top:20px;">1. 収集する情報</h4>
+            <p>当運営は、サービス提供にあたり以下の情報を収集・保持します。</p>
+            <ul style="margin-left:25px; margin-bottom:15px; list-style-type:disc;">
+                <li style="margin-bottom:5px;">個人識別情報: 氏名、ユーザーID、ニックネーム、生年月日、学校名、学年、クラス、出席番号、パスワード。</li>
+                <li style="margin-bottom:5px;">コンテンツデータ: 投稿テキスト、画像、ビデオ、チャットメッセージ、リアクション、通話ログ。</li>
+                <li style="margin-bottom:5px;">技術的データ: バックアップ用のIndexedDBデータ、アクセスログ。</li>
+            </ul>
+
+            <h4 style="color:var(--text-main); margin-top:20px;">2. 利用目的</h4>
+            <p>収集した情報は、以下の目的のみに使用します。</p>
+            <ul style="margin-left:25px; margin-bottom:15px; list-style-type:disc;">
+                <li style="margin-bottom:5px;">本人確認およびアカウント管理。</li>
+                <li style="margin-bottom:5px;">ユーザー間の円滑なコミュニケーションの提供。</li>
+                <li style="margin-bottom:5px;">サービスの安全性維持（管理員によるメッセージ内容の確認、不正行為の監視）。</li>
+                <li style="margin-bottom:5px;">データ移行（預け入れ機能）の実行。</li>
+            </ul>
+
+            <h4 style="color:var(--text-main); margin-top:20px;">3. メッセージおよびデータの機密性</h4>
+            <p>当サービスは、管理者が運営上の必要に応じてすべての通信内容を閲覧できる仕様となっています。<br>データ移行機能（預け入れ）で一時的にサーバーに保存されたデータは、移行完了または一定期間の経過をもって速やかに削除されます。</p>
+
+            <h4 style="color:var(--text-main); margin-top:20px;">4. 個人情報の管理と保護</h4>
+            <p>当運営は、収集した情報の漏洩、紛失、不正アクセスを防止するため、合理的な安全対策を講じます。ただし、インターネットの性質上、完全なセキュリティを保証するものではありません。</p>
+
+            <h4 style="color:var(--text-main); margin-top:20px;">5. 第三者提供の制限</h4>
+            <p>当運営は、法令に基づく場合、または人の生命・財産の保護のために緊急の必要がある場合を除き、ユーザーの同意なく個人情報を第三者に提供しません。</p>
+
+            <h4 style="color:var(--text-main); margin-top:20px;">6. ユーザーによる削除依頼</h4>
+            <p>ユーザーがアカウントの削除を希望する場合、当運営に通知するものとします。削除処理後、一定期間内にサーバー上の関連データは消去されます。</p>
+        </div>
+        <button type="button" onclick="event.preventDefault(); hide('modal-terms')" style="width:100%; border-radius:12px; padding:14px; margin-top:30px; font-size:16px;">閉じる</button>
+    </div>
+</div>
+
+<div id="video-overlay" class="hidden">
+    <video id="remote-video" autoplay playsinline></video>
+    <video id="local-video" autoplay playsinline muted></video>
+    <div class="call-controls">
+        <button type="button" id="btn-mic" class="success" onclick="event.preventDefault(); toggleMic()"><i class="fa-solid fa-microphone"></i> ON</button>
+        <button type="button" id="btn-cam" class="success" onclick="event.preventDefault(); toggleCam()"><i class="fa-solid fa-video"></i> ON</button>
+        <button type="button" id="btn-spk" class="success" onclick="event.preventDefault(); toggleSpk()"><i class="fa-solid fa-volume-high"></i> ON</button>
+        <button type="button" class="call-btn danger" onclick="event.preventDefault(); cancelCall()">終</button>
+    </div>
+</div>
+
+<script>
+    const BACKEND_URL = "https://api.toway.space";
+    let token = localStorage.getItem('token'), myInfo = JSON.parse(localStorage.getItem('myInfo'))||{};
+    let socket, currentRoom = '', currentTarget = '', db = null, pc, localStream, incomingData = null, textCallSession = null;
+    let replyTarget = null, ctxTargetMsgId = null, typingTimeout;
+    let html5QrCode = null, currentPostIdForComment = null, currentModalType = '';
+
+    let currentNav = localStorage.getItem('activeNav') || 'chat';
+    let currentMain = localStorage.getItem('activeMain') || 'chat';
+
+    const id = el => document.getElementById(el), show = el => el && id(el).classList.remove('hidden'), hide = el => el && id(el).classList.add('hidden');
+
+    function nextStep(n) {
+        const currentStep = document.querySelector('.reg-step:not(.hidden)');
+        if (currentStep) {
+            const currentN = parseInt(currentStep.id.replace('step', ''));
+            if (n > currentN) {
+                const inputs = currentStep.querySelectorAll('input[required]');
+                for(let inp of inputs) {
+                    if(!inp.checkValidity()) {
+                        inp.reportValidity();
+                        return;
+                    }
+                }
+            }
+        }
+        document.querySelectorAll('.reg-step').forEach(el => el.classList.add('hidden'));
+        id('step' + n).classList.remove('hidden');
+    }
+
+    function toggleAuth(t){ 
+        hide('form-login');hide('form-reg');hide('form-trans'); 
+        show(`form-${t==='reg'?'reg':t==='trans'?'trans':'login'}`); 
+        if(t === 'reg') {
+            document.querySelectorAll('.reg-step').forEach(el => el.classList.add('hidden'));
+            id('step1').classList.remove('hidden');
+        }
+    }
+
+    function initDB(){ return new Promise((res)=>{ const req=indexedDB.open("FriendStationDB",1); req.onupgradeneeded=e=>{ const db=e.target.result; if(!db.objectStoreNames.contains('messages')){ const s=db.createObjectStore('messages',{keyPath:'msg_id'}); s.createIndex('room_id','room_id',{unique:false}); s.createIndex('timestamp','timestamp',{unique:false}); } }; req.onsuccess=e=>{ db=e.target.result; res(); }; }); }
+    function idbPutMsg(m){ return new Promise(r=>{ const tx=db.transaction('messages','readwrite'); tx.objectStore('messages').put(m); tx.oncomplete=r; }); }
+    function idbGetRoomMsgs(r_id){ return new Promise(res=>{ const req=db.transaction('messages','readonly').objectStore('messages').index('room_id').getAll(r_id); req.onsuccess=()=>res(req.result.sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp))); }); }
+    function idbGetAllMsgs(){ return new Promise(res=>{ const req=db.transaction('messages','readonly').objectStore('messages').getAll(); req.onsuccess=()=>res(req.result); }); }
+    function idbClearMsgs(){ return new Promise(r=>{ const tx=db.transaction('messages','readwrite'); tx.objectStore('messages').clear(); tx.oncomplete=r; }); }
+    
+    function idbUpdateReaction(msgId, reactions) {
+        if (!db) return;
+        const tx = db.transaction('messages', 'readwrite');
+        const store = tx.objectStore('messages');
+        const req = store.get(msgId);
+        req.onsuccess = () => {
+            const m = req.result;
+            if (m) {
+                m.reactions = JSON.stringify(reactions);
+                store.put(m);
+            }
+        };
+    }
+
+    async function apiPost(path, body={}){ const h={"Authorization":`Bearer ${token}`}; if(!(body instanceof FormData)){h["Content-Type"]="application/json";body=JSON.stringify(body);} const r=await fetch(BACKEND_URL+path,{method:"POST",headers:h,body}); if(r.status===401||r.status===403)logout(); return r; }
+    
+    function logout(){ 
+        localStorage.clear(); token = null; myInfo = {}; currentRoom = ''; currentTarget = ''; html5QrCode = null;
+        if(socket) { socket.disconnect(); socket = null; }
+        
+        id('l-user').value = ''; id('l-pass').value = ''; id('auth-msg').innerText = '';
+        id('ui-msgs').innerHTML = ''; id('ui-rooms').innerHTML = ''; id('ui-groups').innerHTML = ''; id('ui-notes').innerHTML = ''; id('ui-timeline').innerHTML = '';
+        
+        hide('scr-main'); hide('scr-pending'); show('scr-auth'); toggleAuth('login'); id('slide-menu').classList.remove('open');
+    }
+
+    function startPending(pendingToken) {
+        hide('scr-auth'); show('scr-pending');
+        if(socket) { socket.disconnect(); socket = null; }
+        socket = io(BACKEND_URL, {auth: {token: pendingToken}});
+        socket.on('registration_approved', d => {
+            if(Notification.permission==="granted") new Notification('承認されました',{body:'Friend Stationにログインします'});
+            else alert('承認されました！自動的にログインします');
+            token = d.token; myInfo = d.user;
+            localStorage.setItem('token', token); localStorage.setItem('myInfo', JSON.stringify(myInfo));
+            socket.disconnect(); 
+            hide('scr-pending');
+            initApp(); 
+        });
+    }
+
+    id('form-login').addEventListener('submit', async e => { 
+        e.preventDefault(); 
+        const r=await fetch(BACKEND_URL+'/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:id('l-user').value,password:id('l-pass').value})}); 
+        const d=await r.json(); 
+        if(r.ok){ token=d.token;myInfo=d.user;localStorage.setItem('token',token);localStorage.setItem('myInfo',JSON.stringify(myInfo));initApp(); }
+        else if(r.status===403 && d.pendingToken) { startPending(d.pendingToken); }
+        else { id('auth-msg').innerText=d.error; }
+    });
+    id('form-trans').addEventListener('submit', async e => { e.preventDefault(); const r=await fetch(BACKEND_URL+'/api/backup/pull',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:id('t-user').value,transfer_code:id('t-code').value})}); const d=await r.json(); if(r.ok){ await initDB(); await idbClearMsgs(); if(d.data){ for(let m of d.data) await idbPutMsg(m); } alert('IndexedDBを復元しました。再度ログインしてください。'); toggleAuth('login'); }else id('auth-msg').innerText=d.error; });
+    id('form-reg').addEventListener('submit', async e => { 
+        e.preventDefault(); 
+        if(!id('r-agree').checked) return alert('利用規約およびプライバシーポリシーに同意してください');
+        
+        const b={username:id('r-user').value,nickname:id('r-nick').value,first_name:id('r-fn').value,last_name:id('r-ln').value,password:id('r-pass').value,school_name:id('r-school').value,grade:id('r-grade').value,class_num:id('r-class').value,attendance_num:id('r-att').value,birthdate:id('r-birth').value}; 
+        const r=await fetch(BACKEND_URL+'/api/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}); 
+        const d=await r.json();
+        if(r.ok && d.pendingToken){ startPending(d.pendingToken); } 
+        else if(!r.ok){ id('auth-msg').innerText=d.error; }
+    });
+
+    async function initApp(){
+        hide('scr-auth'); hide('scr-pending'); show('scr-main'); await initDB();
+        id('set-nick').value=myInfo.nickname; id('set-id').value=myInfo.username; id('set-status').value=myInfo.status_message||''; id('my-id-disp').innerText=myInfo.username; 
+        if(myInfo.icon_url){ const ic = myInfo.icon_url.startsWith('http')||myInfo.icon_url.startsWith('.')?myInfo.icon_url:BACKEND_URL+myInfo.icon_url; id('my-icon-set').src=ic; id('home-my-icon').src=ic; }
+        QRCode.toCanvas(id('my-qr'),myInfo.username,{width:200, margin:2});
+        if(Notification.permission!=="denied") Notification.requestPermission();
+        
+        switchNav(currentNav); if(currentMain !== 'chat') switchMainPanel(currentMain);
+        
+        const lastSync=localStorage.getItem('lastSync')||'1970-01-01T00:00:00.000Z'; const sRes=await apiPost('/api/sync/messages',{since:lastSync}); if(sRes.ok){ const {messages}=await sRes.json(); for(let m of messages)await idbPutMsg(m); localStorage.setItem('lastSync',new Date().toISOString()); }
+        updateUnreadBadge();
+        
+        if(socket) { socket.disconnect(); socket = null; }
+        socket=io(BACKEND_URL,{auth:{token}});
+        
+        socket.on('friend_update', ()=>{ loadFriends(); loadGroups(); });
+        socket.on('receive_message',async m=>{ 
+            await idbPutMsg(m); 
+            if(m.room_id===currentRoom && id('main-chat').classList.contains('active')){renderMsg(m); scrollToBottom('chat'); socket.emit('mark_read',currentRoom);}
+            else { updateUnreadBadge(); if(m.user_id!==myInfo.id && Notification.permission==="granted") new Notification(m.user_name,{body:m.type==='text'?m.content:'メディア'}); }
+        });
+        
+        socket.on('message_reaction_update', d => { 
+            const el = id('react-' + d.msg_id); 
+            if(el){ 
+                const eArr = []; 
+                Object.entries(d.reactions).forEach(([emoji,uids]) => { if(uids.length>0) eArr.push(`${emoji}${uids.length>1?uids.length:''}`); }); 
+                el.innerHTML = eArr.join(' '); 
+                el.style.display = eArr.length > 0 ? 'flex' : 'none'; 
+            }
+            idbUpdateReaction(d.msg_id, d.reactions);
+        });
+        
+        socket.on('messages_read',({roomId})=>{ if(roomId===currentRoom)document.querySelectorAll('.msg-info').forEach(el=>{if(!el.innerHTML.includes('既読'))el.innerHTML=`<span class="is-read">既読</span>`+el.innerHTML;}); });
+        socket.on('new_notification',()=>{loadNotifs(); updateUnreadBadge();});
+        socket.on('unread_update', updateUnreadBadge);
+        socket.on('new_post_timeline',()=>{if(currentMain==='home')loadTimeline();});
+        socket.on('notes_update', loadNotes);
+
+        socket.on('call_error', d=>{ alert(d.message); hide('modal-calling'); hangUp(false); });
+        socket.on('incoming_text_call', d=>{ incomingData={...d, type:'text'}; id('caller-name').innerText=`${d.caller_name}`; id('call-type-txt').innerHTML='<i class="fa-solid fa-message"></i> テキスト通話着信'; show('modal-incoming'); });
+        socket.on('call_user',d=>{ incomingData={...d, type:'av'}; id('caller-name').innerText=`${d.caller_name}`; id('call-type-txt').innerHTML=d.video?'<i class="fa-solid fa-video"></i> ビデオ通話':'<i class="fa-solid fa-phone"></i> 音声通話'; show('modal-incoming'); });
+
+        socket.on('text_call_started', d=>{ hide('modal-calling'); textCallSession=d.session_id; localStorage.setItem('tcSession', textCallSession); localStorage.setItem('tcTargetName', d.target_name); socket.emit('join_text_call',{session_id:d.session_id}); id('tc-target-name').innerText=`${d.target_name}`; id('tc-remote-text').innerText=''; id('tc-local-input').value=''; show('text-call-overlay'); });
+        socket.on('text_call_rejected', ()=>{ hide('modal-calling'); alert('通話が拒否されました'); });
+        id('tc-local-input').addEventListener('input', e=>{ if(textCallSession) socket.emit('text_call_sync', {session_id:textCallSession, text:e.target.value}); });
+        socket.on('text_call_sync_receive', d=>{ id('tc-remote-text').innerText=d.text; });
+        socket.on('text_call_ended', cleanupTextCall);
+        
+        id('msg-input').addEventListener('input', ()=>{
+            if(currentRoom) socket.emit('typing', {room_id: currentRoom, is_typing: true});
+            clearTimeout(typingTimeout);
+            typingTimeout = setTimeout(()=> { if(currentRoom) socket.emit('typing', {room_id: currentRoom, is_typing: false}); }, 2000);
+        });
+        
+        id('msg-input').addEventListener('keydown', e=>{
+            if(e.key==='Enter' && !e.isComposing) { 
+                e.preventDefault(); 
+                id('btn-send-msg').click(); 
+            }
+        });
+
+        socket.on('typing', d=>{ 
+            if(d.room_id === currentRoom && d.user_id !== myInfo.id) {
+                id('typing-indicator').innerText = d.is_typing ? `${d.nickname}さんが入力中...` : ''; 
+            }
+        });
+
+        socket.on('call_response',async d=>{
+            hide('modal-calling');
+            if(!d.accept){alert('通話が拒否されました'); hangUp(false); return;}
+            show('video-overlay');
+            setupPeer(d.responder_id);
+            try{
+                const o=await pc.createOffer();
+                await pc.setLocalDescription(o);
+                socket.emit('webrtc_offer',{target_id:d.responder_id,offer:o});
+            }catch(e){ hangUp(true); }
+        });
+        socket.on('webrtc_offer',async d=>{setupPeer(incomingData.caller_id);await pc.setRemoteDescription(new RTCSessionDescription(d.offer));const a=await pc.createAnswer();await pc.setLocalDescription(a);socket.emit('webrtc_answer',{target_id:incomingData.caller_id,answer:a});});
+        socket.on('webrtc_answer',async d=>await pc.setRemoteDescription(new RTCSessionDescription(d.answer))); 
+        socket.on('webrtc_ice',d=>{if(pc&&d.candidate)pc.addIceCandidate(new RTCIceCandidate(d.candidate));}); 
+        
+        socket.on('hang_up', () => { hide('modal-calling'); hide('modal-incoming'); hangUp(false); });
+
+        loadFriends(); loadGroups(); loadNotifs(); loadNotes(); if(currentMain==='home')loadTimeline();
+        
+        const savedRoom = localStorage.getItem('activeRoom'), savedTarget = localStorage.getItem('currentTarget'), savedTargetName = localStorage.getItem('currentTargetName'), savedIcon = localStorage.getItem('currentTargetIcon');
+        if(savedRoom && currentMain === 'chat') openRoom(savedRoom, savedTargetName, savedTarget, savedIcon, localStorage.getItem('chatScrollTop')||0);
+        if(currentMain==='home') setTimeout(()=> id('main-home').scrollTop=localStorage.getItem('homeScrollTop')||0, 300);
+
+        const sTcSession = localStorage.getItem('tcSession'), sTcTargetName = localStorage.getItem('tcTargetName');
+        if (sTcSession && sTcTargetName) { textCallSession = sTcSession; id('tc-target-name').innerText = sTcTargetName; socket.emit('join_text_call', {session_id: sTcSession}); show('text-call-overlay'); }
+    }
+
+    async function updateUnreadBadge() {
+        const r1=await apiPost('/api/messages/unread_count'); 
+        const r2=await apiPost('/api/notifications/list');
+        if(r1.ok && r2.ok){ 
+            const d=await r1.json(); const notifs=await r2.json();
+            const unreadNotifs = notifs.filter(n=> n.is_read===0).length;
+            const total = d.unread + unreadNotifs;
+            const b=id('notif-badge'); 
+            if(total>0){ 
+                b.innerText=total; show('notif-badge'); show('notif-bell-badge'); id('notif-bell-badge').innerText = unreadNotifs>0 ? unreadNotifs : '!';
+                document.title=`(${total}) Friend Station`; 
+            }else{ hide('notif-badge'); hide('notif-bell-badge'); document.title='Friend Station'; } 
+        }
+    }
+
+    function toggleMenu(){ id('slide-menu').classList.toggle('open'); }
+    function switchNav(t){
+        currentNav = t; localStorage.setItem('activeNav', t); id('slide-menu').classList.remove('open');
+        ['chat','search','notif'].forEach(x=>{ id('nav-'+x)?.classList.toggle('active',x===t); if(id('panel-'+x)) id('panel-'+x).classList.toggle('hidden',x!==t); });
+        id('nav-home').classList.toggle('active', t==='home');
+        if(t==='home') { id('list-panel').style.display='none'; switchMainPanel('home'); } else { id('list-panel').style.display='flex'; switchMainPanel('chat'); }
+        if(t==='notif') apiPost('/api/notifications/read').then(loadNotifs);
+    }
+    function switchMainPanel(p){
+        currentMain = p; localStorage.setItem('activeMain', p); id('slide-menu').classList.remove('open');
+        ['chat','home','settings','qr'].forEach(x=> { id('main-'+x).classList.remove('active'); hide('main-'+x); });
+        show('main-'+p); id('main-'+p).classList.add('active');
+        if(p==='chat'){ if(currentRoom){show('chat-active');hide('chat-empty');}else{hide('chat-active');show('chat-empty');} }
+        if(p==='home') loadTimeline();
+        if(html5QrCode && p!=='qr') { html5QrCode.stop().catch(()=>{}); html5QrCode=null; hide('reader'); }
+    }
+    function saveScroll(type, el){ localStorage.setItem(type+'ScrollTop', el.scrollTop); }
+    function scrollToBottom(type){ const el = type==='chat'?id('ui-msgs'):null; if(el) el.scrollTop = el.scrollHeight; }
+    function closeChatMobile(){ id('main-container').classList.remove('active'); }
+
+    function showTermsModal() {
+        toggleMenu();
+        show('modal-terms');
+    }
+
+    function openProfileModal(uid, username, nickname, icon, status){
+        id('mp-icon').src = icon?(icon.startsWith('http')||icon.startsWith('.')?icon:BACKEND_URL+icon):'';
+        id('mp-name').innerText = nickname; id('mp-id').innerText = username; id('mp-status').innerText = status||'自己紹介はありません';
+        show('modal-prof');
+    }
+    function showCurrentProfile(){ if(currentTarget) apiPost('/api/friends/list').then(async r=>{ const l=await r.json(); const u=l.find(x=>x.id===currentTarget); if(u) openProfileModal(u.id, u.username, u.nickname, u.icon_url, u.status_message); }); }
+
+    async function openSelectFriendsModal(type) {
+        currentModalType = type;
+        const r = await apiPost('/api/friends/list'); const friends = await r.json();
+        const listDiv = id('msf-list');
+        if (type === 'group') { id('msf-title').innerText = 'グループ作成'; id('msf-extra-input').innerHTML = '<input type="text" id="msf-group-name" placeholder="グループ名" required style="margin:0;">'; } 
+        else { id('msf-title').innerText = '親しい友達リスト設定'; id('msf-extra-input').innerHTML = '<p style="font-size:13px;color:var(--text-sub);">親しい友達に設定する人を選択してください</p>'; }
+        listDiv.innerHTML = friends.map(f => {
+            const isChecked = (type === 'close' && f.is_close_friend === 1) ? 'checked' : '';
+            const ic = f.icon_url?(f.icon_url.startsWith('http')||f.icon_url.startsWith('.')?f.icon_url:BACKEND_URL+f.icon_url):'';
+            return `<label style="display:flex;align-items:center;gap:15px;padding:12px;background:var(--bg-panel);border-radius:12px;cursor:pointer;border:1px solid var(--border);transition:all 0.2s;"><input type="checkbox" value="${f.id}" class="msf-checkbox" ${isChecked} style="width:auto;margin:0;"><img src="${ic}" style="width:36px;height:36px;border-radius:50%;"> <span style="font-size:16px;">${f.nickname}</span></label>`;
+        }).join('');
+        show('modal-select-friends'); toggleMenu();
+    }
+    id('msf-submit').onclick = async (e) => {
+        e.preventDefault();
+        const checkboxes = document.querySelectorAll('.msf-checkbox:checked');
+        const selectedIds = Array.from(checkboxes).map(cb => cb.value);
+        if (currentModalType === 'group') {
+            const name = id('msf-group-name').value.trim(); if(!name) return alert('グループ名を入力してください');
+            const r = await apiPost('/api/groups/create', {name, members: selectedIds});
+            if(r.ok) { alert('グループを作成しました'); hide('modal-select-friends'); }
+        } else {
+            const r = await apiPost('/api/friends/set_close_bulk', {friend_ids: selectedIds});
+            if(r.ok) { alert('親しい友達リストを更新しました'); hide('modal-select-friends'); }
+        }
+    };
+
+    async function loadFriends(){
+        const r=await apiPost('/api/friends/list'); const l=await r.json(); 
+        id('ui-rooms').innerHTML = l.map(f=>{ const ic=f.icon_url?(f.icon_url.startsWith('http')||f.icon_url.startsWith('.')?f.icon_url:BACKEND_URL+f.icon_url):''; const clFlag=f.is_close_friend===1?'<span style="font-size:12px;color:var(--accent);margin-left:5px;"><i class="fa-solid fa-lock"></i></span>':''; return `<div class="room-item" onclick="event.preventDefault(); openRoom('${[myInfo.id,f.id].sort().join('_')}','${f.nickname}','${f.id}','${ic}')"><img src="${ic}" onclick="event.preventDefault(); event.stopPropagation(); openProfileModal('${f.id}','${f.username}','${f.nickname}','${ic}','${f.status_message}')"><div><b style="font-size:16px;">${f.nickname} ${clFlag}</b></div></div>`; }).join('');
+    }
+    async function loadGroups(){
+        const r=await apiPost('/api/groups/list'); const l=await r.json(); 
+        id('ui-groups').innerHTML = l.map(g=>{ return `<div class="room-item" onclick="event.preventDefault(); openRoom('${g.id}','${g.name}','${g.id}','./icon.jpeg')"><div style="width:52px;height:52px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff;"><i class="fa-solid fa-user-group"></i></div><div><b style="font-size:16px;">${g.name}</b></div></div>`; }).join('');
+    }
+    
+    async function openRoom(rid, name, tid, icon, scrollPos=0){ 
+        currentRoom=rid; currentTarget=tid; switchMainPanel('chat');
+        localStorage.setItem('activeRoom', rid); localStorage.setItem('currentTarget', tid); localStorage.setItem('currentTargetName', name); localStorage.setItem('currentTargetIcon', icon);
+        id('chat-title').innerText=name; id('chat-target-icon').src=icon; show('chat-active'); hide('chat-empty'); id('typing-indicator').innerText='';
+        if(window.innerWidth <= 768) { id('main-container').classList.add('active'); show('btn-back-chat'); }
+        socket.emit('join_room',rid); 
+        const msgs=await idbGetRoomMsgs(rid); id('ui-msgs').innerHTML=''; msgs.forEach(renderMsg);
+        if(scrollPos) id('ui-msgs').scrollTop = scrollPos; else scrollToBottom('chat');
+        socket.emit('mark_read', currentRoom); updateUnreadBadge();
+    }
+    function renderMsg(m){
+        const b=id('ui-msgs'), isMe=m.user_id===myInfo.id, cls=isMe?'my-msg':'other-msg', t=new Date(m.timestamp).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+        let rep=''; if(m.reply_to){ try{const r=JSON.parse(m.reply_to); rep=`<div class="reply-banner"><i class="fa-solid fa-reply"></i> ${r.name}: ${r.text.substring(0,15)}...</div>`;}catch(e){} }
+        let c=''; if(m.type==='image')c=`<img src="${m.content.startsWith('http')?m.content:BACKEND_URL+m.content}" onclick="event.preventDefault(); window.open(this.src)">`; else if(m.type==='video')c=`<video src="${m.content.startsWith('http')?m.content:BACKEND_URL+m.content}" controls></video>`; else c=m.content.replace(/</g,"&lt;").replace(/>/g,"&gt;");
+        let rd=isMe&&m.is_read?`<span class="is-read">既読</span>`:''; 
+        let reBadge=''; try{const r=JSON.parse(m.reactions||'{}'); const eArr=[]; Object.entries(r).forEach(([emoji,uids])=>{if(uids.length>0)eArr.push(`${emoji}${uids.length>1?uids.length:''}`)}); if(eArr.length>0) reBadge=`<div class="reactions-badge" id="react-${m.msg_id}">${eArr.join(' ')}</div>`; else reBadge=`<div class="reactions-badge" id="react-${m.msg_id}" style="display:none;"></div>`;}catch(e){}
+        const el = document.createElement('div'); el.className = `msg-wrap ${cls}`;
+        
+        const reactBtn = `<button type="button" class="msg-react-btn" onclick="event.preventDefault(); showReactionMenu(event, '${m.msg_id}')">😊</button>`;
+        const row = isMe 
+            ? `<div style="display:flex;align-items:center;gap:5px;justify-content:flex-end;">${reactBtn}<div class="msg" id="msg-${m.msg_id}">${c}${reBadge}</div></div>`
+            : `<div style="display:flex;align-items:center;gap:5px;justify-content:flex-start;"><div class="msg" id="msg-${m.msg_id}">${c}${reBadge}</div>${reactBtn}</div>`;
+        
+        el.innerHTML = `${rep}${row}<span class="msg-info">${rd}${t}</span>`;
+        b.appendChild(el);
+        setupContextMenu(el.querySelector('.msg'), m.msg_id, m.content.replace(/'/g,"\\'").substring(0,20), m.user_name);
+    }
+
+    function setupContextMenu(node, msgId, textPreview, userName) {
+        let pressTimer;
+        node.addEventListener('contextmenu', e => { e.preventDefault(); showContextMenu(e.pageX, e.pageY, msgId, textPreview, userName); });
+        node.addEventListener('touchstart', e => { pressTimer = setTimeout(() => { const t = e.touches[0]; showContextMenu(t.pageX, t.pageY, msgId, textPreview, userName); }, 600); });
+        node.addEventListener('touchend', () => clearTimeout(pressTimer)); node.addEventListener('touchmove', () => clearTimeout(pressTimer));
+    }
+    function showContextMenu(x, y, msgId, textPreview, userName){
+        ctxTargetMsgId = msgId; const menu = id('context-menu'); menu.style.left = x + 'px'; menu.style.top = y + 'px'; show('context-menu');
+        id('ctx-reply').onclick = (e) => { e.preventDefault(); replyTarget = {id: msgId, text: textPreview, name: userName}; id('rp-name').innerText=userName; id('rp-text').innerText=textPreview; show('reply-preview'); hide('context-menu'); id('msg-input').focus(); };
+    }
+    function showReactionMenu(e, msgId) {
+        e.preventDefault(); e.stopPropagation();
+        ctxTargetMsgId = msgId; const menu = id('reaction-menu');
+        menu.style.left = e.pageX + 'px'; menu.style.top = e.pageY + 'px';
+        show('reaction-menu');
+    }
+    document.addEventListener('click', (e)=> { 
+        if(!e.target.closest('.msg')) hide('context-menu'); 
+        if(!e.target.closest('.msg-react-btn') && !e.target.closest('#reaction-menu')) hide('reaction-menu');
+    });
+    function sendReaction(emoji){ if(ctxTargetMsgId && currentRoom){ socket.emit('add_reaction', {msg_id: ctxTargetMsgId, room_id: currentRoom, emoji}); hide('reaction-menu'); hide('context-menu'); } }
+    function cancelReply(){ replyTarget=null; hide('reply-preview'); }
+
+    id('btn-send-msg').onclick=(e)=>{ 
+        e.preventDefault(); 
+        const v=id('msg-input').value.trim(); 
+        const f=id('chat-file').files[0];
+        if(!v && !f) return; 
+        
+        if(f) {
+            uploadMedia(v);
+        } else {
+            socket.emit('send_message', {room_id:currentRoom, type:'text', content:v, reply_to: replyTarget?JSON.stringify(replyTarget):null}); 
+            id('msg-input').value=''; cancelReply(); 
+        }
+    };
+    
+    function previewChatFile(inp) {
+        const f = inp.files[0]; const prev = id('chat-file-preview'); const stat = id('chat-f-status');
+        if (f) {
+            stat.innerText = '添付済';
+            if (f.type.startsWith('image/')) {
+                const r = new FileReader(); r.onload = e => { prev.src = e.target.result; prev.style.display = 'block'; }; r.readAsDataURL(f);
+            } else { prev.style.display = 'none'; }
+        } else { stat.innerText = ''; prev.style.display = 'none'; prev.src = ''; }
+    }
+
+    async function uploadMedia(textMsg){ 
+        const f=id('chat-file').files[0]; 
+        if(!f)return; 
+        const fd=new FormData(); fd.append('file',f); 
+        const r=await apiPost('/api/upload',fd); 
+        if(r.ok){ 
+            const d=await r.json(); 
+            socket.emit('send_message',{room_id:currentRoom,type:f.type.startsWith('video')?'video':'image',content:d.url, reply_to:replyTarget?JSON.stringify(replyTarget):null}); 
+            if (textMsg) {
+                socket.emit('send_message', {room_id:currentRoom, type:'text', content:textMsg}); 
+            }
+        } 
+        id('chat-file').value=''; id('chat-f-status').innerText=''; id('chat-file-preview').style.display='none'; id('chat-file-preview').src='';
+        id('msg-input').value=''; cancelReply(); 
+    }
+
+    id('form-chat-search').addEventListener('submit', async e => {
+        e.preventDefault(); const q=id('chat-s-query').value.trim(); if(!q)return;
+        
+        const fRes = await apiPost('/api/friends/list');
+        let friendIds = [];
+        if(fRes.ok) {
+            const fList = await fRes.json();
+            friendIds = fList.map(f => f.id);
+        }
+
+        const r = await apiPost('/api/search/messages', {query:q}); if(r.ok){
+            const d=await r.json(); const out=id('chat-search-out');
+            if(d.messages.length>0){ out.innerHTML = d.messages.map(m=> `<div style="padding:15px;border-bottom:1px solid var(--border);"><b style="color:var(--accent);">${m.user_name}</b> <span style="font-size:12px;color:var(--text-sub);margin-left:10px;">${new Date(m.timestamp).toLocaleDateString()}</span><div style="font-size:15px;margin-top:8px;line-height:1.4;">${m.content}</div></div>`).join(''); }
+            else { out.innerHTML = '<p style="color:var(--text-sub);text-align:center;margin-top:20px;">見つかりませんでした</p>'; }
+            show('modal-search-res');
+        }
+    });
+
+    function previewPostFile(inp) {
+        const f = inp.files[0]; const prev = id('post-file-preview'); const stat = id('post-f-status');
+        if (f) {
+            stat.innerText = '添付済';
+            if (f.type.startsWith('image/')) {
+                const r = new FileReader(); r.onload = e => { prev.src = e.target.result; prev.style.display = 'block'; }; r.readAsDataURL(f);
+            } else { prev.style.display = 'none'; }
+        } else { stat.innerText = ''; prev.style.display = 'none'; prev.src = ''; }
+    }
+    
+    async function loadTimeline(){
+        const r=await apiPost('/api/posts/list'); const l=await r.json();
+        id('ui-timeline').innerHTML = l.map(p=>{
+            const ic=p.icon_url?(p.icon_url.startsWith('http')||p.icon_url.startsWith('.')?p.icon_url:BACKEND_URL+p.icon_url):'';
+            const m=p.media_url?`<img src="${p.media_url.startsWith('http')?p.media_url:BACKEND_URL+p.media_url}" class="post-media" onclick="event.preventDefault(); event.stopPropagation(); window.open(this.src)">`:'';
+            const delBtn = p.user_id===myInfo.id ? `<span class="del-post-btn" onclick="event.preventDefault(); event.stopPropagation(); actionPost('delete','${p.id}')"><i class="fa-solid fa-xmark"></i></span>` : '';
+            const visBadge = p.visibility==='close' ? `<span style="color:var(--accent);font-size:12px;margin-left:8px;"><i class="fa-solid fa-lock"></i> 親しい友達</span>` : '';
+
+            return `<div class="post-card" onclick="event.preventDefault(); openComments('${p.id}')">
+                ${delBtn}
+                <div class="post-header"><img src="${ic}" onclick="event.preventDefault(); event.stopPropagation(); openProfileModal('','${p.username}','${p.nickname}','${ic}','')"> <div><b style="font-size:16px;">${p.nickname}</b> <span style="color:var(--text-sub);font-size:14px;margin-left:5px;">@${p.username} · ${new Date(p.timestamp).toLocaleDateString()}</span>${visBadge}</div></div>
+                <div class="post-content">${(p.content||'').replace(/</g,"&lt;")}</div>${m}
+                <div class="post-actions" onclick="event.stopPropagation()">
+                    <div onclick="event.preventDefault(); openComments('${p.id}')"><i class="fa-regular fa-comment"></i> ${p.comment_count}</div>
+                    <div class="${p.is_liked?'liked':''}" onclick="event.preventDefault(); actionPost('like','${p.id}')" oncontextmenu="event.preventDefault(); showInteractions('${p.id}')">❤️ ${p.like_count}</div>
+                </div>
+            </div>`;
+        }).join('');
+    }
+    async function submitPost(){
+        const txt=id('post-text').value.trim(); const file=id('post-file').files[0]; if(!txt&&!file)return;
+        let media_url=null; if(file){ const fd=new FormData(); fd.append('file',file); const r=await apiPost('/api/upload',fd); if(r.ok){const d=await r.json(); media_url=d.url;} }
+        const res=await apiPost('/api/posts/create', {content:txt, media_url, visibility: id('post-vis').value}); 
+        if(res.ok){ id('post-text').value=''; id('post-file').value=''; id('post-f-status').innerText=''; id('post-file-preview').style.display='none'; id('post-file-preview').src=''; }
+        else { const e=await res.json(); alert(e.error); }
+    }
+    async function actionPost(action, pid){ if(action==='delete'&&!confirm("削除しますか？"))return; await apiPost(`/api/posts/${action}`, {post_id:pid}); }
+
+    function previewCommentFile(inp) {
+        const f = inp.files[0]; const prev = id('c-file-preview'); const stat = id('c-f-status');
+        if (f) {
+            stat.innerText = '添付済';
+            if (f.type.startsWith('image/')) {
+                const r = new FileReader(); r.onload = e => { prev.src = e.target.result; prev.style.display = 'block'; }; r.readAsDataURL(f);
+            } else { prev.style.display = 'none'; }
+        } else { stat.innerText = ''; prev.style.display = 'none'; prev.src = ''; }
+    }
+
+    async function openComments(pid){
+        currentPostIdForComment = pid;
+        const r = await apiPost('/api/posts/comments/list', {post_id: pid}); const l = await r.json();
+        const out = id('comments-list');
+        if(l.length===0){ out.innerHTML = '<div style="color:var(--text-sub);text-align:center;padding:20px 0;">コメントはまだありません</div>'; }
+        else { out.innerHTML = l.map(c=>{ const ic=c.icon_url?(c.icon_url.startsWith('http')||c.icon_url.startsWith('.')?c.icon_url:BACKEND_URL+c.icon_url):''; const cim = c.image_url?`<img src="${c.image_url.startsWith('http')?c.image_url:BACKEND_URL+c.image_url}" class="c-media" onclick="event.preventDefault(); window.open(this.src)">`:''; return `<div class="comment-item"><img src="${ic}" class="c-ic"><div><b>${c.nickname}</b><div style="margin-top:4px;line-height:1.4;">${c.content}</div>${cim}</div></div>`; }).join(''); }
+        show('modal-comments');
+    }
+    id('form-comment').addEventListener('submit', async e => {
+        e.preventDefault();
+        if(!currentPostIdForComment)return;
+        const txt=id('c-text').value.trim(); const file=id('c-file').files[0]; if(!txt&&!file)return;
+        let image_url=null; 
+        if(file){ 
+            const fd=new FormData(); fd.append('file',file); 
+            const r=await apiPost('/api/upload',fd); 
+            if(r.ok){const d=await r.json(); image_url=d.url;} 
+        }
+        const res=await apiPost('/api/posts/comment', {post_id: currentPostIdForComment, content:txt, image_url}); 
+        if(res.ok){ 
+            id('c-text').value=''; id('c-file').value=''; id('c-f-status').innerText=''; 
+            id('c-file-preview').style.display='none'; id('c-file-preview').src='';
+            openComments(currentPostIdForComment);
+        }
+    });
+    
+    async function showInteractions(pid){
+        const r=await apiPost('/api/posts/interactions',{post_id:pid}); if(r.ok){
+            const d=await r.json(); let h='';
+            if(d.likes.length>0) h+=`<h4 style="margin:15px 0 10px 0;color:var(--danger);"><i class="fa-solid fa-heart"></i> いいね</h4>` + d.likes.map(u=>`<div style="padding:8px 0;border-bottom:1px solid var(--bg-hover);">@${u.username} (${u.nickname})</div>`).join('');
+            id('interactions-list').innerHTML = h || '<p style="text-align:center;color:var(--text-sub);padding:20px 0;">まだありません</p>'; show('modal-interactions');
+        }
+    }
+
+    id('form-search').addEventListener('submit', async e => { 
+        e.preventDefault(); const q=id('s-query').value.trim(); if(!q)return; 
+        
+        const fRes = await apiPost('/api/friends/list');
+        let friendIds = [];
+        if(fRes.ok) {
+            const fList = await fRes.json();
+            friendIds = fList.map(f => f.id);
+        }
+
+        const r=await apiPost('/api/search',{query:q}); 
+        if(r.ok){ 
+            const d=await r.json(); let h=''; 
+            if(d.users.length>0){ 
+                h+='<h4 style="margin-bottom:15px;"><i class="fa-solid fa-users"></i> ユーザー</h4>'; 
+                d.users.forEach(u=>{ 
+                    if(u.id === myInfo.id) return; 
+                    const ic=u.icon_url?(u.icon_url.startsWith('http')||u.icon_url.startsWith('.')?u.icon_url:BACKEND_URL+u.icon_url):''; 
+                    
+                    const isFriend = friendIds.includes(u.id);
+                    const btnHtml = isFriend 
+                        ? `<button type="button" style="padding:10px 15px;border-radius:20px;background:var(--bg-hover);color:var(--text-main);border:1px solid var(--border);" onclick="event.preventDefault(); openProfileModal('${u.id}','${u.username}','${u.nickname}','${ic}','${u.status_message}')"><i class="fa-solid fa-user"></i> プロフ</button>`
+                        : `<button type="button" style="padding:10px 20px;border-radius:20px;" onclick="event.preventDefault(); apiPost('/api/friends/request',{username:'${u.username}'}).then(()=>alert('申請しました'))"><i class="fa-solid fa-user-plus"></i> 追加</button>`;
+
+                    h+=`<div class="room-item" style="background:var(--bg-panel);border-radius:16px;margin-bottom:12px;border:1px solid var(--border);"><img src="${ic}" onclick="event.preventDefault(); openProfileModal('${u.id}','${u.username}','${u.nickname}','${ic}','${u.status_message}')"><div style="flex:1;"><b style="font-size:16px;">${u.nickname}</b><div style="font-size:13px;color:var(--text-sub);margin-top:2px;">@${u.username}</div></div>${btnHtml}</div>`; 
+                }); 
+            } 
+            id('ui-search-res').innerHTML=h||'<p style="color:var(--text-sub);text-align:center;">見つかりませんでした</p>'; 
+        } 
+    });
+
+    id('form-note').addEventListener('submit', async e => { e.preventDefault(); const r=await apiPost('/api/notes/post',{content:id('note-input').value, visibility:id('note-vis').value}); if(r.ok){ id('note-input').value=''; } });
+    async function loadNotes(){ const r=await apiPost('/api/notes/list'); const l=await r.json(); id('ui-notes').innerHTML=l.map(n=>{ const ic=n.icon_url?(n.icon_url.startsWith('http')||n.icon_url.startsWith('.')?n.icon_url:BACKEND_URL+n.icon_url):''; const vis = n.visibility==='close'?'<span style="color:var(--accent);"><i class="fa-solid fa-lock"></i></span>':''; return `<div class="note-item" onclick="event.preventDefault(); openProfileModal('${n.user_id}','','${n.nickname}','${ic}','')"><div class="note-bubble">${vis}${n.content}</div><div class="note-img-wrap"><img src="${ic}"></div><div class="note-name" style="font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${n.nickname}</div></div>` }).join(''); }
+    
+    async function loadNotifs(){ 
+        const r=await apiPost('/api/notifications/list'); const l=await r.json(); 
+        id('ui-notifs').innerHTML=l.map(n=>{ 
+            let a=''; 
+            if(n.type==='friend_request'&&n.req_status==='pending') a=`<div style="margin-top:15px;"><button type="button" class="success" style="padding:10px 20px;border-radius:20px;font-size:14px;" onclick="event.preventDefault(); apiPost('/api/friends/accept',{request_id:'${n.request_id}'})">承認</button></div>`; 
+            let icon = n.type==='system' ? '<i class="fa-solid fa-bullhorn" style="color:var(--accent);margin-right:8px;"></i>' : '';
+            return `<li style="padding:20px;border-bottom:1px solid var(--border);${n.is_read?'':'background:var(--bg-hover);border-radius:12px;'}"><div style="font-size:15px;line-height:1.5;white-space:pre-wrap;">${icon}${n.content}</div>${a}</li>`; 
+        }).join(''); 
+    }
+    
+    async function pushBackup(){ if(!confirm("ブラウザ内の全履歴をサーバーに預けますか？新端末で引き出せます。"))return; const msgs=await idbGetAllMsgs(); const res=await apiPost('/api/backup/push',{data:JSON.stringify(msgs)}); if(res.ok){ const d=await res.json(); id('transfer-code').innerText=d.code; alert('コードを控えて新端末で入力してください'); } }
+    
+    async function uploadIcon(inp){ const f=inp.files[0]; if(!f)return; const fd=new FormData(); fd.append('photo',f); const r=await apiPost('/api/user/update_icon',fd); if(r.ok){const d=await r.json();myInfo.icon_url=d.url;localStorage.setItem('myInfo',JSON.stringify(myInfo)); id('my-icon-set').src=BACKEND_URL+d.url; id('home-my-icon').src=BACKEND_URL+d.url;} }
+    async function updateProfile(key,val){ const r = await apiPost(`/api/user/update_${key}`,{[key]:val}); if(!r.ok){ const d=await r.json(); alert(d.error); return; } myInfo[key]=val; localStorage.setItem('myInfo',JSON.stringify(myInfo)); const sc=id('sc-'+(key==='username'?'id':key==='nickname'?'nick':'status')); if(sc){sc.classList.add('show');setTimeout(()=>sc.classList.remove('show'),2000);} if(key==='username'){id('my-id-disp').innerText=val; QRCode.toCanvas(id('my-qr'),val,{width:200, margin:2});} }
+    id('form-pw-req').addEventListener('submit', async e => { e.preventDefault(); const r=await apiPost('/api/user/request_password_change',{new_password:id('set-new-pw').value}); if(r.ok){alert('管理者に申請しました');id('set-new-pw').value='';} });
+
+    function startQRScanner(){ show('reader'); if(!html5QrCode) html5QrCode = new Html5Qrcode("reader"); html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: {width: 250, height: 250} }, decodedText => { html5QrCode.stop(); hide('reader'); apiPost('/api/friends/request',{username:decodedText}).then(r=>{ if(r.ok)alert(decodedText+' に申請しました'); else alert('ユーザーが見つかりません'); }); }).catch(err => { alert("カメラ起動失敗"); hide('reader'); }); }
+
+    function resetCallControls(isVideo) {
+        const bMic=id('btn-mic'), bCam=id('btn-cam'), bSpk=id('btn-spk');
+        bMic.innerHTML='<i class="fa-solid fa-microphone"></i> ON'; bMic.className="success";
+        bSpk.innerHTML='<i class="fa-solid fa-volume-high"></i> ON'; bSpk.className="success"; id('remote-video').muted=false;
+        if(isVideo){ show('btn-cam'); bCam.innerHTML='<i class="fa-solid fa-video"></i> ON'; bCam.className="success"; }
+        else { hide('btn-cam'); }
+    }
+    function toggleMic(){ if(localStream&&localStream.getAudioTracks().length>0){ const t=localStream.getAudioTracks()[0]; t.enabled=!t.enabled; const b=id('btn-mic'); if(t.enabled){b.innerHTML='<i class="fa-solid fa-microphone"></i> ON';b.className="success";}else{b.innerHTML='<i class="fa-solid fa-microphone-slash"></i> OFF';b.className="danger";} } }
+    function toggleCam(){ if(localStream&&localStream.getVideoTracks().length>0){ const t=localStream.getVideoTracks()[0]; t.enabled=!t.enabled; const b=id('btn-cam'); if(t.enabled){b.innerHTML='<i class="fa-solid fa-video"></i> ON';b.className="success";}else{b.innerHTML='<i class="fa-solid fa-video-slash"></i> OFF';b.className="danger";} } }
+    function toggleSpk(){ const v=id('remote-video'); v.muted=!v.muted; const b=id('btn-spk'); if(!v.muted){b.innerHTML='<i class="fa-solid fa-volume-high"></i> ON';b.className="success";}else{b.innerHTML='<i class="fa-solid fa-volume-xmark"></i> OFF';b.className="danger";} }
+
+    function hangUp(emitEvent = true){
+        if(emitEvent && socket && (currentTarget || incomingData?.caller_id)) {
+            socket.emit('hang_up', {target_id: currentTarget || incomingData?.caller_id});
+        }
+        if(pc){ pc.onicecandidate = null; pc.ontrack = null; pc.onconnectionstatechange = null; pc.close(); pc = null; }
+        if(localStream){ localStream.getTracks().forEach(t=>t.stop()); localStream = null; }
+        id('remote-video').srcObject = null; id('local-video').srcObject = null;
+        hide('video-overlay'); hide('modal-incoming'); hide('modal-calling'); incomingData = null;
+    }
+
+    function cancelCall() { hangUp(true); }
+
+    function startTextCall(){ 
+        if(!currentTarget)return; 
+        id('calling-name').innerText = localStorage.getItem('currentTargetName') || '相手';
+        show('modal-calling');
+        socket.emit('call_text',{target_id:currentTarget}); 
+    }
+    function endTextCall(){ if(textCallSession){ socket.emit('end_text_call',{session_id:textCallSession}); cleanupTextCall(); } }
+    function cleanupTextCall() { hide('text-call-overlay'); textCallSession=null; localStorage.removeItem('tcSession'); localStorage.removeItem('tcTargetName'); }
+
+    async function startCall(v){
+        if(!currentTarget)return;
+        if(pc) hangUp(true); 
+        try{
+            localStream=await navigator.mediaDevices.getUserMedia({video:v,audio:true});
+            if(v)id('local-video').srcObject=localStream;
+            resetCallControls(v);
+            id('calling-name').innerText = localStorage.getItem('currentTargetName') || '相手';
+            show('modal-calling');
+            socket.emit('call_user',{target_id:currentTarget,caller_id:myInfo.id,caller_name:myInfo.nickname,video:v});
+        }catch(e){
+            alert('マイク/カメラへのアクセスが拒否されました');
+        }
+    }
+    
+    async function answerCall(a){ 
+        hide('modal-incoming'); 
+        if(incomingData.type==='text'){ 
+            socket.emit('answer_text', {caller_id:incomingData.caller_id, caller_name:incomingData.caller_name, accept:a}); 
+            if(!a) incomingData=null; 
+        } else { 
+            if(!a){
+                socket.emit('call_response', {target_id:incomingData.caller_id, accept:false}); 
+                hangUp(false);
+                return;
+            } 
+            if(pc) hangUp(false);
+            try{
+                localStream=await navigator.mediaDevices.getUserMedia({video:incomingData.video,audio:true});
+                if(incomingData.video) id('local-video').srcObject=localStream;
+                resetCallControls(incomingData.video);
+                show('video-overlay');
+                socket.emit('call_response',{target_id:incomingData.caller_id, responder_id:myInfo.id, accept:true});
+            }catch(e){
+                socket.emit('call_response',{target_id:incomingData.caller_id, accept:false});
+                hangUp(false);
+            } 
+        } 
+    }
+    
+    function setupPeer(tid){
+        pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]});
+        if(localStream)localStream.getTracks().forEach(t=>pc.addTrack(t,localStream));
+        pc.ontrack=e=>id('remote-video').srcObject=e.streams[0];
+        pc.onicecandidate=e=>{if(e.candidate)socket.emit('webrtc_ice',{target_id:tid,candidate:e.candidate});};
+        pc.onconnectionstatechange=()=>{if(pc.connectionState==='disconnected'||pc.connectionState==='failed')hangUp(true);};
+    }
+
+    if(token&&myInfo.id)initApp();
+</script>
+</body>
+</html>
