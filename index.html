@@ -32,7 +32,6 @@
         button[style*="background:transparent"], .emoji-btn, .msg-react-btn, .msg-opt-btn { box-shadow: none !important; }
         button[style*="background:transparent"]:hover, .emoji-btn:hover { transform: scale(1.1); }
 
-        /* Toggle Switch CSS */
         .switch { position: relative; display: inline-block; width: 46px; height: 24px; }
         .switch input { opacity: 0; width: 0; height: 0; }
         .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--bg-hover); transition: .4s; border-radius: 24px; border: 1px solid var(--border); }
@@ -48,7 +47,6 @@
         /* Toast & Custom Confirm */
         .toast { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); background: var(--text-main); color: var(--bg-dark); padding: 12px 24px; border-radius: 30px; box-shadow: 0 5px 15px rgba(0,0,0,0.5); z-index: 10000; font-weight: bold; font-size: 14px; opacity: 0; transition: all 0.3s ease; pointer-events: none; }
         .toast.show { opacity: 1; top: 30px; }
-        
         #custom-confirm .modal { max-width: 320px; text-align: center; padding: 30px 25px; }
 
         /* Auth */
@@ -77,7 +75,6 @@
         .panel-header{padding:20px;font-size:1.4em;font-weight:bold;border-bottom:1px solid var(--border);background:rgba(0,0,0,0.8);backdrop-filter:blur(10px);position:sticky;top:0;z-index:2;}
         .scroll-area{flex:1;overflow-y:auto;}
         
-        /* インスタ風 ノートエリア */
         .notes-area{padding:20px 20px 15px 20px; border-bottom:1px solid var(--border); min-height: 140px;}
         .notes-list{display:flex;gap:15px;overflow-x:auto;padding-top:25px;padding-bottom:10px;scrollbar-width:none;} .notes-list::-webkit-scrollbar{display:none;}
         .note-item{display:flex;flex-direction:column;align-items:center;width:72px;flex-shrink:0;position:relative;cursor:pointer;gap:6px;}
@@ -147,20 +144,22 @@
         .emoji-btn{background:none;border:none;font-size:26px;cursor:pointer;}
         .saved-check{color:var(--accent);font-size:13px;margin-left:12px;opacity:0;transition:opacity 0.3s;} .saved-check.show{opacity:1;}
         
-        /* 強化されたグループ通話UI */
+        /* 通話UI (マルチモード最適化) */
         #video-overlay {position:fixed;top:0;left:0;width:100%;height:100%;background:#000;z-index:3000;display:flex;flex-direction:column;}
         #video-grid { flex:1; display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:15px; padding:20px; padding-bottom:100px; overflow-y:auto; }
         .video-wrap { position:relative; width:100%; max-width:400px; aspect-ratio:4/3; background:#111; border-radius:16px; overflow:hidden; display:flex; align-items:center; justify-content:center; box-shadow:0 10px 30px rgba(0,0,0,0.5); border:1px solid #333; }
         .video-wrap video { width:100%; height:100%; object-fit:cover; }
-        .video-wrap .no-video-icon { position:absolute; width:120px; height:120px; border-radius:50%; object-fit:cover; display:none; border:3px solid var(--border); box-shadow:0 4px 15px rgba(0,0,0,0.8); z-index:1; }
-        .video-wrap .name-badge { position:absolute; bottom:10px; left:10px; background:rgba(0,0,0,0.6); color:#fff; padding:6px 12px; border-radius:12px; font-size:13px; backdrop-filter:blur(5px); font-weight:bold; z-index:2; }
-        .video-wrap .mic-off-badge { position:absolute; top:10px; right:10px; color:var(--danger); font-size:18px; display:none; background:rgba(0,0,0,0.6); padding:8px; border-radius:50%; backdrop-filter:blur(5px); z-index:2; }
+        .video-wrap .no-video-icon { position:absolute; width:100px; height:100px; border-radius:50%; object-fit:cover; display:none; border:3px solid var(--border); box-shadow:0 4px 15px rgba(0,0,0,0.8); }
+        .video-wrap .name-badge { position:absolute; bottom:10px; left:10px; background:rgba(0,0,0,0.6); color:#fff; padding:6px 12px; border-radius:12px; font-size:13px; backdrop-filter:blur(5px); font-weight:bold; }
+        .video-wrap .mic-off-badge { position:absolute; top:10px; right:10px; color:var(--danger); font-size:18px; display:none; background:rgba(0,0,0,0.6); padding:8px; border-radius:50%; backdrop-filter:blur(5px); }
         .call-controls{position:absolute;bottom:40px;left:50%;transform:translateX(-50%);display:flex;gap:15px;background:rgba(0,0,0,0.7);backdrop-filter:blur(10px);padding:15px 25px;border-radius:40px;box-shadow:0 10px 30px rgba(0,0,0,0.5);}
 
         /* Text Call */
         #text-call-overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:var(--bg-dark);z-index:100;display:flex;flex-direction:column;padding:25px;}
         .tc-box{flex:1;background:var(--bg-panel);padding:25px;border-radius:20px;overflow-y:auto;border:1px solid var(--border);font-size:32px; line-height:1.4;}
         #tc-local-input{flex:1;font-size:32px;padding:25px;border-radius:20px;border:2px solid var(--accent);background:var(--bg-dark);resize:none;color:var(--text-main); line-height:1.4;}
+        
+        .sys-call-msg { text-align:center; padding:15px; margin:10px 0; background:rgba(46,204,113,0.1); border:1px solid var(--accent); border-radius:12px; color:var(--accent); }
     </style>
 </head>
 <body>
@@ -223,14 +222,17 @@
             <input type="password" id="r-pass" placeholder="パスワード" required>
             <label style="font-size:0.8em;color:var(--text-sub);margin-bottom:5px;display:block;">生年月日</label>
             <input type="date" id="r-birth" required>
+            
             <div class="terms-scroll" style="height:120px; overflow-y:auto; border:1px solid var(--border); padding:12px; font-size:12px; color:var(--text-sub); margin:10px 0; border-radius:8px; background:var(--bg-dark); line-height:1.6;">
                 <h4 style="color:var(--text-main); margin-bottom:5px;">Friend Station 利用規約</h4>
-                <p>本規約は、Toway（以下「当運営」）が提供するSNS「Friend Station」の利用条件を定めるものです。</p><br>
-                <strong style="color:var(--danger);">第3条（管理権限およびコンテンツの監視）</strong><br>
-                当運営は、健全な運営のためにダイレクトメッセージを含むすべての通信・投稿内容をシステム上で閲覧、監視、および記録できるものとします。<br>
+                <p>第2条（管理権限とプライバシー）<br>運営はサービスの健全な運営のため、全ログデータを閲覧・監視・保存する権限を有します。</p>
+                <h4 style="color:var(--text-main); margin-top:10px; margin-bottom:5px;">プライバシーポリシー</h4>
+                <p>当サービスは Cloudflare Tunnel を用いて通信を保護していますが、個人運営サーバーである性質上、完全なデータ安全性を保証するものではありません。機密情報の送信は控えてください。</p>
             </div>
+            
             <button type="button" class="auth-link" onclick="showTermsModal()" style="margin-bottom:15px; font-size:12px;">利用規約の詳細を読む</button>
             <label style="font-size:12px;color:var(--text-main);display:flex;align-items:center;gap:8px;margin-bottom:15px;"><input type="checkbox" id="r-agree" required style="width:auto;margin:0;accent-color:var(--accent);">利用規約およびプライバシーポリシーに同意する</label>
+            
             <button type="submit" style="width:100%;" onclick="submitRegistration()">登録</button>
             <button type="button" class="auth-link" onclick="nextStep(3)">戻る</button>
         </div>
@@ -257,7 +259,7 @@
         <button type="button" class="nav-btn" id="nav-home" onclick="switchNav('home')"><i class="fa-solid fa-house"></i> <span>ホーム</span></button>
         <button type="button" class="nav-btn" id="nav-chat" onclick="switchNav('chat')"><i class="fa-solid fa-message"></i> <span>メッセージ</span><div id="notif-badge" class="badge hidden">0</div></button>
         <button type="button" class="nav-btn" id="nav-search" onclick="switchNav('search')"><i class="fa-solid fa-magnifying-glass"></i> <span>検索</span></button>
-        <button type="button" class="nav-btn" id="nav-notif" onclick="switchNav('notif')"><i class="fa-solid fa-bell"></i> <span>通知</span></button>
+        <button type="button" class="nav-btn" id="nav-notif" onclick="switchNav('notif')"><i class="fa-solid fa-bell"></i> <span>通知</span><div id="notif-bell-badge" class="badge hidden">!</div></button>
         <button type="button" class="nav-btn" onclick="toggleMenu()" style="margin-top:auto;"><i class="fa-solid fa-bars"></i> <span>その他</span></button>
     </div>
 
@@ -316,9 +318,9 @@
                     <div style="display:flex;align-items:center;gap:12px;">
                         <form onsubmit="execChatSearch(event); return false;" id="form-chat-search" class="chat-search-bar hidden"><input type="text" id="chat-s-query" placeholder="履歴検索" required><span onclick="hide('form-chat-search');show('btn-chat-search')" style="cursor:pointer;padding:0 5px;"><i class="fa-solid fa-xmark"></i></span></form>
                         <button type="button" id="btn-chat-search" onclick="show('form-chat-search');hide('btn-chat-search')" style="background:transparent;font-size:18px;padding:5px;"><i class="fa-solid fa-magnifying-glass"></i></button>
-                        <button type="button" onclick="startTextCall()" style="background:transparent;font-size:20px;padding:5px;"><i class="fa-solid fa-message"></i></button>
-                        <button type="button" onclick="startGroupCall(false)" style="background:transparent;font-size:20px;padding:5px;"><i class="fa-solid fa-phone"></i></button> 
-                        <button type="button" onclick="startGroupCall(true)" style="background:transparent;font-size:20px;padding:5px;"><i class="fa-solid fa-video"></i></button>
+                        <button type="button" onclick="startCallSession('text')" style="background:transparent;font-size:20px;padding:5px;"><i class="fa-solid fa-message"></i></button>
+                        <button type="button" onclick="startCallSession('audio')" style="background:transparent;font-size:20px;padding:5px;"><i class="fa-solid fa-phone"></i></button> 
+                        <button type="button" onclick="startCallSession('video')" style="background:transparent;font-size:20px;padding:5px;"><i class="fa-solid fa-video"></i></button>
                     </div>
                 </div>
                 <div class="chat-box" id="ui-msgs" onscroll="saveScroll('chat', this)"></div>
@@ -406,6 +408,7 @@
     </div>
 </div>
 
+<!-- Modal: インスタ風ノート入力 -->
 <div id="modal-note-post" class="modal-overlay hidden" onclick="if(event.target===this)hide('modal-note-post')">
     <div class="modal">
         <span class="close-btn" onclick="hide('modal-note-post')"><i class="fa-solid fa-xmark"></i></span>
@@ -422,6 +425,7 @@
     </div>
 </div>
 
+<!-- Modal: インスタ風ノート表示 -->
 <div id="modal-note-view" class="modal-overlay hidden" onclick="if(event.target===this)hide('modal-note-view')">
     <div class="modal" style="background:var(--bg-dark); max-width:380px; height:85vh; border-radius:20px; display:flex; flex-direction:column; padding:0; overflow:hidden;">
         <div style="padding:15px 20px; display:flex; align-items:center; gap:12px; border-bottom:1px solid var(--border); background:var(--bg-panel);">
@@ -529,6 +533,7 @@
     </div>
 </div>
 
+<!-- 電話着信・発信モーダル -->
 <div id="modal-calling" class="modal-overlay hidden">
     <div class="modal" style="text-align:center;padding:40px 20px;">
         <h3 id="calling-name" style="margin-bottom:15px;font-size:28px;"></h3>
@@ -540,29 +545,103 @@
 <div id="modal-incoming" class="modal-overlay hidden">
     <div class="modal" style="text-align:center;padding:40px 20px;">
         <h3 id="caller-name" style="margin-bottom:15px;font-size:28px;"></h3><p id="call-type-txt" style="color:var(--accent);margin-bottom:35px;font-weight:bold;font-size:18px;"></p>
-        <div style="display:flex;gap:20px;justify-content:center;"><button type="button" class="danger" onclick="answerGroupCall(false)" style="flex:1;max-width:150px;border-radius:24px;padding:14px;font-size:16px;">拒否</button><button type="button" class="success" onclick="answerGroupCall(true)" style="flex:1;max-width:150px;border-radius:24px;padding:14px;font-size:16px;">応答</button></div>
+        <div style="display:flex;gap:20px;justify-content:center;">
+            <button type="button" class="danger" onclick="answerCallSession(false)" style="flex:1;max-width:150px;border-radius:24px;padding:14px;font-size:16px;">拒否</button>
+            <button type="button" class="success" onclick="answerCallSession(true)" style="flex:1;max-width:150px;border-radius:24px;padding:14px;font-size:16px;">応答</button>
+        </div>
     </div>
 </div>
 
+<!-- 利用規約モーダル -->
 <div id="modal-terms" class="modal-overlay hidden" onclick="if(event.target===this)hide('modal-terms')">
     <div class="modal" style="max-height:85vh; overflow-y:auto; text-align:left; max-width:600px; padding:30px;">
         <span class="close-btn" onclick="hide('modal-terms')"><i class="fa-solid fa-xmark"></i></span>
         <h2 style="margin-bottom:20px; border-bottom:1px solid var(--border); padding-bottom:15px; text-align:center;">利用規約・プライバシーポリシー</h2>
         <div style="font-size:14px; line-height:1.7; color:var(--text-sub);">
             <h3 style="color:var(--text-main); margin-top:15px; font-size:16px;">Friend Station 利用規約</h3>
-            <p>本規約は、Towayが提供するSNS「Friend Station」の利用条件を定めるものです。</p>
-            <h4 style="color:var(--text-main); margin-top:20px;">第1条（禁止事項）</h4>
-            <p>誹謗中傷、個人情報の無断公開、自動化ツールの使用等を禁じます。</p>
-            <h4 style="color:var(--text-main); margin-top:20px;">第2条（管理権限および監視）</h4>
-            <p><strong style="color:var(--danger);">【重要】</strong>運営は健全な運営のため、全通信・投稿を監視・記録します。秘密性の期待はご遠慮ください。</p>
+            <p>本規約は、本サービスの利用者（以下「ユーザー」）と、運営者（以下「運営」）との間での利用条件を定めるものです。</p>
+
+            <h4 style="color:var(--text-main); margin-top:20px;">第1条（同意）</h4>
+            <p>ユーザーは、本サービスのアカウント作成をもって、本規約のすべての条項に同意したものとみなされます。</p>
+
+            <h4 style="color:var(--text-main); margin-top:20px;">第2条（管理権限とプライバシー）</h4>
+            <ul style="margin-left:20px; margin-bottom:15px;">
+                <li><strong>管理権限：</strong> 運営は、サービスの健全な運営のため、ユーザー間のメッセージ、投稿、プロフィール情報、位置情報、IPアドレス、その他のすべてのログデータを閲覧、監視、および保存する権限を有します。</li>
+                <li><strong>情報の利用：</strong> 運営は、いじめ、嫌がらせ、法令違反、または本規約違反の疑いがある場合、事前の告知なく特定のユーザーのデータを精査し、削除または利用停止措置を講じることができます。</li>
+                <li><strong>免責：</strong> 運営によるデータの閲覧により発生したいかなる精神的・実質的損害についても、運営は一切の責任を負いません。</li>
+            </ul>
+
+            <h4 style="color:var(--text-main); margin-top:20px;">第3条（禁止事項）</h4>
+            <ul style="margin-left:20px; margin-bottom:15px;">
+                <li>法令または公序良俗に反する行為。</li>
+                <li>他のユーザーに対する誹謗中傷、いじめ、脅迫、または嫌がらせ行為。</li>
+                <li>本人の許可なく他人の個人情報を公開する行為。</li>
+                <li>運営者の許可なく、本サービスのバグを悪用したり、サーバーに過度な負荷をかけたりする行為。</li>
+                <li>不適切なコンテンツ（過度な露出、暴力表現等）の投稿。</li>
+                <li>その他、運営が不適切と判断する一切の行為。</li>
+            </ul>
+
+            <h4 style="color:var(--text-main); margin-top:20px;">第4条（アカウントの停止・削除）</h4>
+            <p>運営は、ユーザーが本規約に違反した場合、または運営上の理由が必要と判断した場合、通知することなく以下の処置を取ることができるものとします。</p>
+            <ul style="margin-left:20px; margin-bottom:15px;">
+                <li>アカウントの承認拒否または一時停止。</li>
+                <li>特定の投稿、メッセージ、データの削除。</li>
+                <li>無期限の利用禁止（BAN）。</li>
+            </ul>
+
+            <h4 style="color:var(--text-main); margin-top:20px;">第5条（免責事項）</h4>
+            <ul style="margin-left:20px; margin-bottom:15px;">
+                <li><strong>サービスの停止：</strong> メンテナンスやサーバーの不具合等によりサービスが停止した場合、それにより生じた損害について運営は責任を負いません。</li>
+                <li><strong>データ保護：</strong> 運営はデータのバックアップに努めますが、消失した場合の復元を保証するものではありません。</li>
+                <li><strong>ユーザー間トラブル：</strong> ユーザー同士、または第三者との間のトラブルについて、運営は一切関与せず、責任を負いません。</li>
+            </ul>
+
+            <h4 style="color:var(--text-main); margin-top:20px;">第6条（利用規約の変更）</h4>
+            <p>運営は、必要と判断した場合には、いつでも本規約を変更することができるものとします。変更後の規約は、サービス内に掲示された時点から効力を生じるものとします。</p>
+
             <hr style="border:0; border-top:1px solid var(--border); margin:30px 0;">
+
             <h3 style="color:var(--text-main); margin-top:15px; font-size:16px;">プライバシーポリシー</h3>
-            <p>収集した情報はアカウント管理や安全性維持のためにのみ使用し、第三者への提供は行いません。</p>
+            <p>Friend Station（以下「本サービス」）は、ユーザーの個人情報の重要性を認識し、以下の通りプライバシーポリシーを定めます。</p>
+
+            <h4 style="color:var(--text-main); margin-top:20px;">1. 収集する情報</h4>
+            <ul style="margin-left:20px; margin-bottom:15px;">
+                <li>アカウント情報： ユーザー名、ニックネーム、氏名、学校名、学年、クラス、出席番号、誕生日、パスワード（暗号化済み）。</li>
+                <li>コンテンツ情報： メッセージ内容、投稿内容、ノート、いいね、コメント、編集・送信取消履歴。</li>
+                <li>アクセスログ： IPアドレス、端末情報、最終ログイン日時、ブラウザの種類。</li>
+                <li>メディアデータ： プロフィールアイコン、アップロードされた画像。</li>
+            </ul>
+
+            <h4 style="color:var(--text-main); margin-top:20px;">2. 利用目的</h4>
+            <ul style="margin-left:20px; margin-bottom:15px;">
+                <li>サービスの提供、維持、保護、および改善。</li>
+                <li>ユーザー同士のコミュニケーションの実現。</li>
+                <li>運営者による管理： 規約違反の監視、いじめ・トラブルの防止。</li>
+                <li>不具合の調査、およびセキュリティ維持。</li>
+            </ul>
+
+            <h4 style="color:var(--text-main); margin-top:20px;">3. 管理者によるデータの閲覧について</h4>
+            <p>本サービスは個人運営の試作サーバーであり、運営者はデータベースに直接アクセスし、全てのユーザー情報、および送受信されるメッセージの内容を閲覧・監視できる権限を有しています。ユーザーは、自身の送信したデータが運営者によって閲覧される可能性があることに同意したものとみなされます。</p>
+
+            <h4 style="color:var(--text-main); margin-top:20px;">4. 第三者への提供</h4>
+            <p>本サービスは、以下のいずれかに該当する場合を除き、個人情報を第三者に提供しません。</p>
+            <ul style="margin-left:20px; margin-bottom:15px;">
+                <li>ユーザー本人の同意がある場合。</li>
+                <li>法令に基づく開示請求があった場合。</li>
+                <li>人の生命、身体または財産の保護のために必要がある場合。</li>
+            </ul>
+
+            <h4 style="color:var(--text-main); margin-top:20px;">5. 情報の管理・削除</h4>
+            <p>ユーザーは、本サービス内の設定を通じて一部の情報の変更が可能です。アカウントの完全削除を希望する場合は、運営者に直接申請を行うものとします。削除されたデータについては、バックアップの都合上、一定期間サーバー内に残存する場合があります。</p>
+
+            <h4 style="color:var(--text-main); margin-top:20px;">6. セキュリティ</h4>
+            <p>本サービスは Cloudflare Tunnel および SSL暗号化を用いて通信を保護していますが、個人運営のサーバーである性質上、完全なデータ安全性を保証するものではありません。漏洩が許されない極めて機密性の高い情報の送信は控えてください。</p>
         </div>
         <button type="button" onclick="hide('modal-terms')" style="width:100%; border-radius:12px; padding:14px; margin-top:30px; font-size:16px;">閉じる</button>
     </div>
 </div>
 
+<!-- グループ通話(Mesh) UI / 個別通話UI -->
 <div id="video-overlay" class="hidden">
     <div id="video-grid"></div>
     <div class="call-controls">
@@ -573,6 +652,7 @@
     </div>
 </div>
 
+<!-- テキスト通話 -->
 <div id="text-call-overlay" class="hidden">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:25px;">
         <h2><span id="tc-target-name">相手</span> <span style="color:var(--accent);font-size:15px;margin-left:10px;">● 通話中</span></h2>
@@ -591,8 +671,13 @@
     let socket, currentRoom = '', currentTarget = '', db = null;
     let replyTarget = null, editTargetMsgId = null, ctxTargetMsgId = null, ctxTargetIsMe = false, ctxTargetTimestamp = null;
     let typingTimers = {}; let typingTimeout;
+    
+    // Call states
     let localStream, callSession = null, incomingData = null, textCallSession = null;
+    let rtcType = 'none'; // 'none', 'text', 'voice', 'video'
+    let isGroupCall = false;
     let peers = {}; let streamFlags = { video: true, audio: true };
+    
     let html5QrCode = null, currentPostIdForComment = null, currentModalType = '';
     let currentNav = localStorage.getItem('activeNav') || 'chat';
     let currentMain = localStorage.getItem('activeMain') || 'chat';
@@ -711,11 +796,8 @@
             try {
                 const ctx = new (window.AudioContext || window.webkitAudioContext)();
                 const osc = ctx.createOscillator();
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(880, ctx.currentTime);
-                osc.connect(ctx.destination);
-                osc.start();
-                osc.stop(ctx.currentTime + 0.1);
+                osc.type = 'sine'; osc.frequency.setValueAtTime(880, ctx.currentTime);
+                osc.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 0.1);
             } catch(e){}
         }
     }
@@ -742,9 +824,7 @@
             if(titleBlinkInterval) { clearInterval(titleBlinkInterval); titleBlinkInterval = null; }
             document.title = originalTitle;
             updateUnreadBadge();
-            if(currentRoom && currentMain === 'chat') {
-                socket.emit('mark_read', currentRoom);
-            }
+            if(currentRoom && currentMain === 'chat') { socket.emit('mark_read', currentRoom); }
         }
     });
 
@@ -753,7 +833,6 @@
     async function initApp(){
         hide('scr-auth'); hide('scr-pending'); show('scr-main'); await initDB();
         id('set-nick').value=myInfo.nickname; id('set-id').value=myInfo.username; id('set-status').value=myInfo.status_message||''; id('my-id-disp').innerText=myInfo.username; 
-        
         id('set-sound').checked = localStorage.getItem('set-sound') !== 'false';
         id('set-notif').checked = localStorage.getItem('set-notif') !== 'false';
 
@@ -773,23 +852,11 @@
         socket.on('receive_message',async m=>{ 
             await idbPutMsg(m); 
             if(m.room_id===currentRoom && id('main-chat').classList.contains('active')){
-                renderMsg(m, true); 
-                scrollToBottom('chat'); 
-                if(!document.hidden) {
-                    socket.emit('mark_read', currentRoom);
-                } else {
-                    startTitleBlink();
-                    playNotifSound();
-                }
+                renderMsg(m, true); scrollToBottom('chat'); 
+                if(!document.hidden) socket.emit('mark_read', currentRoom); else { startTitleBlink(); playNotifSound(); }
             } else { 
                 updateUnreadBadge(); 
-                if(m.user_id!==myInfo.id) {
-                    startTitleBlink();
-                    if (localStorage.getItem('set-notif') !== 'false' && Notification.permission === "granted") {
-                        playNotifSound();
-                        new Notification(m.user_name, {body: m.type==='text'?m.content:'メディア'}); 
-                    }
-                }
+                if(m.user_id!==myInfo.id) { startTitleBlink(); if(localStorage.getItem('set-notif')!=='false' && Notification.permission==="granted"){ playNotifSound(); new Notification(m.user_name, {body: m.type==='text'?m.content:'メディア'}); } }
             }
         });
         
@@ -800,10 +867,7 @@
 
         socket.on('message_reaction_update', d => { 
             const el = id('react-' + d.msg_id); 
-            if(el){ 
-                const eArr = []; Object.entries(d.reactions).forEach(([emoji,uids]) => { if(uids.length>0) eArr.push(`${emoji}${uids.length>1?uids.length:''}`); }); 
-                el.innerHTML = eArr.join(' '); el.style.display = eArr.length > 0 ? 'flex' : 'none'; 
-            }
+            if(el){ const eArr = []; Object.entries(d.reactions).forEach(([emoji,uids]) => { if(uids.length>0) eArr.push(`${emoji}${uids.length>1?uids.length:''}`); }); el.innerHTML = eArr.join(' '); el.style.display = eArr.length > 0 ? 'flex' : 'none'; }
             idbUpdateReaction(d.msg_id, d.reactions);
         });
         
@@ -811,25 +875,13 @@
             if(roomId === currentRoom) {
                 updates.forEach(u => {
                     const rdEl = id(`rd-${u.msg_id}`);
-                    if(rdEl) {
-                        if(roomId.startsWith('g_')) {
-                            rdEl.innerText = `既読 ${u.read_count}`;
-                            rdEl.style.display = 'inline';
-                        } else {
-                            rdEl.innerText = `既読`;
-                            rdEl.style.display = 'inline';
-                        }
-                    }
+                    if(rdEl) { if(roomId.startsWith('g_')) { rdEl.innerText = `既読 ${u.read_count}`; rdEl.style.display = 'inline'; } else { rdEl.innerText = `既読`; rdEl.style.display = 'inline'; } }
                 });
             }
         });
         
         socket.on('messages_read', ({roomId}) => {
-            if(roomId === currentRoom && !roomId.startsWith('g_')) {
-                document.querySelectorAll('.msg-info .is-read').forEach(el => {
-                    el.innerText = '既読'; el.style.display = 'inline';
-                });
-            }
+            if(roomId === currentRoom && !roomId.startsWith('g_')) { document.querySelectorAll('.msg-info .is-read').forEach(el => { el.innerText = '既読'; el.style.display = 'inline'; }); }
         });
 
         socket.on('new_notification',()=>{loadNotifs(); updateUnreadBadge();});
@@ -854,11 +906,13 @@
             }
         });
 
+        // WebRTC Signaling
         socket.on('call_error', d=>{ showToast(d.message); hide('modal-calling'); hangUp(false); });
         socket.on('incoming_call', d=>{ 
-            incomingData = d; id('caller-name').innerText = d.caller_name || 'グループ着信'; 
-            id('call-type-txt').innerHTML = d.video?'<i class="fa-solid fa-video"></i> ビデオ通話':'<i class="fa-solid fa-phone"></i> 音声通話'; show('modal-incoming'); 
-            playNotifSound();
+            incomingData = d; rtcType = d.video ? 'video' : 'voice';
+            id('caller-name').innerText = d.caller_name || '着信'; 
+            id('call-type-txt').innerHTML = d.video?'<i class="fa-solid fa-video"></i> ビデオ通話':'<i class="fa-solid fa-phone"></i> 音声通話'; 
+            show('modal-incoming'); playNotifSound();
         });
         socket.on('call_started', d=>{ hide('modal-calling'); callSession = d.session_id; show('video-overlay'); });
         socket.on('user_joined_call', d=>{ if(d.user_id !== myInfo.id) setupPeer(d.user_id, true); });
@@ -872,34 +926,23 @@
             }
         });
 
-        socket.on('webrtc_offer', async d => {
-            setupPeer(d.sender_id, false);
-            await peers[d.sender_id].setRemoteDescription(new RTCSessionDescription(d.offer));
-            const a = await peers[d.sender_id].createAnswer();
-            await peers[d.sender_id].setLocalDescription(a);
-            socket.emit('webrtc_answer', {target_id: d.sender_id, answer: a});
-        });
+        socket.on('webrtc_offer', async d => { setupPeer(d.sender_id, false); await peers[d.sender_id].setRemoteDescription(new RTCSessionDescription(d.offer)); const a = await peers[d.sender_id].createAnswer(); await peers[d.sender_id].setLocalDescription(a); socket.emit('webrtc_answer', {target_id: d.sender_id, answer: a}); });
         socket.on('webrtc_answer', async d => { if(peers[d.sender_id]) await peers[d.sender_id].setRemoteDescription(new RTCSessionDescription(d.answer)); }); 
         socket.on('webrtc_ice', d => { if(peers[d.sender_id] && d.candidate) peers[d.sender_id].addIceCandidate(new RTCIceCandidate(d.candidate)); }); 
-        socket.on('hang_up', d => { if(incomingData && d.target_id === myInfo.id) { hide('modal-incoming'); incomingData = null; } });
+        socket.on('hang_up', d => { if(incomingData && d.target_id === myInfo.id) { hide('modal-incoming'); incomingData = null; rtcType='none'; } });
 
-        socket.on('incoming_text_call', d=>{ incomingData={...d, type:'text'}; id('caller-name').innerText=`${d.caller_name}`; id('call-type-txt').innerHTML='<i class="fa-solid fa-message"></i> テキスト通話着信'; show('modal-incoming'); playNotifSound(); });
+        socket.on('incoming_text_call', d=>{ incomingData={...d, type:'text'}; rtcType='text'; id('caller-name').innerText=`${d.caller_name}`; id('call-type-txt').innerHTML='<i class="fa-solid fa-message"></i> テキスト通話着信'; show('modal-incoming'); playNotifSound(); });
         socket.on('text_call_started', d=>{ hide('modal-calling'); textCallSession=d.session_id; localStorage.setItem('tcSession', textCallSession); localStorage.setItem('tcTargetName', d.target_name); socket.emit('join_text_call',{session_id:d.session_id}); id('tc-target-name').innerText=`${d.target_name}`; id('tc-remote-text').innerText=''; id('tc-local-input').value=''; show('text-call-overlay'); });
-        socket.on('text_call_rejected', ()=>{ hide('modal-calling'); showToast('通話が拒否されました'); });
+        socket.on('text_call_rejected', ()=>{ hide('modal-calling'); showToast('通話が拒否されました'); rtcType='none'; });
         socket.on('text_call_sync_receive', d=>{ id('tc-remote-text').innerText=d.text; });
         socket.on('text_call_ended', cleanupTextCall);
         
-        id('msg-input').addEventListener('keydown', e=>{
-            if(e.key==='Enter' && !e.isComposing) { e.preventDefault(); id('btn-send-msg').click(); }
-        });
-
+        id('msg-input').addEventListener('keydown', e=>{ if(e.key==='Enter' && !e.isComposing) { e.preventDefault(); id('btn-send-msg').click(); } });
         id('msg-input').addEventListener('input', () => {
             if(currentRoom) {
                 socket.emit('typing', {room_id: currentRoom, is_typing: true});
                 if(typingTimeout) clearTimeout(typingTimeout);
-                typingTimeout = setTimeout(() => {
-                    socket.emit('typing', {room_id: currentRoom, is_typing: false});
-                }, 2000);
+                typingTimeout = setTimeout(() => { socket.emit('typing', {room_id: currentRoom, is_typing: false}); }, 2000);
             }
         });
 
@@ -933,11 +976,7 @@
             const d=await r1.json();
             const total = d.unread || 0;
             const b=id('notif-badge'); 
-            if(total>0){ 
-                b.innerText=total; show('notif-badge'); 
-            } else{ 
-                hide('notif-badge'); 
-            } 
+            if(total>0){ b.innerText=total; show('notif-badge'); } else{ hide('notif-badge'); } 
             
             document.querySelectorAll('.room-unread-badge').forEach(el => el.classList.add('hidden'));
             if(d.room_unread) {
@@ -954,11 +993,8 @@
     function switchNav(t){
         const prevNav = currentNav;
         if(t === 'chat' && (prevNav === 'home' || prevNav === 'search' || prevNav === 'notif')) {
-            localStorage.setItem('activeNav', t);
-            location.reload();
-            return;
+            localStorage.setItem('activeNav', t); location.reload(); return;
         }
-
         currentNav = t; localStorage.setItem('activeNav', t); id('slide-menu').classList.remove('open');
         ['chat','search','notif'].forEach(x=>{ id('nav-'+x)?.classList.toggle('active',x===t); if(id('panel-'+x)) id('panel-'+x).classList.toggle('hidden',x!==t); });
         id('nav-home').classList.toggle('active', t==='home');
@@ -984,23 +1020,16 @@
         id('mp-icon').src = icon && icon.trim() !== '' ? (icon.startsWith('http')||icon.startsWith('.')?icon:BACKEND_URL+icon) : './icon.jpeg';
         id('mp-name').innerText = nickname; id('mp-id').innerText = username; id('mp-status').innerText = status||'自己紹介はありません'; 
         
-        const actArea = id('mp-action-area');
-        actArea.style.display = 'none'; actArea.innerHTML = '';
+        const actArea = id('mp-action-area'); actArea.style.display = 'none'; actArea.innerHTML = '';
         
         if(uid && uid !== myInfo.id) {
             const r = await apiPost('/api/user/profile_status', {target_id: uid});
             if(r.ok) {
-                actArea.style.display = 'flex';
-                const d = await r.json();
-                if(d.status === 'friend') {
-                    actArea.innerHTML = `<button type="button" style="background:var(--bg-hover);color:var(--text-sub);cursor:default;" disabled><i class="fa-solid fa-user-check"></i> フレンド</button>`;
-                } else if(d.status === 'requesting') {
-                    actArea.innerHTML = `<button type="button" style="background:var(--bg-hover);color:var(--text-sub);cursor:default;" disabled><i class="fa-solid fa-clock"></i> 申請中</button>`;
-                } else if(d.status === 'pending_received') {
-                    actArea.innerHTML = `<button type="button" class="success" onclick="acceptRequestFromProfile('${d.request_id}', '${uid}')"><i class="fa-solid fa-check"></i> 承認する</button>`;
-                } else {
-                    actArea.innerHTML = `<button type="button" onclick="requestFriendFromProfile('${username}', '${uid}')"><i class="fa-solid fa-user-plus"></i> フレンド申請</button>`;
-                }
+                actArea.style.display = 'flex'; const d = await r.json();
+                if(d.status === 'friend') { actArea.innerHTML = `<button type="button" style="background:var(--bg-hover);color:var(--text-sub);cursor:default;" disabled><i class="fa-solid fa-user-check"></i> フレンド</button>`; } 
+                else if(d.status === 'requesting') { actArea.innerHTML = `<button type="button" style="background:var(--bg-hover);color:var(--text-sub);cursor:default;" disabled><i class="fa-solid fa-clock"></i> 申請中</button>`; } 
+                else if(d.status === 'pending_received') { actArea.innerHTML = `<button type="button" class="success" onclick="acceptRequestFromProfile('${d.request_id}', '${uid}')"><i class="fa-solid fa-check"></i> 承認する</button>`; } 
+                else { actArea.innerHTML = `<button type="button" onclick="requestFriendFromProfile('${username}', '${uid}')"><i class="fa-solid fa-user-plus"></i> フレンド申請</button>`; }
             }
         }
         show('modal-prof');
@@ -1008,20 +1037,12 @@
     
     async function requestFriendFromProfile(username, uid) {
         const r = await apiPost('/api/friends/request', {username});
-        if(r.ok) {
-            showToast('申請しました');
-            const actArea = id('mp-action-area');
-            actArea.innerHTML = `<button type="button" style="background:var(--bg-hover);color:var(--text-sub);cursor:default;" disabled><i class="fa-solid fa-clock"></i> 申請中</button>`;
-        } else { const d = await r.json(); showToast(d.error); }
+        if(r.ok) { showToast('申請しました'); const actArea = id('mp-action-area'); actArea.innerHTML = `<button type="button" style="background:var(--bg-hover);color:var(--text-sub);cursor:default;" disabled><i class="fa-solid fa-clock"></i> 申請中</button>`; } else { const d = await r.json(); showToast(d.error); }
     }
 
     async function acceptRequestFromProfile(reqId, uid) {
         const r = await apiPost('/api/friends/accept', {request_id: reqId});
-        if(r.ok) {
-            showToast('承認しました');
-            const actArea = id('mp-action-area');
-            actArea.innerHTML = `<button type="button" style="background:var(--bg-hover);color:var(--text-sub);cursor:default;" disabled><i class="fa-solid fa-user-check"></i> フレンド</button>`;
-        }
+        if(r.ok) { showToast('承認しました'); const actArea = id('mp-action-area'); actArea.innerHTML = `<button type="button" style="background:var(--bg-hover);color:var(--text-sub);cursor:default;" disabled><i class="fa-solid fa-user-check"></i> フレンド</button>`; }
     }
 
     function showCurrentProfile(){ if(currentTarget) apiPost('/api/friends/list').then(async r=>{ const l=await r.json(); const u=l.find(x=>x.id===currentTarget); if(u) openProfileModal(u.id, u.username, u.nickname, u.icon_url, u.status_message); }); }
@@ -1063,7 +1084,7 @@
     }
     
     async function openRoom(rid, name, tid, icon, scrollPos=0){ 
-        currentRoom=rid; currentTarget=tid; switchMainPanel('chat');
+        currentRoom=rid; currentTarget=tid; isGroupCall = rid.startsWith('g_'); switchMainPanel('chat');
         localStorage.setItem('activeRoom', rid); localStorage.setItem('currentTarget', tid); localStorage.setItem('currentTargetName', name); localStorage.setItem('currentTargetIcon', icon);
         id('chat-title').innerText=name; id('chat-target-icon').src=icon && icon.trim() !== '' ? icon : './icon.jpeg'; show('chat-active'); hide('chat-empty'); id('typing-indicator').innerText='';
         if(window.innerWidth <= 768) { id('main-container').classList.add('active'); show('btn-back-chat'); }
@@ -1072,10 +1093,7 @@
         const msgs=await idbGetRoomMsgs(rid); id('ui-msgs').innerHTML=''; msgs.forEach(m => renderMsg(m, false));
         if(scrollPos) id('ui-msgs').scrollTop = scrollPos; else scrollToBottom('chat');
         
-        if(!document.hidden) {
-            socket.emit('mark_read', currentRoom);
-            updateUnreadBadge();
-        }
+        if(!document.hidden) { socket.emit('mark_read', currentRoom); updateUnreadBadge(); }
     }
     
     function renderMsg(m, append = true){
@@ -1088,14 +1106,14 @@
         } else {
             if(m.type==='image') c=`<img src="${m.content.startsWith('http')?m.content:BACKEND_URL+m.content}" onclick="window.open(this.src)">`; 
             else if(m.type==='video') c=`<video src="${m.content.startsWith('http')?m.content:BACKEND_URL+m.content}" controls></video>`; 
+            else if(m.type==='system_call') c=`<div style="text-align:center;color:var(--accent);"><i class="fa-solid fa-phone"></i> ${m.content} <button style="margin-left:10px;padding:5px 10px;font-size:12px;" onclick="joinGroupCall('${m.content.split(':')[1]}')">参加</button></div>`;
             else c=m.content.replace(/</g,"&lt;").replace(/>/g,"&gt;");
             
             let hist = []; try{ hist = JSON.parse(m.edit_history || '[]'); }catch(e){}
-            if(hist.length > 0) c += `<span style="font-size:10px; color:var(--text-sub); margin-left:8px; display:block; text-align:right;">(編集済)</span>`;
+            if(hist.length > 0 && m.type!=='system_call') c += `<span style="font-size:10px; color:var(--text-sub); margin-left:8px; display:block; text-align:right;">(編集済)</span>`;
         }
 
-        let readCount = 0;
-        try { readCount = JSON.parse(m.read_by || '[]').length; } catch(e){}
+        let readCount = 0; try { readCount = JSON.parse(m.read_by || '[]').length; } catch(e){}
         let rd='';
         if(isMe){
             if(m.room_id.startsWith('g_')) {
@@ -1110,12 +1128,10 @@
         let reBadge=''; try{const r=JSON.parse(m.reactions||'{}'); const eArr=[]; Object.entries(r).forEach(([emoji,uids])=>{if(uids.length>0)eArr.push(`${emoji}${uids.length>1?uids.length:''}`)}); if(eArr.length>0) reBadge=`<div class="reactions-badge" id="react-${m.msg_id}">${eArr.join(' ')}</div>`; else reBadge=`<div class="reactions-badge" id="react-${m.msg_id}" style="display:none;"></div>`;}catch(e){}
         
         let senderNameHtml = '';
-        if (!isMe && m.room_id.startsWith('g_')) {
-            senderNameHtml = `<div style="font-size:12px; color:var(--text-sub); margin-bottom:4px; margin-left:16px; font-weight:bold;">${m.user_name}</div>`;
-        }
+        if (!isMe && m.room_id.startsWith('g_')) { senderNameHtml = `<div style="font-size:11px; color:var(--text-sub); margin-bottom:2px; margin-left:10px;">${m.user_name}</div>`; }
 
-        const reactBtn = `<button type="button" class="msg-react-btn" onclick="showReactionMenu(event, '${m.msg_id}')">😊</button>`;
-        const optBtn = `<button type="button" class="msg-opt-btn" onclick="openMsgOpt(event, '${m.msg_id}', ${isMe}, '${m.timestamp}')"><i class="fa-solid fa-ellipsis-vertical"></i></button>`;
+        const reactBtn = m.type!=='system_call' ? `<button type="button" class="msg-react-btn" onclick="showReactionMenu(event, '${m.msg_id}')">😊</button>` : '';
+        const optBtn = m.type!=='system_call' ? `<button type="button" class="msg-opt-btn" onclick="openMsgOpt(event, '${m.msg_id}', ${isMe}, '${m.timestamp}')"><i class="fa-solid fa-ellipsis-vertical"></i></button>` : '';
         
         const row = isMe 
             ? `<div style="display:flex;align-items:center;gap:5px;justify-content:flex-end;position:relative;z-index:2;">${optBtn}${reactBtn}<div class="msg" id="msg-${m.msg_id}">${c}${reBadge}</div></div>`
@@ -1125,8 +1141,7 @@
         el.innerHTML = `${rep}${row}<span class="msg-info">${rd}${t}</span>`;
         
         if(append) b.appendChild(el); else b.appendChild(el);
-        
-        setupContextMenu(el.querySelector('.msg'), m.msg_id, m.content ? m.content.replace(/'/g,"\\'").substring(0,20) : '', m.user_name, isMe, m.timestamp, m.is_deleted);
+        if(m.type!=='system_call') setupContextMenu(el.querySelector('.msg'), m.msg_id, m.content ? m.content.replace(/'/g,"\\'").substring(0,20) : '', m.user_name, isMe, m.timestamp, m.is_deleted);
     }
 
     function setupContextMenu(node, msgId, textPreview, userName, isMe, timestamp, isDeleted) {
@@ -1138,11 +1153,7 @@
     
     function openMsgOpt(e, msgId, isMe, timestamp) {
         const dbReq = db.transaction('messages', 'readonly').objectStore('messages').get(msgId);
-        dbReq.onsuccess = () => {
-            const m = dbReq.result;
-            if(!m || m.is_deleted) return;
-            showContextMenu(e.pageX, e.pageY, msgId, m.content.substring(0,20), m.user_name, isMe, timestamp);
-        }
+        dbReq.onsuccess = () => { const m = dbReq.result; if(!m || m.is_deleted) return; showContextMenu(e.pageX, e.pageY, msgId, m.content.substring(0,20), m.user_name, isMe, timestamp); }
     }
 
     function showContextMenu(x, y, msgId, textPreview, userName, isMe, timestamp){
@@ -1159,9 +1170,7 @@
             
             editBtn.onclick = () => { editTargetMsgId = msgId; id('ed-text').innerText = textPreview; show('edit-preview'); hide('context-menu'); id('msg-input').focus(); };
             delBtn.onclick = async () => { hide('context-menu'); if(await showConfirm('送信を取り消しますか？')) await apiPost('/api/messages/delete_msg', {msg_id: msgId}); };
-        } else {
-            hide(editBtn); hide(delBtn);
-        }
+        } else { hide(editBtn); hide(delBtn); }
     }
 
     function showReactionMenu(e, msgId) { e.preventDefault(); e.stopPropagation(); ctxTargetMsgId = msgId; const menu = id('reaction-menu'); menu.style.left = e.pageX + 'px'; menu.style.top = e.pageY + 'px'; show('reaction-menu'); }
@@ -1255,23 +1264,17 @@
     function previewCommentFile(inp, previewId, statusId) { const f = inp.files[0]; const prev = id(previewId); const stat = id(statusId); if (f) { stat.innerText = '添付済'; if (f.type.startsWith('image/')) { const r = new FileReader(); r.onload = e => { prev.src = e.target.result; prev.style.display = 'block'; }; r.readAsDataURL(f); } else { prev.style.display = 'none'; } } else { stat.innerText = ''; prev.style.display = 'none'; prev.src = ''; } }
     
     async function openPostDetail(pid) {
-        currentPostIdForComment = pid;
-        show('modal-post-detail');
-        
+        currentPostIdForComment = pid; show('modal-post-detail');
         const tList = await apiPost('/api/posts/list').then(r=>r.json());
         const p = tList.find(x => x.id === pid);
         if(p) {
             const ic=p.icon_url && p.icon_url.trim() !== '' ?(p.icon_url.startsWith('http')||p.icon_url.startsWith('.')?p.icon_url:BACKEND_URL+p.icon_url):'./icon.jpeg';
             const m=p.media_url?`<img src="${p.media_url.startsWith('http')?p.media_url:BACKEND_URL+p.media_url}" style="width:100%;border-radius:12px;margin-top:10px;" onclick="window.open(this.src)">`:'';
-            id('pd-post-content').innerHTML = `
-                <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;cursor:pointer;" onclick="openProfileModal('${p.user_id}','${p.username}','${p.nickname}','${ic}','')"><img src="${ic}" onerror="this.src='./icon.jpeg'" style="width:40px;height:40px;border-radius:50%;object-fit:cover;"><div><b style="font-size:16px;">${p.nickname}</b><br><span style="color:var(--text-sub);font-size:12px;">@${p.username}</span></div></div>
-                <div style="font-size:16px;line-height:1.5;white-space:pre-wrap;">${(p.content||'').replace(/</g,"&lt;")}</div>${m}
-            `;
+            id('pd-post-content').innerHTML = `<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;cursor:pointer;" onclick="openProfileModal('${p.user_id}','${p.username}','${p.nickname}','${ic}','')"><img src="${ic}" onerror="this.src='./icon.jpeg'" style="width:40px;height:40px;border-radius:50%;object-fit:cover;"><div><b style="font-size:16px;">${p.nickname}</b><br><span style="color:var(--text-sub);font-size:12px;">@${p.username}</span></div></div><div style="font-size:16px;line-height:1.5;white-space:pre-wrap;">${(p.content||'').replace(/</g,"&lt;")}</div>${m}`;
             
             const out = id('pd-likes-list');
-            if (p.user_id !== myInfo.id) {
-                out.innerHTML = '<span style="color:var(--text-sub);font-size:13px;">他人のいいね詳細は見られません</span>';
-            } else {
+            if (p.user_id !== myInfo.id) { out.innerHTML = '<span style="color:var(--text-sub);font-size:13px;">他人のいいね詳細は見られません</span>'; } 
+            else {
                 apiPost('/api/posts/interactions', {post_id: pid}).then(async r => {
                     if(r.ok) {
                         const d = await r.json();
@@ -1280,9 +1283,7 @@
                             const uic = u.icon_url && u.icon_url.trim() !== '' ? (u.icon_url.startsWith('http')||u.icon_url.startsWith('.')?u.icon_url:BACKEND_URL+u.icon_url) : './icon.jpeg';
                             return `<div style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:5px;" onclick="openProfileModal('${u.id}','${u.username}','${u.nickname}','${uic}','')"><img src="${uic}" onerror="this.src='./icon.jpeg'" style="width:30px;height:30px;border-radius:50%;object-fit:cover;"><span style="font-size:14px;">${u.nickname}</span></div>`;
                         }).join('');
-                    } else {
-                        out.innerHTML = '<span style="color:var(--text-sub);font-size:13px;">閲覧権限がありません</span>';
-                    }
+                    } else { out.innerHTML = '<span style="color:var(--text-sub);font-size:13px;">閲覧権限がありません</span>'; }
                 });
             }
         }
@@ -1300,11 +1301,7 @@
     }
     
     async function showInteractions(idStr, type, targetUserId){
-        if (targetUserId && targetUserId !== myInfo.id) {
-            await showConfirm('他人のいいね詳細は見られません');
-            return;
-        }
-
+        if (targetUserId && targetUserId !== myInfo.id) { await showConfirm('他人のいいね詳細は見られません'); return; }
         const url = type === 'post' ? '/api/posts/interactions' : '/api/notes/interactions';
         const body = type === 'post' ? {post_id: idStr} : {note_user_id: idStr};
         const r=await apiPost(url, body); 
@@ -1312,9 +1309,7 @@
             const d=await r.json(); let h='';
             if(d.likes.length>0) h+=`<h4 style="margin:15px 0 10px 0;color:var(--danger);"><i class="fa-solid fa-heart"></i> いいね</h4>` + d.likes.map(u=>{ const uic = u.icon_url && u.icon_url.trim() !== '' ? (u.icon_url.startsWith('http')||u.icon_url.startsWith('.')?u.icon_url:BACKEND_URL+u.icon_url) : './icon.jpeg'; return `<div style="padding:8px 0;border-bottom:1px solid var(--bg-hover);display:flex;align-items:center;gap:10px;cursor:pointer;" onclick="hide('modal-interactions');openProfileModal('${u.id}','${u.username}','${u.nickname}','${uic}','')"><img src="${uic}" onerror="this.src='./icon.jpeg'" style="width:24px;height:24px;border-radius:50%;">@${u.username} (${u.nickname})</div>` }).join('');
             id('interactions-list').innerHTML = h || '<p style="text-align:center;color:var(--text-sub);padding:20px 0;">まだありません</p>'; show('modal-interactions');
-        } else {
-            showToast('エラーが発生しました');
-        }
+        } else { showToast('エラーが発生しました'); }
     }
 
     function execSearch(e) {
@@ -1350,14 +1345,8 @@
     }
 
     function openNotePostModal() { id('modal-note-input').value=''; show('modal-note-post'); }
-    function submitNotePostModal(e) { 
-        if(e) e.preventDefault(); 
-        apiPost('/api/notes/post',{content:id('modal-note-input').value, visibility:id('modal-note-vis').value}).then(r=>{if(r.ok){ hide('modal-note-post'); }}); 
-    }
-    function submitNote(e) { 
-        if(e) e.preventDefault(); 
-        apiPost('/api/notes/post',{content:id('note-input').value, visibility:id('note-vis').value}).then(r=>{if(r.ok) id('note-input').value='';}); 
-    }
+    function submitNotePostModal(e) { if(e) e.preventDefault(); apiPost('/api/notes/post',{content:id('modal-note-input').value, visibility:id('modal-note-vis').value}).then(r=>{if(r.ok){ hide('modal-note-post'); }}); }
+    function submitNote(e) { if(e) e.preventDefault(); apiPost('/api/notes/post',{content:id('note-input').value, visibility:id('note-vis').value}).then(r=>{if(r.ok) id('note-input').value='';}); }
     
     async function loadNotes(){ 
         const r=await apiPost('/api/notes/list'); const l=await r.json(); 
@@ -1382,8 +1371,7 @@
 
     function openNoteView(uid, uname, icon, content, isLiked, likeCount, isMe) {
         id('nv-icon').src = icon; id('nv-name').innerText = uname; id('nv-content').innerText = content;
-        const likeBtn = id('nv-like-btn');
-        likeBtn.innerText = isLiked ? '❤️' : '🤍';
+        const likeBtn = id('nv-like-btn'); likeBtn.innerText = isLiked ? '❤️' : '🤍';
         
         likeBtn.onclick = async () => { 
             const r = await apiPost('/api/notes/like', {note_user_id: uid});
@@ -1392,14 +1380,8 @@
 
         if(isMe) {
             hide('nv-reply-btn'); show('nv-like-list-btn'); show('nv-del-btn');
-            id('nv-like-list-btn').onclick = async () => {
-                await showInteractions(uid, 'note', uid);
-            };
-            id('nv-del-btn').onclick = async () => {
-                if(await showConfirm("ノートを削除しますか？")) {
-                    apiPost('/api/notes/post', {content: '', visibility: 'deleted'}).then(()=>{ hide('modal-note-view'); });
-                }
-            }
+            id('nv-like-list-btn').onclick = async () => { await showInteractions(uid, 'note', uid); };
+            id('nv-del-btn').onclick = async () => { if(await showConfirm("ノートを削除しますか？")) { apiPost('/api/notes/post', {content: '', visibility: 'deleted'}).then(()=>{ hide('modal-note-view'); }); } }
         } else {
             show('nv-reply-btn'); hide('nv-like-list-btn'); hide('nv-del-btn');
             id('nv-reply-btn').onclick = () => { hide('modal-note-view'); replyToNote(uid, uname, content, icon); };
@@ -1430,22 +1412,15 @@
                             pendingLikes++; localStorage.setItem('pendingLikes', pendingLikes);
                             setTimeout(() => {
                                 const pl = parseInt(localStorage.getItem('pendingLikes') || '0');
-                                if(pl > 0) {
-                                    showBrowserNotif('いいねまとめ', `${pl}件の新しいいいねがあります`);
-                                    localStorage.setItem('pendingLikes', '0');
-                                }
+                                if(pl > 0) { showBrowserNotif('いいねまとめ', `${pl}件の新しいいいねがあります`); localStorage.setItem('pendingLikes', '0'); }
                             }, 30 * 60 * 1000);
                         }
                     }
-                } else if (n.type === 'comment' || n.content.includes('コメント')) {
-                    showBrowserNotif('コメント', n.content);
-                } else {
-                    showBrowserNotif('通知', n.content);
-                }
+                } else if (n.type === 'comment' || n.content.includes('コメント')) { showBrowserNotif('コメント', n.content); } 
+                else { showBrowserNotif('通知', n.content); }
             });
         }
-        isFirstLoadNotifs = false;
-        l.forEach(n => prevNotifIds.add(n.id));
+        isFirstLoadNotifs = false; l.forEach(n => prevNotifIds.add(n.id));
 
         id('ui-notifs').innerHTML=l.map(n=>{ 
             let a=''; if(n.type==='friend_request'&&n.req_status==='pending') a=`<div style="margin-top:15px;"><button type="button" class="success" style="padding:10px 20px;border-radius:20px;font-size:14px;" onclick="acceptRequest('${n.request_id}', this)">承認</button></div>`; 
@@ -1463,12 +1438,7 @@
     async function uploadIcon(inp){ const f=inp.files[0]; if(!f)return; const fd=new FormData(); fd.append('photo',f); const r=await apiPost('/api/user/update_icon',fd); if(r.ok){const d=await r.json();myInfo.icon_url=d.url;localStorage.setItem('myInfo',JSON.stringify(myInfo)); id('my-icon-set').src=BACKEND_URL+d.url; id('home-my-icon').src=BACKEND_URL+d.url;} }
     
     async function updateProfile(key,val){ 
-        if(key === 'username') {
-            if(!/^[a-zA-Z0-9_\-\.\=]+$/.test(val)) {
-                await showConfirm("ユーザーIDは半角英数字と一部記号 ( _ - . = ) のみ使用可能です。全角文字や絵文字は使用できません。");
-                return;
-            }
-        }
+        if(key === 'username') { if(!/^[a-zA-Z0-9_\-\.\=]+$/.test(val)) { await showConfirm("ユーザーIDは半角英数字と一部記号 ( _ - . = ) のみ使用可能です。"); return; } }
         const r = await apiPost(`/api/user/update_${key}`,{[key]:val}); 
         if(!r.ok){ const d=await r.json(); showToast(d.error); return; } 
         myInfo[key]=val; localStorage.setItem('myInfo',JSON.stringify(myInfo)); 
@@ -1480,6 +1450,7 @@
     function requestPwChange(e) { if(e) e.preventDefault(); apiPost('/api/user/request_password_change',{new_password:id('set-new-pw').value}).then(r=>{if(r.ok){showToast('管理者に申請しました');id('set-new-pw').value='';}}); }
     function startQRScanner(){ show('reader'); if(!html5QrCode) html5QrCode = new Html5Qrcode("reader"); html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: {width: 250, height: 250} }, decodedText => { html5QrCode.stop(); hide('reader'); apiPost('/api/friends/request',{username:decodedText}).then(r=>{ if(r.ok) showToast(decodedText+' に申請しました'); else showToast('ユーザーが見つかりません'); }); }).catch(err => { showToast("カメラ起動失敗"); hide('reader'); }); }
 
+    // --- 完全分離された 通話(RTC)コントロール群 ---
     function addLocalVideo() {
         let w = id('wrap-local');
         if(!w) {
@@ -1496,16 +1467,20 @@
         return w.querySelector('video');
     }
 
-    function resetCallControls(isVideo) {
-        streamFlags = {video: isVideo, audio: true};
+    function resetCallControls(mode) {
+        rtcType = mode; // 'voice' or 'video'
+        streamFlags = {video: (mode==='video'), audio: true};
         const bMic=id('btn-mic'), bCam=id('btn-cam'), bSpk=id('btn-spk');
         bMic.innerHTML='<i class="fa-solid fa-microphone"></i> ON'; bMic.className="success";
         bSpk.innerHTML='<i class="fa-solid fa-volume-high"></i> ON'; bSpk.className="success"; 
-        if(isVideo){ show('btn-cam'); bCam.innerHTML='<i class="fa-solid fa-video"></i> ON'; bCam.className="success"; } else { hide('btn-cam'); }
+        
+        if(mode==='video'){ show('btn-cam'); bCam.innerHTML='<i class="fa-solid fa-video"></i> ON'; bCam.className="success"; } 
+        else { hide('btn-cam'); }
+        
         id('video-grid').innerHTML = ''; 
         const lv = addLocalVideo();
-        lv.style.opacity = "1";
-        id('local-no-video').style.display = isVideo ? 'none' : 'block';
+        lv.style.opacity = streamFlags.video ? "1" : "0.3";
+        id('local-no-video').style.display = streamFlags.video ? 'none' : 'block';
         id('local-mic-off').style.display = 'none';
     }
 
@@ -1522,10 +1497,11 @@
         const rv = id('remote-video'); if(rv) rv.srcObject = null;
         const lv = id('local-video'); if(lv) lv.srcObject = null;
         hide('video-overlay'); hide('modal-incoming'); hide('modal-calling'); 
-        incomingData = null; callSession = null;
+        incomingData = null; callSession = null; rtcType = 'none';
     }
     function cancelCall() { hangUp(true); }
 
+    // --- 音声・ビデオ通話 発信ロジックの完全分離 ---
     async function startGroupCall(v) {
         if(!currentRoom) return;
         if(Object.keys(peers).length > 0) hangUp(true); 
@@ -1535,24 +1511,61 @@
             return;
         }
 
+        const mode = v ? 'video' : 'voice';
+
         try {
-            localStream = await navigator.mediaDevices.getUserMedia({video:v, audio:true});
-            resetCallControls(v);
+            localStream = await navigator.mediaDevices.getUserMedia({video: v, audio: true});
+            resetCallControls(mode);
             id('local-video').srcObject=localStream;
-            id('calling-name').innerText = localStorage.getItem('currentTargetName') || 'グループ';
-            show('modal-calling');
-            socket.emit('call_room', {room_id: currentRoom, video: v});
+
+            if (isGroupCall) {
+                // グループ: 呼び出しはせず、システムメッセージを残して即参加
+                const sysMsg = v ? 'ビデオ通話が開始されました' : '音声通話が開始されました';
+                const sId = "call_" + uuidv4();
+                socket.emit('send_message', {room_id: currentRoom, type: 'system_call', content: `${sysMsg}:${sId}`});
+                joinGroupCall(sId);
+            } else {
+                // 個別: 正規のコール画面を表示して待機
+                id('calling-name').innerText = localStorage.getItem('currentTargetName') || '相手';
+                show('modal-calling');
+                socket.emit('call_room', {room_id: currentRoom, video: v});
+            }
         } catch(e) { 
             await showConfirm("マイクまたはカメラのアクセスが拒否されました。ブラウザの設定で許可してください。"); 
+            hangUp(false);
         }
     }
 
-    async function answerGroupCall(a) {
+    // グループ通話への任意参加ロジック
+    function joinGroupCall(sId) {
+        if(Object.keys(peers).length > 0) hangUp(true);
+        navigator.mediaDevices.getUserMedia({video: true, audio: true}).then(stream => {
+            localStream = stream;
+            resetCallControls('video'); // グループは一旦カメラオン基準で入る
+            id('local-video').srcObject=localStream;
+            show('video-overlay');
+            callSession = sId;
+            socket.emit('join_call', {session_id: callSession});
+        }).catch(err => {
+            navigator.mediaDevices.getUserMedia({video: false, audio: true}).then(stream => {
+                localStream = stream;
+                resetCallControls('voice');
+                id('local-video').srcObject=localStream;
+                show('video-overlay');
+                callSession = sId;
+                socket.emit('join_call', {session_id: callSession});
+            }).catch(async e => {
+                await showConfirm("マイクのアクセスが拒否されました。");
+            });
+        });
+    }
+
+    async function answerCallSession(a) {
         hide('modal-incoming'); 
         if(!a){ socket.emit('call_response', {target_id:incomingData.caller_id, accept:false}); hangUp(false); return; } 
         try {
             localStream = await navigator.mediaDevices.getUserMedia({video:incomingData.video, audio:true});
-            resetCallControls(incomingData.video); 
+            resetCallControls(incomingData.video ? 'video' : 'voice'); 
             id('local-video').srcObject=localStream;
             show('video-overlay');
             callSession = incomingData.session_id;
@@ -1605,9 +1618,16 @@
     function toggleCam(){ if(localStream){ const t=localStream.getVideoTracks()[0]; if(t){ t.enabled=!t.enabled; streamFlags.video=t.enabled; const b=id('btn-cam'); if(t.enabled){b.innerHTML='<i class="fa-solid fa-video"></i> ON';b.className="success";}else{b.innerHTML='<i class="fa-solid fa-video-slash"></i> OFF';b.className="danger";} updateMediaStatus(); } } }
     function toggleSpk(){ const vs = document.querySelectorAll('#video-grid video'); let muted = false; vs.forEach(v => { v.muted = !v.muted; muted = v.muted; }); const b=id('btn-spk'); if(!muted){b.innerHTML='<i class="fa-solid fa-volume-high"></i> ON';b.className="success";}else{b.innerHTML='<i class="fa-solid fa-volume-xmark"></i> OFF';b.className="danger";} }
 
-    function startTextCall(){ if(!currentTarget)return; id('calling-name').innerText = localStorage.getItem('currentTargetName') || '相手'; show('modal-calling'); socket.emit('call_text',{target_id:currentTarget}); }
+    // --- テキスト通話 (分離管理) ---
+    function startTextCall(){ 
+        if(!currentTarget)return; 
+        rtcType = 'text';
+        id('calling-name').innerText = localStorage.getItem('currentTargetName') || '相手'; 
+        show('modal-calling'); 
+        socket.emit('call_text',{target_id:currentTarget}); 
+    }
     function endTextCall(){ if(textCallSession){ socket.emit('end_text_call',{session_id:textCallSession}); cleanupTextCall(); } }
-    function cleanupTextCall() { hide('text-call-overlay'); textCallSession=null; localStorage.removeItem('tcSession'); localStorage.removeItem('tcTargetName'); }
+    function cleanupTextCall() { hide('text-call-overlay'); textCallSession=null; rtcType='none'; localStorage.removeItem('tcSession'); localStorage.removeItem('tcTargetName'); }
 
     if(token&&myInfo.id)initApp();
 </script>
