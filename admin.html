@@ -3,19 +3,13 @@
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Friend Station Admin</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://api.toway.space/socket.io/socket.io.js"></script>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <style>
         :root { 
-            --bg-dark: #000000; 
-            --bg-panel: #16181c; 
-            --bg-hover: #202327; 
-            --text-main: #e7e9ea; 
-            --text-sub: #71767b; 
-            --border: #2f3336; 
-            --accent: #2ecc71; 
-            --accent-glow: rgba(46, 204, 113, 0.2);
-            --danger: #e74c3c; 
-            --danger-glow: rgba(231, 76, 60, 0.2);
+            --bg-dark: #000000; --bg-panel: #16181c; --bg-hover: #202327; 
+            --text-main: #e7e9ea; --text-sub: #71767b; --border: #2f3336; 
+            --accent: #2ecc71; --accent-glow: rgba(46, 204, 113, 0.2);
+            --danger: #e74c3c; --danger-glow: rgba(231, 76, 60, 0.2);
             --success: #2ecc71; 
         }
         *{margin:0;padding:0;box-sizing:border-box; -webkit-tap-highlight-color: transparent;} 
@@ -95,7 +89,7 @@
     <div class="login-wrap">
         <h2>Admin Login</h2>
         <form id="form-login" onsubmit="handleAdminLogin(event); return false;">
-            <input type="password" id="admin-pass" placeholder="パスワード" required>
+            <input type="password" id="admin-pass" placeholder="パスワード(0406)" required>
             <button type="submit" style="width:100%; padding: 14px;"><i class="fa-solid fa-right-to-bracket"></i> 管理画面へログイン</button>
         </form>
     </div>
@@ -104,68 +98,69 @@
 <div id="scr-panel" class="hidden">
     <div class="mobile-header">
         <div style="font-weight:bold; color:var(--accent); font-family:cursive; font-size:18px;">🛠 Admin Panel</div>
-        <button class="hamburger" onclick="event.preventDefault(); toggleMenu()"><i class="fa-solid fa-bars"></i></button>
+        <button type="button" class="hamburger" onclick="toggleMenu()"><i class="fa-solid fa-bars"></i></button>
     </div>
 
     <div id="admin-sidebar" class="sidebar">
         <div class="brand"><i class="fa-solid fa-screwdriver-wrench"></i> Admin Panel</div>
-        <button id="nav-users" class="nav-btn active" onclick="event.preventDefault(); switchAdminTab('users')"><i class="fa-solid fa-users"></i> ユーザー管理</button>
-        <button id="nav-posts" class="nav-btn" onclick="event.preventDefault(); switchAdminTab('posts')"><i class="fa-solid fa-list-check"></i> ポスト監視</button>
-        <button id="nav-msgs" class="nav-btn" onclick="event.preventDefault(); switchAdminTab('msgs')"><i class="fa-solid fa-user-secret"></i> チャット監視</button>
-        <!-- 追加: 全体お知らせタブ -->
-        <button id="nav-announcements" class="nav-btn" onclick="event.preventDefault(); switchAdminTab('announcements')"><i class="fa-solid fa-bullhorn"></i> 全体お知らせ</button>
-        <button id="nav-pw-reqs" class="nav-btn" onclick="event.preventDefault(); switchAdminTab('pw-reqs')"><i class="fa-solid fa-key"></i> PW変更申請</button>
-        <button id="nav-backups" class="nav-btn" onclick="event.preventDefault(); switchAdminTab('backups')"><i class="fa-solid fa-box-archive"></i> 預かりデータ</button>
+        <button type="button" id="nav-users" class="nav-btn active" onclick="switchAdminTab('users')"><i class="fa-solid fa-users"></i> ユーザー管理</button>
+        <button type="button" id="nav-posts" class="nav-btn" onclick="switchAdminTab('posts')"><i class="fa-solid fa-list-check"></i> ポスト/ノート監視</button>
+        <button type="button" id="nav-msgs" class="nav-btn" onclick="switchAdminTab('msgs')"><i class="fa-solid fa-user-secret"></i> チャット監視</button>
+        <button type="button" id="nav-announcements" class="nav-btn" onclick="switchAdminTab('announcements')"><i class="fa-solid fa-bullhorn"></i> 全体お知らせ</button>
+        <button type="button" id="nav-pw-reqs" class="nav-btn" onclick="switchAdminTab('pw-reqs')"><i class="fa-solid fa-key"></i> PW変更申請</button>
+        <button type="button" id="nav-backups" class="nav-btn" onclick="switchAdminTab('backups')"><i class="fa-solid fa-box-archive"></i> 預かりデータ</button>
         
-        <button type="button" class="nav-btn" style="color:var(--danger); margin-top:auto;" onclick="event.preventDefault(); logout()"><i class="fa-solid fa-right-from-bracket"></i> ログアウト</button>
+        <button type="button" class="nav-btn" style="color:var(--danger); margin-top:auto;" onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i> ログアウト</button>
     </div>
 
     <div class="main-content">
         <div class="top-bar">
             <h2 id="page-title">ダッシュボード</h2>
-            <button type="button" class="danger" onclick="event.preventDefault(); clearDB()"><i class="fa-solid fa-trash"></i> DBクリーンアップ</button>
+            <button type="button" class="danger" onclick="clearDB()"><i class="fa-solid fa-trash"></i> DBクリーンアップ</button>
         </div>
 
         <div class="scroll-area">
             
             <div id="sec-users" class="admin-section">
-                <h3 style="margin-bottom:15px;"><i class="fa-solid fa-users"></i> アカウント管理 (BAN / 承認 / 削除)</h3>
+                <h3 style="margin-bottom:15px;"><i class="fa-solid fa-users"></i> アカウント管理 (完全な個人情報可視化)</h3>
                 <div class="table-container">
                     <table>
-                        <thead><tr><th>ID / ユーザー名</th><th>詳細情報</th><th>学校情報</th><th>ステータス</th><th>操作</th></tr></thead>
+                        <thead><tr><th>ID / ユーザー名</th><th>氏名 / ニックネーム</th><th>学校情報</th><th>システム情報</th><th>操作</th></tr></thead>
                         <tbody id="ui-users"></tbody>
                     </table>
                 </div>
             </div>
 
             <div id="sec-posts" class="admin-section hidden">
-                <h3 style="margin-bottom:15px;"><i class="fa-solid fa-list-check"></i> タイムライン監視 (最新100件)</h3>
+                <h3 style="margin-bottom:15px;"><i class="fa-solid fa-list-check"></i> ポスト / ノート詳細監視</h3>
+                
+                <h4 style="margin:20px 0 10px; color:var(--accent);">📌 タイムライン (Posts)</h4>
                 <div class="table-container">
                     <table>
-                        <thead><tr><th style="width:180px;">投稿日時</th><th>投稿者</th><th style="width:40%;">内容</th><th>操作</th></tr></thead>
+                        <thead><tr><th style="width:180px;">投稿日時</th><th>投稿者</th><th style="width:40%;">内容</th><th>いいね数</th><th>操作</th></tr></thead>
                         <tbody id="ui-posts"></tbody>
+                    </table>
+                </div>
+
+                <h4 style="margin:30px 0 10px; color:var(--accent);">💬 いまの気分 (Notes)</h4>
+                <div class="table-container">
+                    <table>
+                        <thead><tr><th style="width:180px;">投稿日時</th><th>投稿者</th><th style="width:40%;">内容</th><th>いいね数</th></tr></thead>
+                        <tbody id="ui-notes"></tbody>
                     </table>
                 </div>
             </div>
 
             <div id="sec-msgs" class="admin-section hidden">
-                <h3 style="margin-bottom:15px;"><i class="fa-solid fa-user-secret"></i> サーバー内通信監視</h3>
-                <div class="alert-box">
-                    <i class="fa-solid fa-triangle-exclamation fa-beat-fade"></i>
-                    <div>
-                        <strong>【機密情報取り扱い警告】</strong><br>
-                        これより下部は、ユーザー間のダイレクトメッセージやグループ通信の生データを含みます。プライバシー保護および利用規約に基づき、<b>「トラブル対応・不正行為の証拠保全」</b>の目的以外での閲覧・情報の持ち出しは厳重に禁じられています。
-                    </div>
-                </div>
+                <h3 style="margin-bottom:15px;"><i class="fa-solid fa-user-secret"></i> サーバー内通信監視 (編集・削除履歴の完全トラッキング)</h3>
                 <div class="table-container">
                     <table>
-                        <thead><tr><th style="width:180px;">送信日時</th><th>ルームID</th><th>送信者</th><th style="width:40%;">内容</th><th>操作</th></tr></thead>
+                        <thead><tr><th style="width:180px;">送信日時</th><th>ルームID</th><th>送信者</th><th style="width:40%;">内容(編集履歴)</th><th>状態</th><th>操作</th></tr></thead>
                         <tbody id="ui-msgs"></tbody>
                     </table>
                 </div>
             </div>
 
-            <!-- 追加: お知らせ動的送信エリア -->
             <div id="sec-announcements" class="admin-section hidden">
                 <h3 style="margin-bottom:15px;"><i class="fa-solid fa-bullhorn"></i> 全ユーザーへのお知らせ送信</h3>
                 <div class="table-container" style="padding:25px;">
@@ -209,11 +204,60 @@
     </div>
 </div>
 
+<div id="modal-likes" class="modal-overlay hidden" onclick="if(event.target===this)document.getElementById('modal-likes').classList.add('hidden')">
+    <div class="modal" style="max-width:500px;">
+        <span class="close-btn" onclick="document.getElementById('modal-likes').classList.add('hidden')"><i class="fa-solid fa-xmark"></i></span>
+        <h3 style="margin-bottom:15px; border-bottom:1px solid var(--border); padding-bottom:10px;"><i class="fa-solid fa-heart"></i> いいねしたユーザー</h3>
+        <div id="likes-content" style="max-height:50vh; overflow-y:auto;"></div>
+    </div>
+</div>
+
+<div id="modal-chat-auth" class="modal-overlay hidden">
+    <div class="modal" style="max-width: 400px; text-align: center;">
+        <span class="close-btn" onclick="document.getElementById('modal-chat-auth').classList.add('hidden')"><i class="fa-solid fa-xmark"></i></span>
+        <i class="fa-solid fa-user-secret" style="font-size:40px; color:var(--danger); margin-bottom:20px;"></i>
+        <h3 style="margin-bottom: 15px; color:var(--danger);">チャット監視アクセス制限</h3>
+        <p style="font-size:13px; color:var(--text-sub); margin-bottom:20px; text-align:left; line-height:1.5;">
+            これより先はユーザーの個人的な通信データにアクセスします。規約に基づく監視目的以外での閲覧は固く禁じられています。<br><br>続行するには管理者パスワードを再入力してください。
+        </p>
+        <form onsubmit="handleChatAuth(event); return false;">
+            <input type="password" id="chat-auth-pass" placeholder="管理者パスワード" required>
+            <button type="submit" class="danger" style="width:100%; padding:12px;"><i class="fa-solid fa-unlock"></i> 認証してアクセス</button>
+        </form>
+    </div>
+</div>
+
+<div id="modal-user-details" class="modal-overlay hidden" onclick="if(event.target===this)document.getElementById('modal-user-details').classList.add('hidden')">
+    <div class="modal" style="max-width:500px;">
+        <span class="close-btn" onclick="document.getElementById('modal-user-details').classList.add('hidden')"><i class="fa-solid fa-xmark"></i></span>
+        <h3 style="margin-bottom:15px; border-bottom:1px solid var(--border); padding-bottom:10px;"><i class="fa-solid fa-address-card"></i> ユーザー詳細情報</h3>
+        
+        <div style="display:flex; flex-direction:column; gap:15px; font-size:15px; line-height:1.5;">
+            <div><span style="color:var(--text-sub); font-size:12px; display:block;">ユーザー名 / ID</span><b id="ud-username" style="font-size:18px; color:var(--accent);"></b><br><span id="ud-id" style="font-family:monospace; font-size:12px;"></span></div>
+            <div><span style="color:var(--text-sub); font-size:12px; display:block;">ステータス</span><span id="ud-status"></span></div>
+            
+            <div style="background:var(--bg-dark); padding:15px; border-radius:12px; border:1px solid var(--border);">
+                <div style="margin-bottom:10px;"><span style="color:var(--text-sub); font-size:12px; display:block;">本名</span><b id="ud-fullname"></b></div>
+                <div style="margin-bottom:10px;"><span style="color:var(--text-sub); font-size:12px; display:block;">ニックネーム</span><span id="ud-nickname"></span></div>
+                <div><span style="color:var(--text-sub); font-size:12px; display:block;">生年月日</span><span id="ud-birthdate"></span></div>
+            </div>
+
+            <div style="background:var(--bg-dark); padding:15px; border-radius:12px; border:1px solid var(--border);">
+                <div style="margin-bottom:10px;"><span style="color:var(--text-sub); font-size:12px; display:block;">学校名</span><b id="ud-school"></b></div>
+                <div><span style="color:var(--text-sub); font-size:12px; display:block;">学年・クラス・出席番号</span><span id="ud-grade-class"></span></div>
+            </div>
+
+            <div><span style="color:var(--text-sub); font-size:12px; display:block;">最終ログインIP</span><span id="ud-ip" style="font-family:monospace;"></span></div>
+        </div>
+    </div>
+</div>
+
 <script>
-    const BACKEND_URL = "https://api.toway.space/"; 
+    const BACKEND_URL = "https://api.toway.space"; 
     let adminToken = localStorage.getItem("adminToken"); 
     let socket;
     let chatWarned = false; 
+    let allUsers = [];
 
     async function apiPost(path, body = {}) { 
         const r = await fetch(BACKEND_URL + path, { method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${adminToken}` }, body: JSON.stringify(body) }); 
@@ -223,54 +267,44 @@
     async function handleAdminLogin(e) {
         if (e) e.preventDefault(); 
         const password = document.getElementById("admin-pass").value;
-        const r = await fetch(BACKEND_URL + "/api/admin/login", { 
-            method: "POST", 
-            headers: { "Content-Type": "application/json" }, 
-            body: JSON.stringify({ password }) 
-        });
-
-        if (r.ok) { 
-            const d = await r.json(); 
-            adminToken = d.token; 
-            localStorage.setItem("adminToken", adminToken); 
-            initPanel(); 
-        } else { 
-            alert("パスワードが違います"); 
-        }
+        const r = await fetch(BACKEND_URL + "/api/admin/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password }) });
+        if (r.ok) { const d = await r.json(); adminToken = d.token; localStorage.setItem("adminToken", adminToken); initPanel(); } 
+        else { alert("パスワードが違います"); }
     }
-    document.getElementById("form-login").onsubmit = handleAdminLogin;
 
-    function toggleMenu() {
-        document.getElementById('admin-sidebar').classList.toggle('open');
-    }
+    function toggleMenu() { document.getElementById('admin-sidebar').classList.toggle('open'); }
 
     function switchAdminTab(tabId) {
         if (tabId === 'msgs' && !chatWarned) {
-            if (!confirm("【重大な警告】\nこれより先はユーザーの個人的な通信データにアクセスします。\n規約に基づく監視・トラブル対応の目的以外での閲覧は固く禁じられています。\n\n本当に閲覧を続行しますか？")) {
-                return;
-            }
-            chatWarned = true;
+            document.getElementById('chat-auth-pass').value = '';
+            document.getElementById('modal-chat-auth').classList.remove('hidden');
+            return;
         }
+        executeSwitchTab(tabId);
+    }
 
+    function executeSwitchTab(tabId) {
         document.querySelectorAll('.admin-section').forEach(el => el.classList.add('hidden'));
         document.getElementById('sec-' + tabId).classList.remove('hidden');
-        
         document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
         document.getElementById('nav-' + tabId).classList.add('active');
 
-        // 追加: タイトル対応表に announcements を追加
-        const titles = {
-            'users': 'ユーザー管理',
-            'posts': 'ポスト監視',
-            'msgs': 'チャット監視',
-            'announcements': '全体お知らせ送信',
-            'pw-reqs': 'パスワード変更申請',
-            'backups': '預かりデータ'
-        };
+        const titles = { 'users': 'ユーザー管理', 'posts': 'ポスト/ノート監視', 'msgs': 'チャット監視', 'announcements': '全体お知らせ送信', 'pw-reqs': 'パスワード変更申請', 'backups': '預かりデータ' };
         document.getElementById('page-title').innerText = titles[tabId];
 
-        if(window.innerWidth <= 768) {
-            document.getElementById('admin-sidebar').classList.remove('open');
+        if(window.innerWidth <= 768) document.getElementById('admin-sidebar').classList.remove('open');
+    }
+
+    async function handleChatAuth(e) {
+        e.preventDefault();
+        const password = document.getElementById('chat-auth-pass').value;
+        const r = await fetch(BACKEND_URL + "/api/admin/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password }) });
+        if(r.ok) {
+            document.getElementById('modal-chat-auth').classList.add('hidden');
+            chatWarned = true;
+            executeSwitchTab('msgs');
+        } else {
+            alert("パスワードが違います");
         }
     }
 
@@ -285,12 +319,12 @@
             socket = io(BACKEND_URL, {auth: {token: adminToken}});
             socket.on("admin_new_message", m => {
                 const tbody = document.getElementById("ui-msgs");
-                tbody.insertAdjacentHTML("afterbegin", `<tr><td>${new Date(m.timestamp).toLocaleString()}</td><td><span style="font-family:monospace;">${m.room_id}</span></td><td><b>${m.user_name}</b></td><td class="td-content">${(m.content||'').replace(/</g,"&lt;")}</td><td><button type="button" class="danger" onclick="event.preventDefault(); deleteMsg('${m.msg_id}')"><i class="fa-solid fa-trash"></i> 削除</button></td></tr>`);
+                tbody.insertAdjacentHTML("afterbegin", `<tr><td>${new Date(m.timestamp).toLocaleString()}</td><td><span style="font-family:monospace;">${m.room_id}</span></td><td><b>${m.user_name}</b></td><td class="td-content">${(m.content||'').replace(/</g,"&lt;")}</td><td><span class="badge bg-ok">通常</span></td><td><button type="button" class="danger" onclick="deleteMsg('${m.msg_id}')"><i class="fa-solid fa-trash"></i> 削除</button></td></tr>`);
             });
             socket.on("admin_new_post", p => {
                 const tbody = document.getElementById("ui-posts");
-                const m = p.media_url ? `<img src="${p.media_url.startsWith('http')?p.media_url:BACKEND_URL+p.media_url}" class="post-img" onclick="event.preventDefault(); window.open(this.src)">` : '';
-                tbody.insertAdjacentHTML("afterbegin", `<tr><td>${new Date(p.timestamp).toLocaleString()}</td><td><b>${p.nickname}</b><br><span style="color:var(--text-sub);font-size:12px;">@${p.username}</span></td><td class="td-content">${(p.content||'').replace(/</g,"&lt;")}${m}</td><td><button type="button" class="danger" onclick="event.preventDefault(); deletePost('${p.id}')"><i class="fa-solid fa-trash"></i> 削除</button></td></tr>`);
+                const m = p.media_url ? `<img src="${p.media_url.startsWith('http')?p.media_url:BACKEND_URL+p.media_url}" class="post-img" onclick="window.open(this.src)">` : '';
+                tbody.insertAdjacentHTML("afterbegin", `<tr><td>${new Date(p.timestamp).toLocaleString()}</td><td><b>${p.nickname}</b><br><span style="color:var(--text-sub);font-size:12px;">@${p.username}</span></td><td class="td-content">${(p.content||'').replace(/</g,"&lt;")}${m}</td><td>0</td><td><button type="button" class="danger" onclick="deletePost('${p.id}')"><i class="fa-solid fa-trash"></i> 削除</button></td></tr>`);
             });
             socket.on("admin_update", () => { loadAll(); }); 
         }
@@ -305,87 +339,120 @@
         } 
     }
 
-    // 追加: お知らせ送信処理
     async function sendSystemNotification() {
         const content = document.getElementById("admin-notif-text").value.trim();
         if (!content) return;
         if (!confirm("全ての承認済みユーザーに通知を送信します。よろしいですか？")) return;
-        
         const res = await apiPost("/api/admin/notifications/send", { content });
-        if (res.ok) {
-            alert("送信しました");
-            document.getElementById("admin-notif-text").value = "";
-        }
+        if (res.ok) { alert("送信しました"); document.getElementById("admin-notif-text").value = ""; }
     }
 
     async function loadMsgs() {
         const r = await apiPost("/api/admin/messages/list"); if (!r.ok) return; const l = await r.json();
-        document.getElementById("ui-msgs").innerHTML = l.map(m => `<tr><td>${new Date(m.timestamp).toLocaleString()}</td><td><span style="font-family:monospace;font-size:12px;color:var(--accent);">${m.room_id}</span></td><td><b>${m.user_name}</b></td><td class="td-content">${(m.content||'').replace(/</g,"&lt;")}</td><td><button type="button" class="danger" onclick="event.preventDefault(); deleteMsg('${m.msg_id}')"><i class="fa-solid fa-trash"></i></button></td></tr>`).join('');
+        document.getElementById("ui-msgs").innerHTML = l.map(m => {
+            let stateBadge = m.is_deleted ? '<span class="badge bg-danger">取消済</span>' : '<span class="badge bg-ok">通常</span>';
+            let contentHtml = m.is_deleted ? `<span style="text-decoration:line-through;color:var(--text-sub);">${(m.content||'（内容なし）').replace(/</g,"&lt;")}</span>` : (m.content||'').replace(/</g,"&lt;");
+            
+            let histHtml = '';
+            try {
+                let hArr = JSON.parse(m.edit_history || '[]');
+                if(hArr.length > 0) {
+                    stateBadge = '<span class="badge bg-warn">編集済</span>';
+                    histHtml = `<div style="margin-top:8px; font-size:12px; background:rgba(255,255,255,0.05); padding:8px; border-radius:8px;"><b>[編集履歴]</b><br>` + hArr.map(h => `・${new Date(h.edited_at).toLocaleString()}: ${h.content.replace(/</g,"&lt;")}`).join('<br>') + `</div>`;
+                }
+            } catch(e) {}
+
+            return `<tr><td>${new Date(m.timestamp).toLocaleString()}</td><td><span style="font-family:monospace;font-size:12px;color:var(--accent);">${m.room_id}</span></td><td><b>${m.user_name}</b><br><span style="font-size:10px;color:var(--text-sub);">${m.user_id.substring(0,8)}</span></td><td class="td-content">${contentHtml}${histHtml}</td><td>${stateBadge}</td><td><button type="button" class="danger" onclick="deleteMsg('${m.msg_id}')"><i class="fa-solid fa-trash"></i></button></td></tr>`;
+        }).join('');
     }
-    async function deleteMsg(id) { 
-        if(confirm('削除しますか？')){ 
-            const res = await apiPost('/api/admin/messages/delete', {id}); 
-            if (res.ok) loadMsgs(); 
-        } 
-    }
+    async function deleteMsg(id) { if(confirm('システムから完全に削除しますか？')){ const res = await apiPost('/api/admin/messages/delete', {id}); if (res.ok) loadMsgs(); } }
 
     async function loadBackups() {
         const r = await apiPost("/api/admin/backups/list"); if (!r.ok) return; const l = await r.json();
-        document.getElementById("ui-backups").innerHTML = l.map(b => `<tr><td>${new Date(b.timestamp).toLocaleString()}</td><td><b>${b.nickname}</b><br><span style="color:var(--text-sub);font-size:12px;">@${b.username}</span></td><td><button type="button" onclick="event.preventDefault(); viewBackup('${b.id}')"><i class="fa-solid fa-eye"></i> 強制閲覧</button></td></tr>`).join('');
+        document.getElementById("ui-backups").innerHTML = l.map(b => `<tr><td>${new Date(b.timestamp).toLocaleString()}</td><td><b>${b.nickname}</b><br><span style="color:var(--text-sub);font-size:12px;">@${b.username}</span></td><td><button type="button" onclick="viewBackup('${b.id}')"><i class="fa-solid fa-eye"></i> 強制閲覧</button></td></tr>`).join('');
     }
-    async function viewBackup(id) {
-        const r = await apiPost('/api/admin/backups/view', {id}); if(r.ok){ const d = await r.json(); document.getElementById('bk-content').innerText = JSON.stringify(d, null, 2); document.getElementById('modal-bk').classList.remove('hidden'); }
-    }
+    async function viewBackup(id) { const r = await apiPost('/api/admin/backups/view', {id}); if(r.ok){ const d = await r.json(); document.getElementById('bk-content').innerText = JSON.stringify(d, null, 2); document.getElementById('modal-bk').classList.remove('hidden'); } }
 
     async function loadPosts() {
-        const r = await apiPost("/api/admin/posts/list"); if (!r.ok) return; const l = await r.json();
-        document.getElementById("ui-posts").innerHTML = l.map(p => {
-            const m = p.media_url ? `<img src="${p.media_url.startsWith('http')?p.media_url:BACKEND_URL+p.media_url}" class="post-img" onclick="event.preventDefault(); window.open(this.src)">` : '';
-            return `<tr><td>${new Date(p.timestamp).toLocaleString()}</td><td><b>${p.nickname}</b><br><span style="color:var(--text-sub);font-size:12px;">@${p.username}</span></td><td class="td-content">${(p.content||'').replace(/</g,"&lt;")}${m}</td><td><button type="button" class="danger" onclick="event.preventDefault(); deletePost('${p.id}')"><i class="fa-solid fa-trash"></i></button></td></tr>`;
-        }).join('');
+        const rp = await apiPost("/api/admin/posts/list"); if(rp.ok){
+            const lp = await rp.json();
+            document.getElementById("ui-posts").innerHTML = lp.map(p => {
+                const m = p.media_url ? `<img src="${p.media_url.startsWith('http')?p.media_url:BACKEND_URL+p.media_url}" class="post-img" onclick="window.open(this.src)">` : '';
+                return `<tr><td>${new Date(p.timestamp).toLocaleString()}</td><td><b>${p.nickname}</b><br><span style="color:var(--text-sub);font-size:12px;">@${p.username}</span></td><td class="td-content">${(p.content||'').replace(/</g,"&lt;")}${m}</td><td><button type="button" style="background:var(--bg-hover); border:1px solid var(--border);" onclick="viewLikes('${p.id}', 'post')">${p.like_count}</button></td><td><button type="button" class="danger" onclick="deletePost('${p.id}')"><i class="fa-solid fa-trash"></i></button></td></tr>`;
+            }).join('');
+        }
+
+        const rn = await apiPost("/api/admin/notes/list"); if(rn.ok){
+            const ln = await rn.json();
+            document.getElementById("ui-notes").innerHTML = ln.map(n => {
+                return `<tr><td>${new Date(n.timestamp).toLocaleString()}</td><td><b>${n.nickname}</b><br><span style="color:var(--text-sub);font-size:12px;">@${n.username}</span></td><td class="td-content">${(n.content||'').replace(/</g,"&lt;")}</td><td><button type="button" style="background:var(--bg-hover); border:1px solid var(--border);" onclick="viewLikes('${n.user_id}', 'note')">${n.like_count}</button></td></tr>`;
+            }).join('');
+        }
     }
-    async function deletePost(id) { 
-        if(confirm('この投稿を削除しますか？')){ 
-            const res = await apiPost('/api/admin/posts/delete', {id}); 
-            if (res.ok) loadPosts();
-        } 
+    async function deletePost(id) { if(confirm('この投稿を削除しますか？')){ const res = await apiPost('/api/admin/posts/delete', {id}); if (res.ok) loadPosts(); } }
+
+    async function viewLikes(idStr, type) {
+        const r = await apiPost('/api/admin/likes/details', {target_id: idStr, type: type});
+        if(r.ok) {
+            const d = await r.json();
+            if(d.length === 0) { document.getElementById('likes-content').innerHTML = '<p>いいねはありません</p>'; }
+            else {
+                document.getElementById('likes-content').innerHTML = d.map(u => `<div style="padding:10px; border-bottom:1px solid var(--bg-hover);"><b>${u.full_name}</b> (@${u.username})<br><span style="font-size:11px;color:var(--text-sub);">${new Date(u.timestamp).toLocaleString()}</span></div>`).join('');
+            }
+            document.getElementById('modal-likes').classList.remove('hidden');
+        }
     }
 
     async function loadUsers() { 
         const r = await apiPost("/api/admin/users/list"); if (!r.ok) return; const l = await r.json(); 
+        allUsers = l;
         document.getElementById("ui-users").innerHTML = l.map(u => {
             const statusBadge = u.is_banned === 1 ? '<span class="badge bg-danger"><i class="fa-solid fa-ban"></i> 停止中</span>' : u.status === 'pending' ? '<span class="badge bg-warn"><i class="fa-solid fa-clock"></i> 承認待ち</span>' : '<span class="badge bg-ok"><i class="fa-solid fa-check"></i> 承認済</span>';
-            const banBtn = u.is_banned === 1 ? `<button type="button" class="success" onclick="event.preventDefault(); actionUser('unban','${u.id}')"><i class="fa-solid fa-unlock"></i> 解除</button>` : `<button type="button" class="danger" onclick="event.preventDefault(); actionUser('ban','${u.id}')"><i class="fa-solid fa-ban"></i> 停止</button>`;
-            const appBtn = u.status === 'pending' ? `<button type="button" class="success" onclick="event.preventDefault(); actionUser('approve','${u.id}')"><i class="fa-solid fa-check"></i> 承認</button>` : '';
-            // 修正: 削除ボタンの追加
-            const delBtn = `<button type="button" class="danger" onclick="event.preventDefault(); actionUser('delete','${u.id}')"><i class="fa-solid fa-trash"></i> 削除</button>`;
+            const banBtn = u.is_banned === 1 ? `<button type="button" class="success" onclick="actionUser('unban','${u.id}')"><i class="fa-solid fa-unlock"></i> 解除</button>` : `<button type="button" class="danger" onclick="actionUser('ban','${u.id}')"><i class="fa-solid fa-ban"></i> 停止</button>`;
+            const appBtn = u.status === 'pending' ? `<button type="button" class="success" onclick="actionUser('approve','${u.id}')"><i class="fa-solid fa-check"></i> 承認</button>` : '';
+            const delBtn = `<button type="button" class="danger" onclick="actionUser('delete','${u.id}')"><i class="fa-solid fa-trash"></i> 削除</button>`;
+            const detailBtn = `<button type="button" onclick="showUserDetails('${u.id}')" style="background:var(--bg-hover); border:1px solid var(--border);"><i class="fa-solid fa-address-card"></i> 詳細</button>`;
 
             return `<tr>
                 <td><b>@${u.username}</b><br><span style="font-size:12px;font-family:monospace;color:var(--text-sub);">${u.id.substring(0,8)}...</span></td>
                 <td><b>${u.full_name}</b><br><span style="color:var(--text-sub);font-size:12px;">ニックネーム: ${u.nickname}</span></td>
-                <td>${u.school_name}<br><span style="color:var(--text-sub);font-size:12px;">${u.grade}年 ${u.class_num}組 ${u.attendance_num}番</span></td>
-                <td>${statusBadge}</td>
-                <td><div class="action-btns">${appBtn} ${banBtn} ${delBtn}</div></td>
+                <td>${u.school_name}<br><span style="color:var(--text-sub);font-size:12px;">${u.grade}年 ${u.class_num}組</span></td>
+                <td>${statusBadge}<br><span style="font-size:10px;color:var(--text-sub);display:block;margin-top:5px;">IP: ${u.last_ip || '不明'}</span></td>
+                <td><div class="action-btns">${detailBtn} ${appBtn} ${banBtn} ${delBtn}</div></td>
             </tr>`;
         }).join(''); 
+    }
+
+    function showUserDetails(id) {
+        const u = allUsers.find(x => x.id === id);
+        if(!u) return;
+        const statusBadge = u.is_banned === 1 ? '<span class="badge bg-danger"><i class="fa-solid fa-ban"></i> 停止中</span>' : u.status === 'pending' ? '<span class="badge bg-warn"><i class="fa-solid fa-clock"></i> 承認待ち</span>' : '<span class="badge bg-ok"><i class="fa-solid fa-check"></i> 承認済</span>';
+        
+        document.getElementById('ud-username').innerText = '@' + u.username;
+        document.getElementById('ud-id').innerText = u.id;
+        document.getElementById('ud-status').innerHTML = statusBadge;
+        document.getElementById('ud-fullname').innerText = u.full_name;
+        document.getElementById('ud-nickname').innerText = u.nickname;
+        document.getElementById('ud-birthdate').innerText = u.birthdate;
+        document.getElementById('ud-school').innerText = u.school_name;
+        document.getElementById('ud-grade-class').innerText = `${u.grade}年 ${u.class_num}組 ${u.attendance_num}番`;
+        document.getElementById('ud-ip').innerText = u.last_ip || '不明';
+        
+        document.getElementById('modal-user-details').classList.remove('hidden');
     }
     
     async function actionUser(a, id) { 
         if (a === 'ban' && !confirm("このユーザーのログインを停止させますか？")) return; 
         if (a === 'delete' && !confirm("本当にこのユーザーを完全に削除しますか？\n（フレンド関係やポストも削除されます）")) return; 
-        
         const res = await apiPost(`/api/admin/users/${a}`, { id }); 
         if (res.ok) loadUsers(); 
     }
 
     async function loadPwReqs() { 
         const r = await apiPost("/api/admin/password_requests/list"); if (!r.ok) return; const l = await r.json(); 
-        document.getElementById("ui-pw-reqs").innerHTML = l.map(req => `<tr><td>${new Date(req.timestamp).toLocaleString()}</td><td><b>@${req.username}</b></td><td>${req.full_name}</td><td><div class="action-btns"><button type="button" class="success" onclick="event.preventDefault(); actionPwReq('approve','${req.id}')"><i class="fa-solid fa-check"></i> 承認</button><button type="button" class="danger" onclick="event.preventDefault(); actionPwReq('reject','${req.id}')"><i class="fa-solid fa-xmark"></i> 拒否</button></div></td></tr>`).join(''); 
+        document.getElementById("ui-pw-reqs").innerHTML = l.map(req => `<tr><td>${new Date(req.timestamp).toLocaleString()}</td><td><b>@${req.username}</b></td><td>${req.full_name}</td><td><div class="action-btns"><button type="button" class="success" onclick="actionPwReq('approve','${req.id}')"><i class="fa-solid fa-check"></i> 承認</button><button type="button" class="danger" onclick="actionPwReq('reject','${req.id}')"><i class="fa-solid fa-xmark"></i> 拒否</button></div></td></tr>`).join(''); 
     }
-    async function actionPwReq(a, id) { 
-        const res = await apiPost(`/api/admin/password_requests/${a}`, { id }); 
-        if(res.ok) loadPwReqs();
-    }
+    async function actionPwReq(a, id) { const res = await apiPost(`/api/admin/password_requests/${a}`, { id }); if(res.ok) loadPwReqs(); }
 
     function logout() { 
         localStorage.removeItem("adminToken"); adminToken = null; chatWarned = false;
@@ -395,6 +462,7 @@
         document.getElementById("ui-msgs").innerHTML = '';
         document.getElementById("ui-backups").innerHTML = '';
         document.getElementById("ui-posts").innerHTML = '';
+        document.getElementById("ui-notes").innerHTML = '';
         document.getElementById("ui-users").innerHTML = '';
         document.getElementById("ui-pw-reqs").innerHTML = '';
         document.getElementById("admin-notif-text").value = '';
