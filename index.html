@@ -729,12 +729,23 @@
     function idbUpdateReaction(msgId, reactions) { if (!db) return; const tx = db.transaction('messages', 'readwrite'); const store = tx.objectStore('messages'); const req = store.get(msgId); req.onsuccess = () => { const m = req.result; if (m) { m.reactions = JSON.stringify(reactions); store.put(m); } }; }
     function idbUpdateMsgStatus(msgId, content, isDeleted, history) { if(!db) return; const tx = db.transaction('messages', 'readwrite'); const store = tx.objectStore('messages'); const req = store.get(msgId); req.onsuccess = () => { const m = req.result; if(m) { m.content = content; m.is_deleted = isDeleted; m.edit_history = history; store.put(m); } }; }
 
+    // API Post: credentials を削除したクリーンな fetch 関数
     async function apiPost(path, body={}){ 
+        if(!token) { logout(); return { ok: false, json: async () => ({}) }; }
         const h={"Authorization":`Bearer ${token}`}; 
         if(!(body instanceof FormData)){ h["Content-Type"]="application/json"; body=JSON.stringify(body); } 
-        const r=await fetch(BACKEND_URL+path,{method:"POST",headers:h,body}); 
-        if(r.status===401) logout(); 
-        return r; 
+        try {
+            const r = await fetch(BACKEND_URL+path, {
+                method:"POST", 
+                headers:h, 
+                body:body
+            }); 
+            if(r.status===401) { logout(); return { ok: false, json: async () => ({}) }; }
+            return r; 
+        } catch(e) {
+            console.error("API Post Error:", e);
+            return { ok: false, json: async () => ({}) };
+        }
     }
     
     function logout(){ 
@@ -748,7 +759,9 @@
     function startPending(pendingToken) {
         hide('scr-auth'); show('scr-pending');
         if(socket) { socket.disconnect(); socket = null; }
-        socket = io(BACKEND_URL, {auth: {token: pendingToken}});
+        socket = io(BACKEND_URL, {
+            auth: {token: pendingToken}
+        });
         socket.on('registration_approved', d => {
             if(Notification.permission==="granted" && localStorage.getItem('set-notif')!=='false') new Notification('承認されました',{body:'Friend Stationにログインします'});
             token = d.token; myInfo = d.user; localStorage.setItem('token', token); localStorage.setItem('myInfo', JSON.stringify(myInfo));
@@ -758,19 +771,35 @@
 
     async function submitLogin(e) {
         if(e) e.preventDefault(); 
-        const r=await fetch(BACKEND_URL+'/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:id('l-user').value,password:id('l-pass').value})}); 
-        const d=await r.json(); 
-        if(r.ok){ token=d.token;myInfo=d.user;localStorage.setItem('token',token);localStorage.setItem('myInfo',JSON.stringify(myInfo));initApp(); }
-        else if(r.status===403 && d.pendingToken) { startPending(d.pendingToken); }
-        else { id('auth-msg').innerText=d.error; }
+        try {
+            const r = await fetch(BACKEND_URL+'/api/login',{
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({username:id('l-user').value,password:id('l-pass').value})
+            }); 
+            const d=await r.json(); 
+            if(r.ok){ token=d.token;myInfo=d.user;localStorage.setItem('token',token);localStorage.setItem('myInfo',JSON.stringify(myInfo));initApp(); }
+            else if(r.status===403 && d.pendingToken) { startPending(d.pendingToken); }
+            else { id('auth-msg').innerText=d.error; }
+        } catch (err) {
+            id('auth-msg').innerText="サーバー接続エラー";
+        }
     }
 
     async function submitTrans(e) {
         if(e) e.preventDefault(); 
-        const r=await fetch(BACKEND_URL+'/api/backup/pull',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:id('t-user').value,transfer_code:id('t-code').value})}); 
-        const d=await r.json(); 
-        if(r.ok){ await initDB(); await idbClearMsgs(); if(d.data){ for(let m of d.data) await idbPutMsg(m); } showToast('復元しました。再ログインしてください。'); toggleAuth('login'); }
-        else { id('auth-msg').innerText=d.error; }
+        try {
+            const r=await fetch(BACKEND_URL+'/api/backup/pull',{
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({username:id('t-user').value,transfer_code:id('t-code').value})
+            }); 
+            const d=await r.json(); 
+            if(r.ok){ await initDB(); await idbClearMsgs(); if(d.data){ for(let m of d.data) await idbPutMsg(m); } showToast('復元しました。再ログインしてください。'); toggleAuth('login'); }
+            else { id('auth-msg').innerText=d.error; }
+        } catch (err) {
+            id('auth-msg').innerText="通信エラー";
+        }
     }
 
     async function submitRegistration() {
@@ -786,10 +815,18 @@
         }
         
         const b={username:uidVal,nickname:id('r-nick').value,first_name:id('r-fn').value,last_name:id('r-ln').value,password:id('r-pass').value,school_name:id('r-school').value,grade:id('r-grade').value,class_num:id('r-class').value,attendance_num:id('r-att').value,birthdate:id('r-birth').value}; 
-        const r=await fetch(BACKEND_URL+'/api/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}); 
-        const d=await r.json();
-        if(r.ok && d.pendingToken){ startPending(d.pendingToken); } 
-        else if(!r.ok){ id('auth-msg').innerText=d.error; }
+        try {
+            const r=await fetch(BACKEND_URL+'/api/register',{
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body:JSON.stringify(b)
+            }); 
+            const d=await r.json();
+            if(r.ok && d.pendingToken){ startPending(d.pendingToken); } 
+            else if(!r.ok){ id('auth-msg').innerText=d.error; }
+        } catch (err) {
+            id('auth-msg').innerText="通信エラー";
+        }
     }
 
     function playNotifSound() {
@@ -832,6 +869,8 @@
     window.toggleSetting = (key, val) => { localStorage.setItem('set-' + key, val); };
 
     async function initApp(){
+        if (!token) { logout(); return; }
+        
         hide('scr-auth'); hide('scr-pending'); show('scr-main'); await initDB();
         id('set-nick').value=myInfo.nickname; id('set-id').value=myInfo.username; id('set-status').value=myInfo.status_message||''; id('my-id-disp').innerText=myInfo.username; 
         id('set-sound').checked = localStorage.getItem('set-sound') !== 'false';
@@ -843,11 +882,19 @@
         
         switchNav(currentNav); if(currentMain !== 'chat') switchMainPanel(currentMain);
         
-        const lastSync=localStorage.getItem('lastSync')||'1970-01-01T00:00:00.000Z'; const sRes=await apiPost('/api/sync/messages',{since:lastSync}); if(sRes.ok){ const {messages}=await sRes.json(); for(let m of messages)await idbPutMsg(m); localStorage.setItem('lastSync',new Date().toISOString()); }
+        const lastSync=localStorage.getItem('lastSync')||'1970-01-01T00:00:00.000Z'; const sRes=await apiPost('/api/sync/messages',{since:lastSync}); if(sRes && sRes.ok){ const {messages}=await sRes.json(); for(let m of messages)await idbPutMsg(m); localStorage.setItem('lastSync',new Date().toISOString()); }
         updateUnreadBadge();
         
         if(socket) { socket.disconnect(); socket = null; }
-        socket=io(BACKEND_URL,{auth:{token}});
+        socket=io(BACKEND_URL,{
+            auth:{token}
+        });
+        
+        socket.on("connect_error", (err) => {
+            if (err.message === "NoToken" || err.message === "InvToken") {
+                logout();
+            }
+        });
         
         socket.on('friend_update', ()=>{ loadFriends(); loadGroups(); });
         socket.on('receive_message',async m=>{ 
@@ -1069,8 +1116,8 @@
     }
 
     async function updateUnreadBadge() {
-        const r1=await apiPost('/api/messages/unread_count');
-        if(r1.ok){ 
+        const r1 = await apiPost('/api/messages/unread_count');
+        if(r1 && r1.ok){ 
             const d=await r1.json();
             const total = d.unread || 0;
             const b=id('notif-badge'); 
@@ -1097,7 +1144,7 @@
         ['chat','search','notif'].forEach(x=>{ id('nav-'+x)?.classList.toggle('active',x===t); if(id('panel-'+x)) id('panel-'+x).classList.toggle('hidden',x!==t); });
         id('nav-home').classList.toggle('active', t==='home');
         if(t==='home') { id('list-panel').style.display='none'; switchMainPanel('home'); } else { id('list-panel').style.display='flex'; switchMainPanel('chat'); }
-        if(t==='notif') apiPost('/api/notifications/read').then(loadNotifs);
+        if(t==='notif') apiPost('/api/notifications/read').then(r=>{ if(r&&r.ok) loadNotifs(); });
     }
     
     function switchMainPanel(p){
@@ -1122,7 +1169,7 @@
         
         if(uid && uid !== myInfo.id) {
             const r = await apiPost('/api/user/profile_status', {target_id: uid});
-            if(r.ok) {
+            if(r && r.ok) {
                 actArea.style.display = 'flex'; const d = await r.json();
                 if(d.status === 'friend') { actArea.innerHTML = `<button type="button" style="background:var(--bg-hover);color:var(--text-sub);cursor:default;" disabled><i class="fa-solid fa-user-check"></i> フレンド</button>`; } 
                 else if(d.status === 'requesting') { actArea.innerHTML = `<button type="button" style="background:var(--bg-hover);color:var(--text-sub);cursor:default;" disabled><i class="fa-solid fa-clock"></i> 申請中</button>`; } 
@@ -1135,18 +1182,18 @@
     
     async function requestFriendFromProfile(username, uid) {
         const r = await apiPost('/api/friends/request', {username});
-        if(r.ok) { showToast('申請しました'); const actArea = id('mp-action-area'); actArea.innerHTML = `<button type="button" style="background:var(--bg-hover);color:var(--text-sub);cursor:default;" disabled><i class="fa-solid fa-clock"></i> 申請中</button>`; } else { const d = await r.json(); showToast(d.error); }
+        if(r && r.ok) { showToast('申請しました'); const actArea = id('mp-action-area'); actArea.innerHTML = `<button type="button" style="background:var(--bg-hover);color:var(--text-sub);cursor:default;" disabled><i class="fa-solid fa-clock"></i> 申請中</button>`; } else { const d = await r.json(); showToast(d.error); }
     }
 
     async function acceptRequestFromProfile(reqId, uid) {
         const r = await apiPost('/api/friends/accept', {request_id: reqId});
-        if(r.ok) { showToast('承認しました'); const actArea = id('mp-action-area'); actArea.innerHTML = `<button type="button" style="background:var(--bg-hover);color:var(--text-sub);cursor:default;" disabled><i class="fa-solid fa-user-check"></i> フレンド</button>`; }
+        if(r && r.ok) { showToast('承認しました'); const actArea = id('mp-action-area'); actArea.innerHTML = `<button type="button" style="background:var(--bg-hover);color:var(--text-sub);cursor:default;" disabled><i class="fa-solid fa-user-check"></i> フレンド</button>`; }
     }
 
-    function showCurrentProfile(){ if(currentTarget) apiPost('/api/friends/list').then(async r=>{ const l=await r.json(); const u=l.find(x=>x.id===currentTarget); if(u) openProfileModal(u.id, u.username, u.nickname, u.icon_url, u.status_message); }); }
+    function showCurrentProfile(){ if(currentTarget) apiPost('/api/friends/list').then(async r=>{ if(r&&r.ok){const l=await r.json(); const u=l.find(x=>x.id===currentTarget); if(u) openProfileModal(u.id, u.username, u.nickname, u.icon_url, u.status_message);} }); }
 
     async function openSelectFriendsModal(type) {
-        currentModalType = type; const r = await apiPost('/api/friends/list'); const friends = await r.json(); const listDiv = id('msf-list');
+        currentModalType = type; const r = await apiPost('/api/friends/list'); if(!r||!r.ok)return; const friends = await r.json(); const listDiv = id('msf-list');
         if (type === 'group') { id('msf-title').innerText = 'グループ作成'; id('msf-extra-input').innerHTML = '<input type="text" id="msf-group-name" placeholder="グループ名" required style="margin:0;">'; } 
         else { id('msf-title').innerText = '親しい友達リスト設定'; id('msf-extra-input').innerHTML = '<p style="font-size:13px;color:var(--text-sub);">親しい友達に設定する人を選択してください</p>'; }
         listDiv.innerHTML = friends.map(f => {
@@ -1160,14 +1207,14 @@
         e.preventDefault(); const checkboxes = document.querySelectorAll('.msf-checkbox:checked'); const selectedIds = Array.from(checkboxes).map(cb => cb.value);
         if (currentModalType === 'group') {
             const name = id('msf-group-name').value.trim(); if(!name) return showToast('グループ名を入力してください');
-            const r = await apiPost('/api/groups/create', {name, members: selectedIds}); if(r.ok) { showToast('グループを作成しました'); hide('modal-select-friends'); }
+            const r = await apiPost('/api/groups/create', {name, members: selectedIds}); if(r&&r.ok) { showToast('グループを作成しました'); hide('modal-select-friends'); }
         } else {
-            const r = await apiPost('/api/friends/set_close_bulk', {friend_ids: selectedIds}); if(r.ok) { showToast('リストを更新しました'); hide('modal-select-friends'); }
+            const r = await apiPost('/api/friends/set_close_bulk', {friend_ids: selectedIds}); if(r&&r.ok) { showToast('リストを更新しました'); hide('modal-select-friends'); }
         }
     };
 
     async function loadFriends(){
-        const r=await apiPost('/api/friends/list'); const l=await r.json(); 
+        const r=await apiPost('/api/friends/list'); if(!r||!r.ok)return; const l=await r.json(); 
         const uids = l.map(f=>f.id); socket.emit('check_online', uids);
         id('ui-rooms').innerHTML = l.map(f=>{ 
             const ic = f.icon_url && f.icon_url.trim() !== '' ? (f.icon_url.startsWith('http')||f.icon_url.startsWith('.')?f.icon_url:BACKEND_URL+f.icon_url) : './icon.jpeg'; 
@@ -1177,7 +1224,7 @@
         }).join('');
     }
     async function loadGroups(){
-        const r=await apiPost('/api/groups/list'); const l=await r.json(); 
+        const r=await apiPost('/api/groups/list'); if(!r||!r.ok)return; const l=await r.json(); 
         id('ui-groups').innerHTML = l.map(g=>{ return `<div class="room-item" onclick="openRoom('${g.id}','${g.name}','${g.id}','./icon.jpeg')"><div style="width:52px;height:52px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff;"><i class="fa-solid fa-user-group"></i></div><div style="flex:1;display:flex;align-items:center;"><b style="font-size:16px;">${g.name}</b><div class="room-unread-badge hidden" id="unread-badge-${g.id}"></div></div></div>`; }).join('');
     }
     
@@ -1301,7 +1348,7 @@
         
         if(editTargetMsgId && !f) {
             const res = await apiPost('/api/messages/edit_msg', {msg_id: editTargetMsgId, content: v});
-            if(res.ok) { cancelEdit(); } else { const d = await res.json(); showToast(d.error); }
+            if(res && res.ok) { cancelEdit(); } else { const d = await res.json(); showToast(d.error); }
         } else if(f) {
             uploadMedia(v);
         } else {
@@ -1316,7 +1363,7 @@
         const f=id('chat-file').files[0]; if(!f)return; 
         const fd=new FormData(); fd.append('file',f); 
         const r=await apiPost('/api/upload',fd); 
-        if(r.ok){ 
+        if(r && r.ok){ 
             const d=await r.json(); 
             socket.emit('send_message',{room_id:currentRoom,type:f.type.startsWith('video')?'video':'image',content:d.url, reply_to:replyTarget?JSON.stringify(replyTarget):null}); 
             if (textMsg) socket.emit('send_message', {room_id:currentRoom, type:'text', content:textMsg}); 
@@ -1327,7 +1374,9 @@
 
     function execChatSearch(e) {
         if(e) e.preventDefault(); const q=id('chat-s-query').value.trim(); if(!q)return;
-        apiPost('/api/search/messages', {query:q}).then(r=>r.json()).then(d=>{
+        apiPost('/api/search/messages', {query:q}).then(r=>{
+            if(r&&r.ok) return r.json(); return {messages:[]};
+        }).then(d=>{
             const out=id('chat-search-out');
             if(d.messages.length>0){ out.innerHTML = d.messages.map(m=> `<div style="padding:15px;border-bottom:1px solid var(--border);"><b style="color:var(--accent);">${m.user_name}</b> <span style="font-size:12px;color:var(--text-sub);margin-left:10px;">${new Date(m.timestamp).toLocaleDateString()}</span><div style="font-size:15px;margin-top:8px;line-height:1.4;">${m.content}</div></div>`).join(''); }
             else { out.innerHTML = '<p style="color:var(--text-sub);text-align:center;margin-top:20px;">見つかりませんでした</p>'; }
@@ -1338,7 +1387,7 @@
     function previewPostFile(inp) { const f = inp.files[0]; const prev = id('post-file-preview'); const stat = id('post-f-status'); if (f) { stat.innerText = '添付済'; if (f.type.startsWith('image/')) { const r = new FileReader(); r.onload = e => { prev.src = e.target.result; prev.style.display = 'block'; }; r.readAsDataURL(f); } else { prev.style.display = 'none'; } } else { stat.innerText = ''; prev.style.display = 'none'; prev.src = ''; } }
     
     async function loadTimeline(){
-        const r=await apiPost('/api/posts/list'); const l=await r.json();
+        const r=await apiPost('/api/posts/list'); if(!r||!r.ok)return; const l=await r.json();
         id('ui-timeline').innerHTML = l.map(p=>{
             const ic=p.icon_url && p.icon_url.trim() !== '' ?(p.icon_url.startsWith('http')||p.icon_url.startsWith('.')?p.icon_url:BACKEND_URL+p.icon_url):'./icon.jpeg';
             const m=p.media_url?`<img src="${p.media_url.startsWith('http')?p.media_url:BACKEND_URL+p.media_url}" class="post-media" onclick="event.stopPropagation(); window.open(this.src)">`:'';
@@ -1358,10 +1407,10 @@
     }
     async function submitPost(){ 
         const txt=id('post-text').value.trim(); const file=id('post-file').files[0]; if(!txt&&!file)return; 
-        let media_url=null; if(file){ const fd=new FormData(); fd.append('file',file); const r=await apiPost('/api/upload',fd); if(r.ok){const d=await r.json(); media_url=d.url;} } 
+        let media_url=null; if(file){ const fd=new FormData(); fd.append('file',file); const r=await apiPost('/api/upload',fd); if(r&&r.ok){const d=await r.json(); media_url=d.url;} } 
         const res=await apiPost('/api/posts/create', {content:txt, media_url, visibility: id('post-vis').value}); 
-        if(res.ok){ id('post-text').value=''; id('post-file').value=''; id('post-f-status').innerText=''; id('post-file-preview').style.display='none'; id('post-file-preview').src=''; } 
-        else { const e=await res.json(); showToast(e.error); } 
+        if(res&&res.ok){ id('post-text').value=''; id('post-file').value=''; id('post-f-status').innerText=''; id('post-file-preview').style.display='none'; id('post-file-preview').src=''; } 
+        else if(res) { const e=await res.json(); showToast(e.error); } 
     }
     
     async function actionPost(action, pid){ 
@@ -1373,7 +1422,8 @@
     
     async function openPostDetail(pid) {
         currentPostIdForComment = pid; show('modal-post-detail');
-        const tList = await apiPost('/api/posts/list').then(r=>r.json());
+        const r1 = await apiPost('/api/posts/list'); if(!r1||!r1.ok)return;
+        const tList = await r1.json();
         const p = tList.find(x => x.id === pid);
         if(p) {
             const ic=p.icon_url && p.icon_url.trim() !== '' ?(p.icon_url.startsWith('http')||p.icon_url.startsWith('.')?p.icon_url:BACKEND_URL+p.icon_url):'./icon.jpeg';
@@ -1384,7 +1434,7 @@
             if (p.user_id !== myInfo.id) { out.innerHTML = '<span style="color:var(--text-sub);font-size:13px;">他人のいいね詳細は見られません</span>'; } 
             else {
                 apiPost('/api/posts/interactions', {post_id: pid}).then(async r => {
-                    if(r.ok) {
+                    if(r&&r.ok) {
                         const d = await r.json();
                         if(d.likes.length === 0) out.innerHTML = '<span style="color:var(--text-sub);font-size:13px;">まだいいねはありません</span>';
                         else out.innerHTML = d.likes.map(u => {
@@ -1396,7 +1446,9 @@
             }
         }
 
-        const cr = await apiPost('/api/posts/comments/list', {post_id: pid}); const cl = await cr.json(); const cout = id('pd-comments-list');
+        const cr = await apiPost('/api/posts/comments/list', {post_id: pid}); 
+        if(!cr||!cr.ok) return;
+        const cl = await cr.json(); const cout = id('pd-comments-list');
         if(cl.length===0){ cout.innerHTML = '<div style="color:var(--text-sub);text-align:center;padding:20px 0;">コメントはまだありません</div>'; }
         else { cout.innerHTML = cl.map(c=>{ const ic=c.icon_url && c.icon_url.trim() !== '' ?(c.icon_url.startsWith('http')||c.icon_url.startsWith('.')?c.icon_url:BACKEND_URL+c.icon_url):'./icon.jpeg'; const cim = c.image_url?`<img src="${c.image_url.startsWith('http')?c.image_url:BACKEND_URL+c.image_url}" class="c-media" onclick="window.open(this.src)">`:''; return `<div class="comment-item"><img src="${ic}" onerror="this.src='./icon.jpeg'" class="c-ic"><div><b>${c.nickname}</b><div style="margin-top:4px;line-height:1.4;">${c.content}</div>${cim}</div></div>`; }).join(''); }
     }
@@ -1404,8 +1456,8 @@
     function submitComment(e) {
         if(e) e.preventDefault(); if(!currentPostIdForComment)return; const txt=id('pd-c-text').value.trim(); const file=id('pd-c-file').files[0]; if(!txt&&!file)return;
         let image_url=null; 
-        if(file){ const fd=new FormData(); fd.append('file',file); apiPost('/api/upload',fd).then(r=>r.json()).then(d=> { image_url=d.url; sendComm(txt, image_url); }); } else { sendComm(txt, null); }
-        async function sendComm(t, img) { const res=await apiPost('/api/posts/comment', {post_id: currentPostIdForComment, content:t, image_url:img}); if(res.ok){ id('pd-c-text').value=''; id('pd-c-file').value=''; id('pd-c-f-status').innerText=''; id('pd-c-file-preview').style.display='none'; id('pd-c-file-preview').src=''; openPostDetail(currentPostIdForComment); } }
+        if(file){ const fd=new FormData(); fd.append('file',file); apiPost('/api/upload',fd).then(r=>{if(r&&r.ok) return r.json(); return {};}).then(d=> { image_url=d.url; sendComm(txt, image_url); }); } else { sendComm(txt, null); }
+        async function sendComm(t, img) { const res=await apiPost('/api/posts/comment', {post_id: currentPostIdForComment, content:t, image_url:img}); if(res&&res.ok){ id('pd-c-text').value=''; id('pd-c-file').value=''; id('pd-c-f-status').innerText=''; id('pd-c-file-preview').style.display='none'; id('pd-c-file-preview').src=''; openPostDetail(currentPostIdForComment); } }
     }
     
     async function showInteractions(idStr, type, targetUserId){
@@ -1413,7 +1465,7 @@
         const url = type === 'post' ? '/api/posts/interactions' : '/api/notes/interactions';
         const body = type === 'post' ? {post_id: idStr} : {note_user_id: idStr};
         const r=await apiPost(url, body); 
-        if(r.ok){
+        if(r&&r.ok){
             const d=await r.json(); let h='';
             if(d.likes.length>0) h+=`<h4 style="margin:15px 0 10px 0;color:var(--danger);"><i class="fa-solid fa-heart"></i> いいね</h4>` + d.likes.map(u=>{ const uic = u.icon_url && u.icon_url.trim() !== '' ? (u.icon_url.startsWith('http')||u.icon_url.startsWith('.')?u.icon_url:BACKEND_URL+u.icon_url) : './icon.jpeg'; return `<div style="padding:8px 0;border-bottom:1px solid var(--bg-hover);display:flex;align-items:center;gap:10px;cursor:pointer;" onclick="hide('modal-interactions');openProfileModal('${u.id}','${u.username}','${u.nickname}','${uic}','')"><img src="${uic}" onerror="this.src='./icon.jpeg'" style="width:24px;height:24px;border-radius:50%;">@${u.username} (${u.nickname})</div>` }).join('');
             id('interactions-list').innerHTML = h || '<p style="text-align:center;color:var(--text-sub);padding:20px 0;">まだありません</p>'; show('modal-interactions');
@@ -1422,9 +1474,9 @@
 
     function execSearch(e) {
         if(e) e.preventDefault(); const q=id('s-query').value.trim(); if(!q)return; 
-        apiPost('/api/friends/list').then(fRes => fRes.json()).then(fList => {
+        apiPost('/api/friends/list').then(fRes => {if(fRes&&fRes.ok) return fRes.json(); return [];}).then(fList => {
             const friendIds = fList.map(f => f.id);
-            apiPost('/api/search',{query:q}).then(r=>r.json()).then(d=>{
+            apiPost('/api/search',{query:q}).then(r=>{if(r&&r.ok) return r.json(); return {users:[]};}).then(d=>{
                 let h=''; 
                 if(d.users.length>0){ 
                     h+='<h4 style="margin-bottom:15px;"><i class="fa-solid fa-users"></i> ユーザー</h4>'; 
@@ -1448,16 +1500,16 @@
 
     async function requestFriend(username, btn) {
         const r = await apiPost('/api/friends/request', {username});
-        if(r.ok) { btn.outerHTML = `<button type="button" style="padding:10px 20px;border-radius:20px;background:var(--bg-hover);color:var(--text-sub);" disabled><i class="fa-solid fa-check"></i> 申請済</button>`; showToast('申請しました'); } 
-        else { const d = await r.json(); showToast(d.error); }
+        if(r&&r.ok) { btn.outerHTML = `<button type="button" style="padding:10px 20px;border-radius:20px;background:var(--bg-hover);color:var(--text-sub);" disabled><i class="fa-solid fa-check"></i> 申請済</button>`; showToast('申請しました'); } 
+        else if(r) { const d = await r.json(); showToast(d.error); }
     }
 
     function openNotePostModal() { id('modal-note-input').value=''; show('modal-note-post'); }
-    function submitNotePostModal(e) { if(e) e.preventDefault(); apiPost('/api/notes/post',{content:id('modal-note-input').value, visibility:id('modal-note-vis').value}).then(r=>{if(r.ok){ hide('modal-note-post'); }}); }
-    function submitNote(e) { if(e) e.preventDefault(); apiPost('/api/notes/post',{content:id('note-input').value, visibility:id('note-vis').value}).then(r=>{if(r.ok) id('note-input').value='';}); }
+    function submitNotePostModal(e) { if(e) e.preventDefault(); apiPost('/api/notes/post',{content:id('modal-note-input').value, visibility:id('modal-note-vis').value}).then(r=>{if(r&&r.ok){ hide('modal-note-post'); }}); }
+    function submitNote(e) { if(e) e.preventDefault(); apiPost('/api/notes/post',{content:id('note-input').value, visibility:id('note-vis').value}).then(r=>{if(r&&r.ok) id('note-input').value='';}); }
     
     async function loadNotes(){ 
-        const r=await apiPost('/api/notes/list'); const l=await r.json(); 
+        const r=await apiPost('/api/notes/list'); if(!r||!r.ok)return; const l=await r.json(); 
         let myNote = l.find(n => n.user_id === myInfo.id);
         let otherNotes = l.filter(n => n.user_id !== myInfo.id);
         let html = '';
@@ -1483,7 +1535,7 @@
         
         likeBtn.onclick = async () => { 
             const r = await apiPost('/api/notes/like', {note_user_id: uid});
-            if(r.ok) { const d = await r.json(); likeBtn.innerText = d.liked ? '❤️' : '🤍'; }
+            if(r&&r.ok) { const d = await r.json(); likeBtn.innerText = d.liked ? '❤️' : '🤍'; }
         };
 
         if(isMe) {
@@ -1498,7 +1550,7 @@
     }
     
     async function loadNotifs(){ 
-        const r=await apiPost('/api/notifications/list'); const l=await r.json(); 
+        const r=await apiPost('/api/notifications/list'); if(!r||!r.ok)return; const l=await r.json(); 
         const now = Date.now();
         let likeMuteUntil = parseInt(localStorage.getItem('likeMuteUntil') || '0');
         let lastLikeTime = parseInt(localStorage.getItem('lastLikeTime') || '0');
@@ -1539,24 +1591,24 @@
 
     async function acceptRequest(reqId, btn) {
         const r = await apiPost('/api/friends/accept', {request_id: reqId});
-        if(r.ok) { btn.outerHTML = '<span style="color:var(--text-sub);"><i class="fa-solid fa-check"></i> 承認済</span>'; showToast('承認しました'); }
+        if(r&&r.ok) { btn.outerHTML = '<span style="color:var(--text-sub);"><i class="fa-solid fa-check"></i> 承認済</span>'; showToast('承認しました'); }
     }
     
-    async function pushBackup(){ if(!(await showConfirm("ブラウザ内の全履歴をサーバーに預けますか？新端末で引き出せます。")))return; const msgs=await idbGetAllMsgs(); const res=await apiPost('/api/backup/push',{data:JSON.stringify(msgs)}); if(res.ok){ const d=await res.json(); id('transfer-code').innerText=d.code; showToast('コードを控えて新端末で入力してください'); } }
-    async function uploadIcon(inp){ const f=inp.files[0]; if(!f)return; const fd=new FormData(); fd.append('photo',f); const r=await apiPost('/api/user/update_icon',fd); if(r.ok){const d=await r.json();myInfo.icon_url=d.url;localStorage.setItem('myInfo',JSON.stringify(myInfo)); id('my-icon-set').src=BACKEND_URL+d.url; id('home-my-icon').src=BACKEND_URL+d.url;} }
+    async function pushBackup(){ if(!(await showConfirm("ブラウザ内の全履歴をサーバーに預けますか？新端末で引き出せます。")))return; const msgs=await idbGetAllMsgs(); const res=await apiPost('/api/backup/push',{data:JSON.stringify(msgs)}); if(res&&res.ok){ const d=await res.json(); id('transfer-code').innerText=d.code; showToast('コードを控えて新端末で入力してください'); } }
+    async function uploadIcon(inp){ const f=inp.files[0]; if(!f)return; const fd=new FormData(); fd.append('photo',f); const r=await apiPost('/api/user/update_icon',fd); if(r&&r.ok){const d=await r.json();myInfo.icon_url=d.url;localStorage.setItem('myInfo',JSON.stringify(myInfo)); id('my-icon-set').src=BACKEND_URL+d.url; id('home-my-icon').src=BACKEND_URL+d.url;} }
     
     async function updateProfile(key,val){ 
         if(key === 'username') { if(!/^[a-zA-Z0-9_\-\.\=]+$/.test(val)) { await showConfirm("ユーザーIDは半角英数字と一部記号 ( _ - . = ) のみ使用可能です。"); return; } }
         const r = await apiPost(`/api/user/update_${key}`,{[key]:val}); 
-        if(!r.ok){ const d=await r.json(); showToast(d.error); return; } 
+        if(!r||!r.ok){ if(r) {const d=await r.json(); showToast(d.error);} return; } 
         myInfo[key]=val; localStorage.setItem('myInfo',JSON.stringify(myInfo)); 
         const sc=id('sc-'+(key==='username'?'id':key==='nickname'?'nick':'status')); 
         if(sc){sc.classList.add('show');setTimeout(()=>sc.classList.remove('show'),2000);} 
         if(key==='username'){id('my-id-disp').innerText=val; QRCode.toCanvas(id('my-qr'),val,{width:200, margin:2});} 
     }
 
-    function requestPwChange(e) { if(e) e.preventDefault(); apiPost('/api/user/request_password_change',{new_password:id('set-new-pw').value}).then(r=>{if(r.ok){showToast('管理者に申請しました');id('set-new-pw').value='';}}); }
-    function startQRScanner(){ show('reader'); if(!html5QrCode) html5QrCode = new Html5Qrcode("reader"); html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: {width: 250, height: 250} }, decodedText => { html5QrCode.stop(); hide('reader'); apiPost('/api/friends/request',{username:decodedText}).then(r=>{ if(r.ok) showToast(decodedText+' に申請しました'); else showToast('ユーザーが見つかりません'); }); }).catch(err => { showToast("カメラ起動失敗"); hide('reader'); }); }
+    function requestPwChange(e) { if(e) e.preventDefault(); apiPost('/api/user/request_password_change',{new_password:id('set-new-pw').value}).then(r=>{if(r&&r.ok){showToast('管理者に申請しました');id('set-new-pw').value='';}}); }
+    function startQRScanner(){ show('reader'); if(!html5QrCode) html5QrCode = new Html5Qrcode("reader"); html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: {width: 250, height: 250} }, decodedText => { html5QrCode.stop(); hide('reader'); apiPost('/api/friends/request',{username:decodedText}).then(r=>{ if(r&&r.ok) showToast(decodedText+' に申請しました'); else showToast('ユーザーが見つかりません'); }); }).catch(err => { showToast("カメラ起動失敗"); hide('reader'); }); }
 
     // --- 完全分離された 通話(RTC)コントロール群 ---
     function addLocalVideo() {
@@ -1719,10 +1771,13 @@
             show('video-overlay');
             callSession = incomingData.session_id;
             
-            socket.emit('answer_call', { target_id: incomingData.caller_id, session_id: callSession, accept: true });
+            // 発信者に対して「応答した」ことをダミーICEで通知し、自分も参加する
+            socket.emit('webrtc_ice', { target_id: incomingData.caller_id, candidate: { type: 'accept_call' } });
+            socket.emit('join_call', {session_id: callSession});
+            
         } catch(e) { 
             await showConfirm("マイクまたはカメラのアクセスが拒否されました。設定から許可してください。"); 
-            socket.emit('answer_call',{ target_id: incomingData.caller_id, accept: false }); 
+            socket.emit('webrtc_ice', { target_id: incomingData.caller_id, candidate: { type: 'reject_call' } });
             hangUp(false); 
         }
     }
@@ -1744,7 +1799,7 @@
                 w.appendChild(v); w.appendChild(ic); w.appendChild(nb); w.appendChild(mo);
                 id('video-grid').appendChild(w);
                 
-                apiPost('/api/friends/list').then(r=>r.json()).then(l=>{
+                apiPost('/api/friends/list').then(r=>{if(r&&r.ok)return r.json(); return [];}).then(l=>{
                     const u = l.find(x=>x.id===peerId);
                     if(u) { 
                         nb.innerText = u.nickname; 
