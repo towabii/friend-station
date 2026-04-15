@@ -153,6 +153,13 @@
 
             <div id="sec-msgs" class="admin-section hidden">
                 <h3 style="margin-bottom:15px;"><i class="fa-solid fa-user-secret"></i> サーバー内通信監視 (編集・削除履歴の完全トラッキング)</h3>
+                <div class="alert-box">
+                    <i class="fa-solid fa-triangle-exclamation fa-beat-fade"></i>
+                    <div>
+                        <strong>【機密情報取り扱い警告】</strong><br>
+                        これより下部は、ユーザー間のダイレクトメッセージやグループ通信の生データ（編集履歴・削除済みメッセージを含む）を完全に表示します。プライバシー保護および利用規約に基づき、<b>「トラブル対応・不正行為の証拠保全」</b>の目的以外での閲覧・情報の持ち出しは厳重に禁じられています。
+                    </div>
+                </div>
                 <div class="table-container">
                     <table>
                         <thead><tr><th style="width:180px;">送信日時</th><th>ルームID</th><th>送信者</th><th style="width:40%;">内容(編集履歴)</th><th>状態</th><th>操作</th></tr></thead>
@@ -259,17 +266,45 @@
     let chatWarned = false; 
     let allUsers = [];
 
+    // 通信エラーを捕捉し、安全にハンドリングする
     async function apiPost(path, body = {}) { 
-        const r = await fetch(BACKEND_URL + path, { method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${adminToken}` }, body: JSON.stringify(body) }); 
-        if (r.status === 401 || r.status === 403) logout(); return r; 
+        try {
+            const r = await fetch(BACKEND_URL + path, { 
+                method: "POST", 
+                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${adminToken}` }, 
+                body: JSON.stringify(body) 
+            }); 
+            if (r.status === 401 || r.status === 403) {
+                logout();
+                return { ok: false };
+            }
+            return r; 
+        } catch (e) {
+            console.error("API Fetch Error:", e);
+            return { ok: false };
+        }
     }
 
     async function handleAdminLogin(e) {
         if (e) e.preventDefault(); 
         const password = document.getElementById("admin-pass").value;
-        const r = await fetch(BACKEND_URL + "/api/admin/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password }) });
-        if (r.ok) { const d = await r.json(); adminToken = d.token; localStorage.setItem("adminToken", adminToken); initPanel(); } 
-        else { alert("パスワードが違います"); }
+        try {
+            const r = await fetch(BACKEND_URL + "/api/admin/login", { 
+                method: "POST", 
+                headers: { "Content-Type": "application/json" }, 
+                body: JSON.stringify({ password }) 
+            });
+            if (r.ok) { 
+                const d = await r.json(); 
+                adminToken = d.token; 
+                localStorage.setItem("adminToken", adminToken); 
+                initPanel(); 
+            } else { 
+                alert("パスワードが違います"); 
+            }
+        } catch (err) {
+            alert("サーバーに接続できません");
+        }
     }
 
     function toggleMenu() { document.getElementById('admin-sidebar').classList.toggle('open'); }
@@ -298,17 +333,27 @@
     async function handleChatAuth(e) {
         e.preventDefault();
         const password = document.getElementById('chat-auth-pass').value;
-        const r = await fetch(BACKEND_URL + "/api/admin/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password }) });
-        if(r.ok) {
-            document.getElementById('modal-chat-auth').classList.add('hidden');
-            chatWarned = true;
-            executeSwitchTab('msgs');
-        } else {
-            alert("パスワードが違います");
+        try {
+            const r = await fetch(BACKEND_URL + "/api/admin/login", { 
+                method: "POST", 
+                headers: { "Content-Type": "application/json" }, 
+                body: JSON.stringify({ password }) 
+            });
+            if(r.ok) {
+                document.getElementById('modal-chat-auth').classList.add('hidden');
+                document.getElementById('chat-auth-pass').value = '';
+                chatWarned = true;
+                executeSwitchTab('msgs');
+            } else {
+                alert("パスワードが違います");
+            }
+        } catch (err) {
+            alert("サーバーに接続できません");
         }
     }
 
     function initPanel() {
+        if(!adminToken) return;
         document.getElementById("scr-login").classList.add("hidden"); 
         document.getElementById("scr-panel").classList.remove("hidden");
         
@@ -316,15 +361,22 @@
         loadAll(); 
         
         if(!socket){
-            socket = io(BACKEND_URL, {auth: {token: adminToken}});
+            socket = io(BACKEND_URL, {
+                auth: {token: adminToken},
+                transports: ['websocket', 'polling']
+            });
             socket.on("admin_new_message", m => {
                 const tbody = document.getElementById("ui-msgs");
-                tbody.insertAdjacentHTML("afterbegin", `<tr><td>${new Date(m.timestamp).toLocaleString()}</td><td><span style="font-family:monospace;">${m.room_id}</span></td><td><b>${m.user_name}</b></td><td class="td-content">${(m.content||'').replace(/</g,"&lt;")}</td><td><span class="badge bg-ok">通常</span></td><td><button type="button" class="danger" onclick="deleteMsg('${m.msg_id}')"><i class="fa-solid fa-trash"></i> 削除</button></td></tr>`);
+                if (tbody) {
+                    tbody.insertAdjacentHTML("afterbegin", `<tr><td>${new Date(m.timestamp).toLocaleString()}</td><td><span style="font-family:monospace;font-size:12px;color:var(--accent);">${m.room_id}</span></td><td><b>${m.user_name}</b></td><td class="td-content">${(m.content||'').replace(/</g,"&lt;")}</td><td><span class="badge bg-ok">通常</span></td><td><button type="button" class="danger" onclick="deleteMsg('${m.msg_id}')"><i class="fa-solid fa-trash"></i> 削除</button></td></tr>`);
+                }
             });
             socket.on("admin_new_post", p => {
                 const tbody = document.getElementById("ui-posts");
-                const m = p.media_url ? `<img src="${p.media_url.startsWith('http')?p.media_url:BACKEND_URL+p.media_url}" class="post-img" onclick="window.open(this.src)">` : '';
-                tbody.insertAdjacentHTML("afterbegin", `<tr><td>${new Date(p.timestamp).toLocaleString()}</td><td><b>${p.nickname}</b><br><span style="color:var(--text-sub);font-size:12px;">@${p.username}</span></td><td class="td-content">${(p.content||'').replace(/</g,"&lt;")}${m}</td><td>0</td><td><button type="button" class="danger" onclick="deletePost('${p.id}')"><i class="fa-solid fa-trash"></i> 削除</button></td></tr>`);
+                if (tbody) {
+                    const m = p.media_url ? `<img src="${p.media_url.startsWith('http')?p.media_url:BACKEND_URL+p.media_url}" class="post-img" onclick="window.open(this.src)">` : '';
+                    tbody.insertAdjacentHTML("afterbegin", `<tr><td>${new Date(p.timestamp).toLocaleString()}</td><td><b>${p.nickname}</b><br><span style="color:var(--text-sub);font-size:12px;">@${p.username}</span></td><td class="td-content">${(p.content||'').replace(/</g,"&lt;")}${m}</td><td>0</td><td><button type="button" class="danger" onclick="deletePost('${p.id}')"><i class="fa-solid fa-trash"></i> 削除</button></td></tr>`);
+                }
             });
             socket.on("admin_update", () => { loadAll(); }); 
         }
@@ -348,7 +400,8 @@
     }
 
     async function loadMsgs() {
-        const r = await apiPost("/api/admin/messages/list"); if (!r.ok) return; const l = await r.json();
+        const r = await apiPost("/api/admin/messages/list"); if (!r.ok) return; 
+        const l = await r.json();
         document.getElementById("ui-msgs").innerHTML = l.map(m => {
             let stateBadge = m.is_deleted ? '<span class="badge bg-danger">取消済</span>' : '<span class="badge bg-ok">通常</span>';
             let contentHtml = m.is_deleted ? `<span style="text-decoration:line-through;color:var(--text-sub);">${(m.content||'（内容なし）').replace(/</g,"&lt;")}</span>` : (m.content||'').replace(/</g,"&lt;");
@@ -362,19 +415,30 @@
                 }
             } catch(e) {}
 
-            return `<tr><td>${new Date(m.timestamp).toLocaleString()}</td><td><span style="font-family:monospace;font-size:12px;color:var(--accent);">${m.room_id}</span></td><td><b>${m.user_name}</b><br><span style="font-size:10px;color:var(--text-sub);">${m.user_id.substring(0,8)}</span></td><td class="td-content">${contentHtml}${histHtml}</td><td>${stateBadge}</td><td><button type="button" class="danger" onclick="deleteMsg('${m.msg_id}')"><i class="fa-solid fa-trash"></i></button></td></tr>`;
+            return `<tr><td>${new Date(m.timestamp).toLocaleString()}</td><td><span style="font-family:monospace;font-size:12px;color:var(--accent);">${m.room_id}</span></td><td><b>${m.user_name}</b><br><span style="font-size:10px;color:var(--text-sub);">${(m.user_id||'').substring(0,8)}</span></td><td class="td-content">${contentHtml}${histHtml}</td><td>${stateBadge}</td><td><button type="button" class="danger" onclick="deleteMsg('${m.msg_id}')"><i class="fa-solid fa-trash"></i></button></td></tr>`;
         }).join('');
     }
+    
     async function deleteMsg(id) { if(confirm('システムから完全に削除しますか？')){ const res = await apiPost('/api/admin/messages/delete', {id}); if (res.ok) loadMsgs(); } }
 
     async function loadBackups() {
-        const r = await apiPost("/api/admin/backups/list"); if (!r.ok) return; const l = await r.json();
+        const r = await apiPost("/api/admin/backups/list"); if (!r.ok) return; 
+        const l = await r.json();
         document.getElementById("ui-backups").innerHTML = l.map(b => `<tr><td>${new Date(b.timestamp).toLocaleString()}</td><td><b>${b.nickname}</b><br><span style="color:var(--text-sub);font-size:12px;">@${b.username}</span></td><td><button type="button" onclick="viewBackup('${b.id}')"><i class="fa-solid fa-eye"></i> 強制閲覧</button></td></tr>`).join('');
     }
-    async function viewBackup(id) { const r = await apiPost('/api/admin/backups/view', {id}); if(r.ok){ const d = await r.json(); document.getElementById('bk-content').innerText = JSON.stringify(d, null, 2); document.getElementById('modal-bk').classList.remove('hidden'); } }
+    
+    async function viewBackup(id) { 
+        const r = await apiPost('/api/admin/backups/view', {id}); 
+        if(r.ok){ 
+            const d = await r.json(); 
+            document.getElementById('bk-content').innerText = JSON.stringify(d, null, 2); 
+            document.getElementById('modal-bk').classList.remove('hidden'); 
+        } 
+    }
 
     async function loadPosts() {
-        const rp = await apiPost("/api/admin/posts/list"); if(rp.ok){
+        const rp = await apiPost("/api/admin/posts/list"); 
+        if(rp.ok){
             const lp = await rp.json();
             document.getElementById("ui-posts").innerHTML = lp.map(p => {
                 const m = p.media_url ? `<img src="${p.media_url.startsWith('http')?p.media_url:BACKEND_URL+p.media_url}" class="post-img" onclick="window.open(this.src)">` : '';
@@ -382,13 +446,15 @@
             }).join('');
         }
 
-        const rn = await apiPost("/api/admin/notes/list"); if(rn.ok){
+        const rn = await apiPost("/api/admin/notes/list"); 
+        if(rn.ok){
             const ln = await rn.json();
             document.getElementById("ui-notes").innerHTML = ln.map(n => {
                 return `<tr><td>${new Date(n.timestamp).toLocaleString()}</td><td><b>${n.nickname}</b><br><span style="color:var(--text-sub);font-size:12px;">@${n.username}</span></td><td class="td-content">${(n.content||'').replace(/</g,"&lt;")}</td><td><button type="button" style="background:var(--bg-hover); border:1px solid var(--border);" onclick="viewLikes('${n.user_id}', 'note')">${n.like_count}</button></td></tr>`;
             }).join('');
         }
     }
+    
     async function deletePost(id) { if(confirm('この投稿を削除しますか？')){ const res = await apiPost('/api/admin/posts/delete', {id}); if (res.ok) loadPosts(); } }
 
     async function viewLikes(idStr, type) {
@@ -404,7 +470,8 @@
     }
 
     async function loadUsers() { 
-        const r = await apiPost("/api/admin/users/list"); if (!r.ok) return; const l = await r.json(); 
+        const r = await apiPost("/api/admin/users/list"); if (!r.ok) return; 
+        const l = await r.json(); 
         allUsers = l;
         document.getElementById("ui-users").innerHTML = l.map(u => {
             const statusBadge = u.is_banned === 1 ? '<span class="badge bg-danger"><i class="fa-solid fa-ban"></i> 停止中</span>' : u.status === 'pending' ? '<span class="badge bg-warn"><i class="fa-solid fa-clock"></i> 承認待ち</span>' : '<span class="badge bg-ok"><i class="fa-solid fa-check"></i> 承認済</span>';
@@ -435,7 +502,10 @@
         document.getElementById('ud-nickname').innerText = u.nickname;
         document.getElementById('ud-birthdate').innerText = u.birthdate;
         document.getElementById('ud-school').innerText = u.school_name;
-        document.getElementById('ud-grade-class').innerText = `${u.grade}年 ${u.class_num}組 ${u.attendance_num}番`;
+        
+        // 欠席番号（attendance_num）が存在しない場合も安全に表示する
+        const attNum = u.attendance_num ? `${u.attendance_num}番` : '';
+        document.getElementById('ud-grade-class').innerText = `${u.grade}年 ${u.class_num}組 ${attNum}`;
         document.getElementById('ud-ip').innerText = u.last_ip || '不明';
         
         document.getElementById('modal-user-details').classList.remove('hidden');
@@ -449,9 +519,11 @@
     }
 
     async function loadPwReqs() { 
-        const r = await apiPost("/api/admin/password_requests/list"); if (!r.ok) return; const l = await r.json(); 
+        const r = await apiPost("/api/admin/password_requests/list"); if (!r.ok) return; 
+        const l = await r.json(); 
         document.getElementById("ui-pw-reqs").innerHTML = l.map(req => `<tr><td>${new Date(req.timestamp).toLocaleString()}</td><td><b>@${req.username}</b></td><td>${req.full_name}</td><td><div class="action-btns"><button type="button" class="success" onclick="actionPwReq('approve','${req.id}')"><i class="fa-solid fa-check"></i> 承認</button><button type="button" class="danger" onclick="actionPwReq('reject','${req.id}')"><i class="fa-solid fa-xmark"></i> 拒否</button></div></td></tr>`).join(''); 
     }
+    
     async function actionPwReq(a, id) { const res = await apiPost(`/api/admin/password_requests/${a}`, { id }); if(res.ok) loadPwReqs(); }
 
     function logout() { 
