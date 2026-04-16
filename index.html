@@ -44,12 +44,10 @@
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* Toast & Custom Confirm */
         .toast { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); background: var(--text-main); color: var(--bg-dark); padding: 12px 24px; border-radius: 30px; box-shadow: 0 5px 15px rgba(0,0,0,0.5); z-index: 10000; font-weight: bold; font-size: 14px; opacity: 0; transition: all 0.3s ease; pointer-events: none; }
         .toast.show { opacity: 1; top: 30px; }
         #custom-confirm .modal { max-width: 320px; text-align: center; padding: 30px 25px; }
 
-        /* Auth */
         #scr-auth, #scr-pending {width:100%;max-width:420px;margin:auto;background:var(--bg-panel);padding:40px 30px;border-radius:24px;border:1px solid var(--border);box-shadow:0 15px 50px rgba(0,0,0,0.8); animation: slideUp 0.4s ease-out;}
         #scr-auth h2{text-align:center;margin-bottom:25px;font-family:cursive;font-size:2.2em;color:var(--accent);}
         .auth-link{background:none;color:var(--accent);text-decoration:none;font-size:14px;padding:10px 0;width:100%;text-align:center;display:block;} .auth-link:hover{text-decoration:underline; transform:none;}
@@ -57,7 +55,6 @@
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .reg-step h3 { font-size: 1.1em; margin-bottom: 20px; color: var(--accent); text-align: center; } .reg-step button { margin-top: 15px; width: 100%; }
 
-        /* Main Layout */
         #scr-main{display:flex;width:100%;height:100%;position:relative; animation: fadeIn 0.4s ease;}
         .sidebar{width:240px;background:var(--bg-dark);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:20px;gap:10px;z-index:10;}
         .brand{font-size:22px;font-weight:bold;color:var(--accent);margin-bottom:25px;font-family:cursive;padding-left:10px; display:flex; align-items:center;}
@@ -99,7 +96,6 @@
         .main-screen.active{z-index:2; animation: fadeIn 0.3s ease-out;}
         @media(max-width: 768px){ .list-panel{width:100%; position:absolute; left:70px; height:100%;} .main-panel-container{position:absolute; left:70px; width:calc(100% - 70px); height:100%; z-index:6; transform:translateX(100%); transition:transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);} .main-panel-container.active{transform:translateX(0);} }
 
-        /* Chat */
         .chat-header{padding:12px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,0.8);backdrop-filter:blur(10px);z-index:2;}
         .chat-box{flex:1;padding:20px;overflow-y:auto;display:flex;flex-direction:column;gap:20px;}
         .msg-wrap{display:flex;flex-direction:column;max-width:75%;position:relative;} .my-msg{align-self:flex-end;} .other-msg{align-self:flex-start;}
@@ -119,7 +115,6 @@
         .chat-input-row{display:flex;align-items:center;gap:12px;} .chat-input-row input{margin:0;flex:1;border-radius:24px;background:var(--bg-panel);padding:12px 18px;}
         .file-status{font-size:12px;color:var(--accent);white-space:nowrap;}
 
-        /* Home Timeline */
         .post-card{border-bottom:1px solid var(--border);padding:20px;transition:background 0.2s;position:relative;cursor:pointer;} .post-card:hover{background:rgba(255,255,255,0.02);}
         .post-header{display:flex;align-items:center;gap:12px;margin-bottom:10px;} .post-header img{width:44px;height:44px;border-radius:50%;object-fit:cover;cursor:pointer;}
         .post-content{font-size:16px;line-height:1.5;margin-bottom:12px;white-space:pre-wrap;word-break:break-word;}
@@ -128,7 +123,6 @@
         .post-actions div{cursor:pointer;display:flex;align-items:center;gap:8px; transition:color 0.2s;} .post-actions div:hover{color:var(--accent);} .liked{color:var(--danger) !important;}
         .del-post-btn{position:absolute;top:20px;right:20px;color:var(--text-sub);cursor:pointer;font-size:18px; transition:color 0.2s;} .del-post-btn:hover{color:var(--danger);}
 
-        /* Modals */
         .modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:2000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(5px);}
         .modal-overlay:not(.hidden) .modal { animation: slideUp 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); }
         .modal{background:var(--bg-panel);padding:25px;border-radius:24px;border:1px solid var(--border);width:95%;max-width:420px;max-height:85vh;display:flex;flex-direction:column;position:relative; box-shadow:0 15px 50px rgba(0,0,0,0.8);}
@@ -144,7 +138,6 @@
         .emoji-btn{background:none;border:none;font-size:26px;cursor:pointer;}
         .saved-check{color:var(--accent);font-size:13px;margin-left:12px;opacity:0;transition:opacity 0.3s;} .saved-check.show{opacity:1;}
         
-        /* 通話UI (モード・状態分離対応) */
         #video-overlay {position:fixed;top:0;left:0;width:100%;height:100%;background:#000;z-index:3000;display:flex;flex-direction:column;}
         #video-grid { flex:1; display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:15px; padding:20px; padding-bottom:100px; overflow-y:auto; }
         .video-wrap { position:relative; width:100%; max-width:400px; aspect-ratio:4/3; background:#111; border-radius:16px; overflow:hidden; display:flex; align-items:center; justify-content:center; box-shadow:0 10px 30px rgba(0,0,0,0.5); border:1px solid #333; }
@@ -154,7 +147,6 @@
         .video-wrap .mic-off-badge { position:absolute; top:10px; right:10px; color:var(--danger); font-size:18px; display:none; background:rgba(0,0,0,0.6); padding:8px; border-radius:50%; backdrop-filter:blur(5px); z-index:2; }
         .call-controls{position:absolute;bottom:40px;left:50%;transform:translateX(-50%);display:flex;gap:15px;background:rgba(0,0,0,0.7);backdrop-filter:blur(10px);padding:15px 25px;border-radius:40px;box-shadow:0 10px 30px rgba(0,0,0,0.5);}
 
-        /* Text Call */
         #text-call-overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:var(--bg-dark);z-index:100;display:flex;flex-direction:column;padding:25px;}
         .tc-box{flex:1;background:var(--bg-panel);padding:25px;border-radius:20px;overflow-y:auto;border:1px solid var(--border);font-size:32px; line-height:1.4;}
         #tc-local-input{flex:1;font-size:32px;padding:25px;border-radius:20px;border:2px solid var(--accent);background:var(--bg-dark);resize:none;color:var(--text-main); line-height:1.4;}
@@ -408,7 +400,6 @@
     </div>
 </div>
 
-<!-- Modal: インスタ風ノート入力 -->
 <div id="modal-note-post" class="modal-overlay hidden" onclick="if(event.target===this)hide('modal-note-post')">
     <div class="modal">
         <span class="close-btn" onclick="hide('modal-note-post')"><i class="fa-solid fa-xmark"></i></span>
@@ -425,7 +416,6 @@
     </div>
 </div>
 
-<!-- Modal: インスタ風ノート表示 -->
 <div id="modal-note-view" class="modal-overlay hidden" onclick="if(event.target===this)hide('modal-note-view')">
     <div class="modal" style="background:var(--bg-dark); max-width:380px; height:85vh; border-radius:20px; display:flex; flex-direction:column; padding:0; overflow:hidden;">
         <div style="padding:15px 20px; display:flex; align-items:center; gap:12px; border-bottom:1px solid var(--border); background:var(--bg-panel);">
@@ -533,7 +523,6 @@
     </div>
 </div>
 
-<!-- 電話着信・発信モーダル -->
 <div id="modal-calling" class="modal-overlay hidden">
     <div class="modal" style="text-align:center;padding:40px 20px;">
         <h3 id="calling-name" style="margin-bottom:15px;font-size:28px;"></h3>
@@ -552,7 +541,6 @@
     </div>
 </div>
 
-<!-- 利用規約モーダル -->
 <div id="modal-terms" class="modal-overlay hidden" onclick="if(event.target===this)hide('modal-terms')">
     <div class="modal" style="max-height:85vh; overflow-y:auto; text-align:left; max-width:600px; padding:30px;">
         <span class="close-btn" onclick="hide('modal-terms')"><i class="fa-solid fa-xmark"></i></span>
@@ -641,7 +629,6 @@
     </div>
 </div>
 
-<!-- グループ・個別通話UI (映像/音声分離対応) -->
 <div id="video-overlay" class="hidden">
     <div id="video-grid"></div>
     <div class="call-controls">
@@ -652,7 +639,6 @@
     </div>
 </div>
 
-<!-- テキスト通話UI -->
 <div id="text-call-overlay" class="hidden">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:25px;">
         <h2><span id="tc-target-name">相手</span> <span style="color:var(--accent);font-size:15px;margin-left:10px;">● 通話中</span></h2>
@@ -672,9 +658,8 @@
     let replyTarget = null, editTargetMsgId = null, ctxTargetMsgId = null, ctxTargetIsMe = false, ctxTargetTimestamp = null;
     let typingTimers = {}; let typingTimeout;
     
-    // Call states & WebRTC
     let localStream, callSession = null, incomingData = null, textCallSession = null;
-    let rtcType = 'none'; // 'none', 'text', 'voice', 'video'
+    let rtcType = 'none'; 
     let isGroupCall = false;
     let peers = {}; let streamFlags = { video: true, audio: true };
     const generateCallId = () => "call_" + Date.now().toString(36) + Math.random().toString(36).substr(2);
@@ -729,10 +714,9 @@
     function idbUpdateReaction(msgId, reactions) { if (!db) return; const tx = db.transaction('messages', 'readwrite'); const store = tx.objectStore('messages'); const req = store.get(msgId); req.onsuccess = () => { const m = req.result; if (m) { m.reactions = JSON.stringify(reactions); store.put(m); } }; }
     function idbUpdateMsgStatus(msgId, content, isDeleted, history) { if(!db) return; const tx = db.transaction('messages', 'readwrite'); const store = tx.objectStore('messages'); const req = store.get(msgId); req.onsuccess = () => { const m = req.result; if(m) { m.content = content; m.is_deleted = isDeleted; m.edit_history = history; store.put(m); } }; }
 
-    // API Post: credentials を削除したクリーンな fetch 関数
     async function apiPost(path, body={}){ 
         if(!token) { logout(); return { ok: false, json: async () => ({}) }; }
-        const h={"Authorization":`Bearer ${token}`}; 
+        const h={"Authorization":`Bearer ${token}`, "Cache-Control": "no-cache"}; 
         if(!(body instanceof FormData)){ h["Content-Type"]="application/json"; body=JSON.stringify(body); } 
         try {
             const r = await fetch(BACKEND_URL+path, {
@@ -760,7 +744,9 @@
         hide('scr-auth'); show('scr-pending');
         if(socket) { socket.disconnect(); socket = null; }
         socket = io(BACKEND_URL, {
-            auth: {token: pendingToken}
+            auth: {token: pendingToken},
+            transports: ['polling', 'websocket'],
+            upgrade: true
         });
         socket.on('registration_approved', d => {
             if(Notification.permission==="granted" && localStorage.getItem('set-notif')!=='false') new Notification('承認されました',{body:'Friend Stationにログインします'});
@@ -774,7 +760,7 @@
         try {
             const r = await fetch(BACKEND_URL+'/api/login',{
                 method:'POST',
-                headers:{'Content-Type':'application/json'},
+                headers:{'Content-Type':'application/json', "Cache-Control": "no-cache"},
                 body:JSON.stringify({username:id('l-user').value,password:id('l-pass').value})
             }); 
             const d=await r.json(); 
@@ -791,7 +777,7 @@
         try {
             const r=await fetch(BACKEND_URL+'/api/backup/pull',{
                 method:'POST',
-                headers:{'Content-Type':'application/json'},
+                headers:{'Content-Type':'application/json', "Cache-Control": "no-cache"},
                 body:JSON.stringify({username:id('t-user').value,transfer_code:id('t-code').value})
             }); 
             const d=await r.json(); 
@@ -818,7 +804,7 @@
         try {
             const r=await fetch(BACKEND_URL+'/api/register',{
                 method:'POST',
-                headers:{'Content-Type':'application/json'},
+                headers:{'Content-Type':'application/json', "Cache-Control": "no-cache"},
                 body:JSON.stringify(b)
             }); 
             const d=await r.json();
@@ -887,7 +873,9 @@
         
         if(socket) { socket.disconnect(); socket = null; }
         socket=io(BACKEND_URL,{
-            auth:{token}
+            auth:{token},
+            transports: ['polling', 'websocket'],
+            upgrade: true
         });
         
         socket.on("connect_error", (err) => {
@@ -954,7 +942,6 @@
             }
         });
 
-        /* ================= WebRTC Signaling & Call Events ================= */
         socket.on('call_error', d=>{ showToast(d.message); hide('modal-calling'); hangUp(false); });
         
         socket.on('incoming_call', d=>{ 
@@ -1018,7 +1005,6 @@
         }); 
         
         socket.on('webrtc_ice', d => { 
-            // サーバーを介さない個人通信制御(Reject, Accept, HangUp等ダミーパケットの処理)
             if (d.candidate && d.candidate.type) {
                 if (d.candidate.type === 'reject_call') {
                     showToast("通話が拒否されました"); hangUp(false);
@@ -1036,7 +1022,6 @@
             hangUp(false);
         });
 
-        /* ================= Text Call Events ================= */
         socket.on('incoming_text_call', d=>{ 
             incomingData={...d, type:'text'}; rtcType='text'; 
             id('caller-name').innerText=`${d.caller_name}`; 
@@ -1068,7 +1053,6 @@
             cleanupTextCall();
         });
         
-        /* ================= Input Listeners ================= */
         id('msg-input').addEventListener('keydown', e=>{ if(e.key==='Enter' && !e.isComposing) { e.preventDefault(); id('btn-send-msg').click(); } });
         id('msg-input').addEventListener('input', () => {
             if(currentRoom) {
@@ -1078,7 +1062,6 @@
             }
         });
 
-        // リアルタイムテキスト同期の送信処理
         id('tc-local-input').addEventListener('input', function() {
             if(rtcType === 'text' && textCallSession) {
                 socket.emit('text_call_sync', {
@@ -1090,7 +1073,6 @@
             }
         });
 
-        /* ================= Init Data Loads ================= */
         loadFriends(); loadGroups(); loadNotifs(); loadNotes(); if(currentMain==='home')loadTimeline();
         
         const savedRoom = localStorage.getItem('activeRoom'), savedTarget = localStorage.getItem('currentTarget'), savedTargetName = localStorage.getItem('currentTargetName'), savedIcon = localStorage.getItem('currentTargetIcon');
@@ -1610,7 +1592,6 @@
     function requestPwChange(e) { if(e) e.preventDefault(); apiPost('/api/user/request_password_change',{new_password:id('set-new-pw').value}).then(r=>{if(r&&r.ok){showToast('管理者に申請しました');id('set-new-pw').value='';}}); }
     function startQRScanner(){ show('reader'); if(!html5QrCode) html5QrCode = new Html5Qrcode("reader"); html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: {width: 250, height: 250} }, decodedText => { html5QrCode.stop(); hide('reader'); apiPost('/api/friends/request',{username:decodedText}).then(r=>{ if(r&&r.ok) showToast(decodedText+' に申請しました'); else showToast('ユーザーが見つかりません'); }); }).catch(err => { showToast("カメラ起動失敗"); hide('reader'); }); }
 
-    // --- 完全分離された 通話(RTC)コントロール群 ---
     function addLocalVideo() {
         let w = id('wrap-local');
         if(!w) {
@@ -1678,7 +1659,6 @@
     
     function cancelCall() { hangUp(true); }
 
-    // --- 音声・ビデオ通話 発信ロジックの完全分離 ---
     async function startRtcCall(mode) {
         if(!currentRoom) return;
         if(Object.keys(peers).length > 0) hangUp(true); 
@@ -1716,7 +1696,6 @@
         }
     }
 
-    // グループ通話への任意参加ロジック
     function joinGroupCall(sId, mode) {
         if(Object.keys(peers).length > 0) hangUp(true);
         const v = mode === 'video';
@@ -1745,7 +1724,6 @@
         });
     }
 
-    // システムメッセージからのテキスト通話参加
     function joinTextCall(sId) {
         textCallSession = sId;
         rtcType = 'text';
@@ -1771,7 +1749,6 @@
             show('video-overlay');
             callSession = incomingData.session_id;
             
-            // 発信者に対して「応答した」ことをダミーICEで通知し、自分も参加する
             socket.emit('webrtc_ice', { target_id: incomingData.caller_id, candidate: { type: 'accept_call' } });
             socket.emit('join_call', {session_id: callSession});
             
@@ -1784,7 +1761,15 @@
 
     function setupPeer(peerId, initiator){
         if(peers[peerId]) return;
-        const pc = new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]});
+        const pc = new RTCPeerConnection({
+            iceServers:[
+                {urls:'stun:stun.l.google.com:19302'},
+                {urls:'stun:stun1.l.google.com:19302'},
+                {urls:'stun:stun2.l.google.com:19302'},
+                {urls:'stun:stun3.l.google.com:19302'},
+                {urls:'stun:stun4.l.google.com:19302'}
+            ]
+        });
         peers[peerId] = pc;
         if(localStream) localStream.getTracks().forEach(t=>pc.addTrack(t,localStream));
         
@@ -1855,7 +1840,6 @@
     function toggleCam(){ if(localStream){ const t=localStream.getVideoTracks()[0]; if(t){ t.enabled=!t.enabled; streamFlags.video=t.enabled; const b=id('btn-cam'); if(t.enabled){b.innerHTML='<i class="fa-solid fa-video"></i> ON';b.className="success";}else{b.innerHTML='<i class="fa-solid fa-video-slash"></i> OFF';b.className="danger";} updateMediaStatus(); } } }
     function toggleSpk(){ const vs = document.querySelectorAll('#video-grid video'); let muted = false; vs.forEach(v => { v.muted = !v.muted; muted = v.muted; }); const b=id('btn-spk'); if(!muted){b.innerHTML='<i class="fa-solid fa-volume-high"></i> ON';b.className="success";}else{b.innerHTML='<i class="fa-solid fa-volume-xmark"></i> OFF';b.className="danger";} }
 
-    // --- テキスト通話 (分離管理) ---
     function startTextCall(){ 
         if(!currentRoom) return; 
         if (!isGroupCall && !onlineStatusCache[currentTarget]) {
