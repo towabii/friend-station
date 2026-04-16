@@ -266,12 +266,11 @@
     let chatWarned = false; 
     let allUsers = [];
 
-    // 通信エラーを捕捉し、安全にハンドリングする
     async function apiPost(path, body = {}) { 
         try {
             const r = await fetch(BACKEND_URL + path, { 
                 method: "POST", 
-                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${adminToken}` }, 
+                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${adminToken}`, "Cache-Control": "no-cache" }, 
                 body: JSON.stringify(body) 
             }); 
             if (r.status === 401 || r.status === 403) {
@@ -291,7 +290,7 @@
         try {
             const r = await fetch(BACKEND_URL + "/api/admin/login", { 
                 method: "POST", 
-                headers: { "Content-Type": "application/json" }, 
+                headers: { "Content-Type": "application/json", "Cache-Control": "no-cache" }, 
                 body: JSON.stringify({ password }) 
             });
             if (r.ok) { 
@@ -336,7 +335,7 @@
         try {
             const r = await fetch(BACKEND_URL + "/api/admin/login", { 
                 method: "POST", 
-                headers: { "Content-Type": "application/json" }, 
+                headers: { "Content-Type": "application/json", "Cache-Control": "no-cache" }, 
                 body: JSON.stringify({ password }) 
             });
             if(r.ok) {
@@ -363,7 +362,8 @@
         if(!socket){
             socket = io(BACKEND_URL, {
                 auth: {token: adminToken},
-                transports: ['websocket', 'polling']
+                transports: ['polling', 'websocket'],
+                upgrade: true
             });
             socket.on("admin_new_message", m => {
                 const tbody = document.getElementById("ui-msgs");
@@ -503,7 +503,6 @@
         document.getElementById('ud-birthdate').innerText = u.birthdate;
         document.getElementById('ud-school').innerText = u.school_name;
         
-        // 欠席番号（attendance_num）が存在しない場合も安全に表示する
         const attNum = u.attendance_num ? `${u.attendance_num}番` : '';
         document.getElementById('ud-grade-class').innerText = `${u.grade}年 ${u.class_num}組 ${attNum}`;
         document.getElementById('ud-ip').innerText = u.last_ip || '不明';
