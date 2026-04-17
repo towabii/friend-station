@@ -88,6 +88,7 @@
 <div id="scr-login" class="login-wrap-container">
     <div class="login-wrap">
         <h2>Admin Login</h2>
+        <div id="admin-auth-msg" style="color:var(--danger); margin-bottom:10px; text-align:center; font-weight:bold; font-size:14px; background:rgba(231,76,60,0.1); padding:8px; border-radius:8px; display:none;"></div>
         <form id="form-login" onsubmit="handleAdminLogin(event); return false;">
             <input type="password" id="admin-pass" placeholder="パスワード(0406)" required>
             <button type="submit" style="width:100%; padding: 14px;"><i class="fa-solid fa-right-to-bracket"></i> 管理画面へログイン</button>
@@ -260,7 +261,32 @@
 </div>
 
 <script>
-    const BACKEND_URL = "https://api.toway.space"; 
+    // ★ 自動回避（フォールバック）システム（Admin版）
+    const SERVER_URLS = [
+        "https://api.sys-auth.com",
+        "https://auth.sys-auth.com",
+        "https://study.sys-auth.com",
+        "https://www.sys-auth.com"
+    ];
+
+    let BACKEND_URL = localStorage.getItem("working_url") || SERVER_URLS[0];
+
+    async function findWorkingServer() {
+        for (let url of SERVER_URLS) {
+            try {
+                const res = await fetch(url + "/api/ping", { method: "GET", mode: "cors", cache: "no-store", headers: {"Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true"} });
+                if (res.ok) {
+                    BACKEND_URL = url;
+                    localStorage.setItem("working_url", url);
+                    return true;
+                }
+            } catch (e) {
+                console.warn("ブロック(SSL/CORS):", url);
+            }
+        }
+        return false;
+    }
+
     let adminToken = localStorage.getItem("adminToken"); 
     let socket;
     let chatWarned = false; 
@@ -269,8 +295,8 @@
     async function apiPost(path, body = {}) { 
         try {
             const r = await fetch(BACKEND_URL + path, { 
-                method: "POST", 
-                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${adminToken}`, "Cache-Control": "no-cache" }, 
+                method: "POST", mode: "cors",
+                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${adminToken}`, "Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true" }, 
                 body: JSON.stringify(body) 
             }); 
             if (r.status === 401 || r.status === 403) {
@@ -286,23 +312,36 @@
 
     async function handleAdminLogin(e) {
         if (e) e.preventDefault(); 
+        const msgDiv = document.getElementById("admin-auth-msg");
+        msgDiv.style.display = 'block';
+        msgDiv.innerText = "接続中...";
+
         const password = document.getElementById("admin-pass").value;
         try {
             const r = await fetch(BACKEND_URL + "/api/admin/login", { 
-                method: "POST", 
-                headers: { "Content-Type": "application/json", "Cache-Control": "no-cache" }, 
+                method: "POST", mode: "cors",
+                headers: { "Content-Type": "application/json", "Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true" }, 
                 body: JSON.stringify({ password }) 
             });
             if (r.ok) { 
+                msgDiv.style.display = 'none';
                 const d = await r.json(); 
                 adminToken = d.token; 
                 localStorage.setItem("adminToken", adminToken); 
                 initPanel(); 
-            } else { 
-                alert("パスワードが違います"); 
+            } else if (r.status === 401) {
+                msgDiv.innerText = "パスワードが違います";
+            } else {
+                msgDiv.innerText = `通信エラー (${r.status})`;
             }
         } catch (err) {
-            alert("サーバーに接続できません");
+            msgDiv.innerText = "アクセスブロック検知。別ルート探索中...";
+            const found = await findWorkingServer();
+            if(found) {
+                msgDiv.innerText = "別ルートに接続しました。もう一度ログインを押してください。";
+            } else {
+                msgDiv.innerText = "すべてのサーバーがブロックされています。";
+            }
         }
     }
 
@@ -334,8 +373,8 @@
         const password = document.getElementById('chat-auth-pass').value;
         try {
             const r = await fetch(BACKEND_URL + "/api/admin/login", { 
-                method: "POST", 
-                headers: { "Content-Type": "application/json", "Cache-Control": "no-cache" }, 
+                method: "POST", mode: "cors",
+                headers: { "Content-Type": "application/json", "Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true" }, 
                 body: JSON.stringify({ password }) 
             });
             if(r.ok) {
@@ -347,7 +386,7 @@
                 alert("パスワードが違います");
             }
         } catch (err) {
-            alert("サーバーに接続できません");
+            alert("通信エラー(SSL/CORS等)");
         }
     }
 
