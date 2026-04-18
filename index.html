@@ -220,9 +220,19 @@
             
             <div class="terms-scroll" style="height:120px; overflow-y:auto; border:1px solid var(--border); padding:12px; font-size:12px; color:var(--text-sub); margin:10px 0; border-radius:8px; background:var(--bg-dark); line-height:1.6;">
                 <h4 style="color:var(--text-main); margin-bottom:5px;">Friend Station 利用規約</h4>
-                <p>第2条（管理権限とプライバシー）<br>運営はサービスの健全な運営のため、全ログデータを閲覧・監視・保存する権限を有します。</p>
-                <h4 style="color:var(--text-main); margin-top:10px; margin-bottom:5px;">プライバシーポリシー</h4>
-                <p>当サービスは Cloudflare Tunnel を用いて通信を保護していますが、個人運営サーバーである性質上、完全なデータ安全性を保証するものではありません。機密情報の送信は控えてください。</p>
+                <p>本規約は、本サービスを利用する全てのユーザーに適用されます。本サービスを利用した時点で、以下の全条項に同意したものとみなされます。</p>
+                <h4 style="color:var(--text-main); margin-top:10px; margin-bottom:5px;">第1条（運営者の広範な裁量権）</h4>
+                <p>運営者は、本サービスの仕様変更、停止、またはアカウントの削除を、理由を問わず、事前の予告なくいつでも行うことができます。</p>
+                <p>運営者は、ユーザーが作成したコンテンツ（投稿、チャット、ノート等）の監視・削除・改変を、独自の裁量で制限なく行う権利を有します。</p>
+                <h4 style="color:var(--text-main); margin-top:10px; margin-bottom:5px;">第2条（完全免責）</h4>
+                <p>運営者は、本サービスの利用によりユーザーに生じた損害（データ消失、通信障害、システムダウン、端末の故障、プライバシー漏洩、ユーザー間トラブル、精神的苦痛を含むがこれらに限定されない）について、故意または重過失がない限り、一切の賠償責任を負いません。</p>
+                <p>運営者に賠償責任が生じる場合であっても、賠償額は、ユーザーが過去1ヶ月間に本サービスに対して支払った利用料金の合計額を上限とします（利用料金が無料の場合は、賠償額は0円とします）。</p>
+                <h4 style="color:var(--text-main); margin-top:10px; margin-bottom:5px;">第3条（管轄裁判所）</h4>
+                <p>本規約に関連する全ての紛争は、運営者の所在地を管轄する地方裁判所を第一審の専属的合意管轄裁判所とします。</p>
+                <h4 style="color:var(--text-main); margin-top:10px; margin-bottom:5px;">プライバシーポリシー（運営権限最大化型）</h4>
+                <p>1. 取得情報の範囲と目的<br>当サービスは、ユーザーが入力した氏名、学校情報、位置情報、IPアドレス、端末情報、全送受信メッセージ、投稿履歴、いいね履歴、通話履歴等の全情報を取得・保存します。これらはサービスの提供、セキュリティ維持、および運営者が適切と判断する目的で利用されます。</p>
+                <p>2. 管理者による全データ閲覧の承諾<br>ユーザーは、運営者がデータベースに直接アクセスし、ユーザー間の「全てのプライベートな通信（個別チャット・通話内容等）」を閲覧、記録、分析することに明確に同意します。本サービスにおいて「プライバシー」とは、第三者に対する秘密を指すものであり、運営者に対する秘密を指すものではありません。</p>
+                <p>3. 法令順守と情報開示<br>捜査機関や裁判所等の公的機関から適法な手順による開示請求があった場合、運営者はユーザーの同意を得ることなく、保有する全ての情報を開示します。</p>
             </div>
             
             <button type="button" class="auth-link" onclick="showTermsModal()" style="margin-bottom:15px; font-size:12px;">利用規約の詳細を読む</button>
@@ -254,7 +264,7 @@
         <button type="button" class="nav-btn" id="nav-home" onclick="switchNav('home')"><i class="fa-solid fa-house"></i> <span>ホーム</span></button>
         <button type="button" class="nav-btn" id="nav-chat" onclick="switchNav('chat')"><i class="fa-solid fa-message"></i> <span>メッセージ</span><div id="notif-badge" class="badge hidden">0</div></button>
         <button type="button" class="nav-btn" id="nav-search" onclick="switchNav('search')"><i class="fa-solid fa-magnifying-glass"></i> <span>検索</span></button>
-        <button type="button" class="nav-btn" id="nav-notif" onclick="switchNav('notif')"><i class="fa-solid fa-bell"></i> <span>通知</span><div id="notif-bell-badge" class="badge hidden">!</div></button>
+        <button type="button" class="nav-btn" id="nav-notif" onclick="switchNav('notif')"><i class="fa-solid fa-bell"></i> <span>通知</span><div id="notif-bell-badge" class="badge hidden">0</div></button>
         <button type="button" class="nav-btn" onclick="toggleMenu()" style="margin-top:auto;"><i class="fa-solid fa-bars"></i> <span>その他</span></button>
     </div>
 
@@ -262,11 +272,17 @@
         <h3 style="margin-bottom:15px;border-bottom:1px solid var(--border);padding-bottom:15px;">メニュー</h3>
         <div class="menu-item" onclick="openProfileModal(myInfo.id, myInfo.username, myInfo.nickname, myInfo.icon_url, myInfo.status_message)"><i class="fa-solid fa-user"></i> プロフィール</div>
         <div class="menu-item" onclick="switchMainPanel('settings')"><i class="fa-solid fa-gear"></i> 設定・移行</div>
+        <div class="menu-item" onclick="switchMainPanel('notif-settings')"><i class="fa-solid fa-bell"></i> 通知・着信</div>
         <div class="menu-item" onclick="switchMainPanel('qr')"><i class="fa-solid fa-mobile-screen"></i> My QR</div>
         <div class="menu-item" onclick="openSelectFriendsModal('group')"><i class="fa-solid fa-user-group"></i> グループ作成</div>
         <div class="menu-item" onclick="openSelectFriendsModal('close')"><i class="fa-solid fa-lock"></i> 親しい友達リスト設定</div>
+        <div class="menu-item" onclick="openBlockListModal()"><i class="fa-solid fa-ban"></i> ブロック一覧</div>
         <div class="menu-item" onclick="showTermsModal()"><i class="fa-solid fa-file-contract"></i> 利用規約・プライバシー</div>
         <div class="menu-item danger" onclick="logout()" style="margin-top:auto;color:#fff;"><i class="fa-solid fa-right-from-bracket"></i> ログアウト</div>
+        <div style="margin-top:20px;padding-top:15px;border-top:1px solid var(--border);font-size:13px;color:var(--text-sub);line-height:1.6;">
+            <div>©Friend Station 2026</div>
+            <div>クレジット: OtoLogic</div>
+        </div>
     </div>
 
     <div class="list-panel" id="list-panel">
@@ -318,6 +334,7 @@
                         <button type="button" onclick="startRtcCall('video')" style="background:transparent;font-size:20px;padding:5px;"><i class="fa-solid fa-video"></i></button>
                         <button type="button" onclick="toggleChatMenu(event)" style="background:transparent;font-size:20px;padding:5px;"><i class="fa-solid fa-ellipsis-vertical"></i></button>
                         <div id="chat-menu" class="hidden" style="position:absolute; right:0; top:40px; background:var(--bg-panel); border:1px solid var(--border); border-radius:12px; z-index:100; box-shadow:0 5px 15px rgba(0,0,0,0.5); white-space:nowrap;">
+                            <div class="ctx-item" id="chat-menu-add-member" onclick="openSelectFriendsModal('add_group_member')"><i class="fa-solid fa-user-plus"></i> メンバーを追加</div>
                             <div class="ctx-item danger" onclick="execChatMenuAction()"><i class="fa-solid fa-ban"></i> <span id="chat-menu-action-text">ブロック</span></div>
                         </div>
                     </div>
@@ -377,16 +394,6 @@
             <label style="font-size:13px;color:var(--text-sub);">自己紹介</label>
             <div style="display:flex;gap:12px;align-items:flex-start;"><textarea id="set-status" rows="3" style="margin:0;"></textarea><button type="button" onclick="updateProfile('status_message', id('set-status').value)">保存</button><span class="saved-check" id="sc-status">✔ 保存済</span></div>
             
-            <h3 style="margin-top:40px;margin-bottom:15px;border-bottom:1px solid var(--border);padding-bottom:10px;">通知設定</h3>
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; font-size:15px;">
-                <span>通知音を鳴らす</span>
-                <label class="switch"><input type="checkbox" id="set-sound" onchange="toggleSetting('sound', this.checked)"><span class="slider"></span></label>
-            </div>
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; font-size:15px;">
-                <span>ブラウザ通知を許可</span>
-                <label class="switch"><input type="checkbox" id="set-notif" onchange="toggleSetting('notif', this.checked)"><span class="slider"></span></label>
-            </div>
-
             <h3 style="margin-top:40px;margin-bottom:15px;border-bottom:1px solid var(--border);padding-bottom:10px;">セキュリティ</h3>
             <form onsubmit="requestPwChange(event); return false;" id="form-pw-req" style="display:flex;gap:12px;margin-top:15px;"><input type="password" id="set-new-pw" placeholder="新しいパスワード" required style="margin:0;"><button type="submit">変更申請</button></form>
 
@@ -394,6 +401,44 @@
             <p style="font-size:14px;color:var(--text-sub);margin-bottom:15px;line-height:1.5;">ブラウザ内の全チャット履歴をサーバーに一時預かりします。新端末で引き出すと自動で削除されます。</p>
             <button type="button" onclick="pushBackup()" style="width:100%;border-radius:16px;padding:16px;font-size:16px;"><i class="fa-solid fa-box-archive"></i> IndexedDBデータをサーバーに預ける</button>
             <div id="transfer-code" style="text-align:center;font-size:1.8em;color:var(--accent);font-weight:bold;margin:25px;letter-spacing:2px;"></div>
+        </div>
+
+        <div id="main-notif-settings" class="main-screen hidden scroll-area" style="padding:40px;">
+            <h2 style="margin-bottom:25px;border-bottom:1px solid var(--border);padding-bottom:15px;">通知・着信設定</h2>
+            
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; font-size:15px;">
+                <span>ブラウザ通知を許可</span>
+                <label class="switch"><input type="checkbox" id="set-notif" onchange="toggleSetting('notif', this.checked)"><span class="slider"></span></label>
+            </div>
+
+            <h3 style="margin-top:30px;margin-bottom:15px;border-bottom:1px solid var(--border);padding-bottom:10px;">通知音</h3>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; font-size:15px;">
+                <span>通知音を鳴らす</span>
+                <label class="switch"><input type="checkbox" id="set-sound" onchange="toggleSetting('sound', this.checked)"><span class="slider"></span></label>
+            </div>
+            <div style="margin-bottom:15px;">
+                <select id="set-notif-sound" onchange="toggleSetting('notif-sound', this.value); playSample(this.value);" style="margin:0;">
+                    <option value="tuuti1.mp3">通知音 1</option>
+                    <option value="tuuti2.mp3">通知音 2</option>
+                    <option value="tuuti3.mp3">通知音 3</option>
+                </select>
+            </div>
+
+            <h3 style="margin-top:30px;margin-bottom:15px;border-bottom:1px solid var(--border);padding-bottom:10px;">着信音</h3>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; font-size:15px;">
+                <span>着信音を鳴らす</span>
+                <label class="switch"><input type="checkbox" id="set-call-sound" onchange="toggleSetting('call-sound', this.checked)"><span class="slider"></span></label>
+            </div>
+            <div style="margin-bottom:15px;">
+                <select id="set-call-sound-file" onchange="toggleSetting('call-sound-file', this.value); playSample(this.value);" style="margin:0;">
+                    <option value="call1.mp3">着信音 1</option>
+                    <option value="call2.mp3">着信音 2</option>
+                    <option value="call3.mp3">着信音 3</option>
+                </select>
+            </div>
+            <div style="margin-top:20px;padding-top:15px;border-top:1px solid var(--border);font-size:13px;color:var(--text-sub);">
+                提供：OtoLogic / 音源：OtoLogic
+            </div>
         </div>
 
         <div id="main-qr" class="main-screen hidden scroll-area" style="padding:40px;text-align:center;">
@@ -404,6 +449,14 @@
                 <div id="reader" class="hidden" style="margin-top:20px;border-radius:16px;overflow:hidden;border:1px solid var(--border);"></div>
             </div>
         </div>
+    </div>
+</div>
+
+<div id="modal-block-list" class="modal-overlay hidden" onclick="if(event.target===this)hide('modal-block-list')">
+    <div class="modal" style="max-height:60vh;">
+        <span class="close-btn" onclick="hide('modal-block-list')"><i class="fa-solid fa-xmark"></i></span>
+        <h3 style="margin-bottom:15px;border-bottom:1px solid var(--border);padding-bottom:15px;">ブロック一覧</h3>
+        <div id="block-list-content" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;"></div>
     </div>
 </div>
 
@@ -555,20 +608,22 @@
         <h2 style="margin-bottom:20px; border-bottom:1px solid var(--border); padding-bottom:15px; text-align:center;">利用規約・プライバシーポリシー</h2>
         <div style="font-size:14px; line-height:1.7; color:var(--text-sub);">
             <h3 style="color:var(--text-main); margin-top:15px; font-size:16px;">Friend Station 利用規約</h3>
-            <p>本規約は、本サービスの利用者（以下「ユーザー」）と、運営者（以下「運営」）との間での利用条件を定めるものです。</p>
-            <h4 style="color:var(--text-main); margin-top:20px;">第1条（同意）</h4>
-            <p>ユーザーは、本サービスのアカウント作成をもって、本規約のすべての条項に同意したものとみなされます。</p>
-            <h4 style="color:var(--text-main); margin-top:20px;">第2条（管理権限とプライバシー）</h4>
-            <ul style="margin-left:20px; margin-bottom:15px;">
-                <li><strong>管理権限：</strong> 運営は、サービスの健全な運営のため、ユーザー間のメッセージ、投稿、プロフィール情報、位置情報、IPアドレス、その他のすべてのログデータを閲覧、監視、および保存する権限を有します。</li>
-                <li><strong>情報の利用：</strong> 運営は、いじめ、嫌がらせ、法令違反、または本規約違反の疑いがある場合、事前の告知なく特定のユーザーのデータを精査し、削除または利用停止措置を講じることができます。</li>
-                <li><strong>免責：</strong> 運営によるデータの閲覧により発生したいかなる精神的・実質的損害についても、運営は一切の責任を負いません。</li>
-            </ul>
-        </div>
-        <button type="button" onclick="hide('modal-terms')" style="width:100%; border-radius:12px; padding:14px; margin-top:30px; font-size:16px;">閉じる</button>
-    </div>
-</div>
-
+            <p>本規約は、本サービスを利用する全てのユーザーに適用されます。本サービスを利用した時点で、以下の全条項に同意したものとみなされます。</p>
+            <h4 style="color:var(--text-main); margin-top:20px;">第1条（運営者の広範な裁量権）</h4>
+            <p>運営者は、本サービスの仕様変更、停止、またはアカウントの削除を、理由を問わず、事前の予告なくいつでも行うことができます。</p>
+            <p>運営者は、ユーザーが作成したコンテンツ（投稿、チャット、ノート等）の監視・削除・改変を、独自の裁量で制限なく行う権利を有します。</p>
+            <h4 style="color:var(--text-main); margin-top:20px;">第2条（完全免責）</h4>
+            <p>運営者は、本サービスの利用によりユーザーに生じた損害（データ消失、通信障害、システムダウン、端末の故障、プライバシー漏洩、ユーザー間トラブル、精神的苦痛を含むがこれらに限定されない）について、故意または重過失がない限り、一切の賠償責任を負いません。</p>
+            <p>運営者に賠償責任が生じる場合であっても、賠償額は、ユーザーが過去1ヶ月間に本サービスに対して支払った利用料金の合計額を上限とします（利用料金が無料の場合は、賠償額は0円とします）。</p>
+            <h4 style="color:var(--text-main); margin-top:20px;">第3条（管轄裁判所）</h4>
+            <p>本規約に関連する全ての紛争は、運営者の所在地を管轄する地方裁判所を第一審の専属的合意管轄裁判所とします。</p>
+            <h3 style="color:var(--text-main); margin-top:25px; font-size:16px;">プライバシーポリシー（運営権限最大化型）</h3>
+            <h4 style="color:var(--text-main); margin-top:20px;">1. 取得情報の範囲と目的</h4>
+            <p>当サービスは、ユーザーが入力した氏名、学校情報、位置情報、IPアドレス、端末情報、全送受信メッセージ、投稿履歴、いいね履歴、通話履歴等の全情報を取得・保存します。これらはサービスの提供、セキュリティ維持、および運営者が適切と判断する目的で利用されます。</p>
+            <h4 style="color:var(--text-main); margin-top:20px;">2. 管理者による全データ閲覧の承諾</h4>
+            <p>ユーザーは、運営者がデータベースに直接アクセスし、ユーザー間の「全てのプライベートな通信（個別チャット・通話内容等）」を閲覧、記録、分析することに明確に同意します。本サービスにおいて「プライバシー」とは、第三者に対する秘密を指すものであり、運営者に対する秘密を指すものではありません。</p>
+            <h4 style="color:var(--text-main); margin-top:20px;">3. 法令順守と情報開示</h4>
+            <p>捜査機関や裁判所等の公的機関から適法な手順による開示請求があった場合、運営者はユーザーの同意を得ることなく、保有する全ての情報を開示します。</p>
 <div id="video-overlay" class="hidden">
     <div id="video-grid"></div>
     <div class="call-controls">
@@ -646,6 +701,7 @@
     let prevNotifIds = new Set();
     let isFirstLoadNotifs = true;
     let pendingRead = false;
+    let currentCallAudio = null;
 
     const id = el => document.getElementById(el), show = el => el && el.classList ? el.classList.remove('hidden') : id(el)?.classList.remove('hidden'), hide = el => el && el.classList ? el.classList.add('hidden') : id(el)?.classList.add('hidden');
 
@@ -815,14 +871,42 @@
         } catch (err) { id('auth-msg').style.display='block'; id('auth-msg').innerText="通信エラー(SSL/CORS等)"; }
     }
 
+    function playSample(file) {
+        if (currentCallAudio && file.startsWith('call')) {
+            stopCallSound();
+            currentCallAudio = new Audio('./' + file);
+            currentCallAudio.loop = true;
+            currentCallAudio.play().catch(e=>{});
+            return;
+        }
+        const a = new Audio('./' + file);
+        a.play().catch(e=>{});
+    }
+
     function playNotifSound() {
         if(localStorage.getItem('set-sound') !== 'false') {
-            try {
-                const ctx = new (window.AudioContext || window.webkitAudioContext)();
-                const osc = ctx.createOscillator();
-                osc.type = 'sine'; osc.frequency.setValueAtTime(880, ctx.currentTime);
-                osc.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 0.1);
-            } catch(e){}
+            const file = localStorage.getItem('set-notif-sound') || 'tuuti1.mp3';
+            const a = new Audio('./' + file);
+            a.play().catch(e=>{});
+        }
+    }
+
+    function playCallSound() {
+        if(localStorage.getItem('set-call-sound') !== 'false') {
+            const file = localStorage.getItem('set-call-sound-file') || 'call1.mp3';
+            if(!currentCallAudio) {
+                currentCallAudio = new Audio('./' + file);
+                currentCallAudio.loop = true;
+            }
+            currentCallAudio.play().catch(e=>{});
+        }
+    }
+
+    function stopCallSound() {
+        if(currentCallAudio) {
+            currentCallAudio.pause();
+            currentCallAudio.currentTime = 0;
+            currentCallAudio = null;
         }
     }
 
@@ -868,6 +952,7 @@
         e.stopPropagation();
         const menu = id('chat-menu');
         id('chat-menu-action-text').innerText = isGroupCall ? 'グループを退会' : 'ブロック（フレンド解除）';
+        id('chat-menu-add-member').style.display = isGroupCall ? 'flex' : 'none';
         menu.classList.toggle('hidden');
     }
 
@@ -892,13 +977,42 @@
         }
     }
 
+    async function openBlockListModal() {
+        const r = await apiPost('/api/friends/block_list');
+        if(r && r.ok) {
+            const list = await r.json();
+            const out = id('block-list-content');
+            if(list.length === 0) out.innerHTML = '<p style="text-align:center; color:var(--text-sub); padding:20px;">ブロックしているユーザーはいません</p>';
+            else out.innerHTML = list.map(u => {
+                const ic = u.icon_url && u.icon_url.trim() !== '' ? (u.icon_url.startsWith('http')||u.icon_url.startsWith('.')?u.icon_url:BACKEND_URL+u.icon_url) : './icon.jpeg';
+                return `<div style="display:flex; align-items:center; gap:10px; padding:10px; border-bottom:1px solid var(--border);">
+                    <img src="${ic}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;">
+                    <div style="flex:1;"><b>${u.nickname}</b><br><span style="font-size:12px;color:var(--text-sub);">@${u.username}</span></div>
+                    <button type="button" class="success" style="padding:6px 12px; font-size:12px;" onclick="unblockUser('${u.id}')">解除</button>
+                </div>`;
+            }).join('');
+            show('modal-block-list'); toggleMenu();
+        }
+    }
+
+    async function unblockUser(uid) {
+        if(await showConfirm('ブロックを解除しますか？')) {
+            const r = await apiPost('/api/friends/unblock', {target_id: uid});
+            if(r && r.ok) { showToast('解除しました'); openBlockListModal(); loadFriends(); }
+        }
+    }
+
     async function initApp(){
         if (!token) { logout(); return; }
         
         hide('scr-auth'); hide('scr-pending'); show('scr-main'); await initDB();
         id('set-nick').value=myInfo.nickname; id('set-id').value=myInfo.username; id('set-status').value=myInfo.status_message||''; id('my-id-disp').innerText=myInfo.username; 
+        
         id('set-sound').checked = localStorage.getItem('set-sound') !== 'false';
         id('set-notif').checked = localStorage.getItem('set-notif') !== 'false';
+        id('set-notif-sound').value = localStorage.getItem('set-notif-sound') || 'tuuti1.mp3';
+        id('set-call-sound-file').value = localStorage.getItem('set-call-sound-file') || 'call1.mp3';
+        id('set-call-sound').checked = localStorage.getItem('set-call-sound') !== 'false';
 
         if(myInfo.icon_url){ const ic = myInfo.icon_url.startsWith('http')||myInfo.icon_url.startsWith('.')?myInfo.icon_url:BACKEND_URL+myInfo.icon_url; id('my-icon-set').src=ic; id('home-my-icon').src=ic; }
         QRCode.toCanvas(id('my-qr'),myInfo.username,{width:200, margin:2});
@@ -946,7 +1060,7 @@
 
         // Call Handlers
         socket.on('call_error', d=>{ showToast(d.message); hide('modal-calling'); hangUp(false); });
-        socket.on('incoming_call', d=>{ incomingData = d; rtcType = d.video ? 'video' : 'voice'; id('caller-name').innerText = d.caller_name || '着信'; id('call-type-txt').innerHTML = d.video?'<i class="fa-solid fa-video"></i> ビデオ通話':'<i class="fa-solid fa-phone"></i> 音声通話'; show('modal-incoming'); playNotifSound(); });
+        socket.on('incoming_call', d=>{ incomingData = d; rtcType = d.video ? 'video' : 'voice'; id('caller-name').innerText = d.caller_name || '着信'; id('call-type-txt').innerHTML = d.video?'<i class="fa-solid fa-video"></i> ビデオ通話':'<i class="fa-solid fa-phone"></i> 音声通話'; show('modal-incoming'); playCallSound(); });
         socket.on('call_answered', d=>{ hide('modal-calling'); callSession = d.session_id; show('video-overlay'); setupPeer(d.answerer_id, true, d.icon_url, d.nickname); });
         socket.on('call_rejected', d=>{ hide('modal-calling'); showToast('通話が拒否されました'); hangUp(false); });
         socket.on('user_joined_call', d=>{ if(d.user_id !== myInfo.id) setupPeer(d.user_id, true, d.icon_url, d.nickname); });
@@ -958,7 +1072,7 @@
         socket.on('hang_up', d => { hangUp(false); });
 
         // Text Call Handlers
-        socket.on('incoming_text_call', d=>{ incomingData={...d, type:'text'}; rtcType='text'; id('caller-name').innerText=`${d.caller_name}`; id('call-type-txt').innerHTML='<i class="fa-solid fa-message"></i> テキスト通話着信'; show('modal-incoming'); playNotifSound(); });
+        socket.on('incoming_text_call', d=>{ incomingData={...d, type:'text'}; rtcType='text'; id('caller-name').innerText=`${d.caller_name}`; id('call-type-txt').innerHTML='<i class="fa-solid fa-message"></i> テキスト通話着信'; show('modal-incoming'); playCallSound(); });
         socket.on('text_call_started', d=>{ hide('modal-calling'); textCallSession = d.session_id; localStorage.setItem('tcSession', textCallSession); localStorage.setItem('tcTargetName', d.target_name); socket.emit('join_text_call',{session_id:d.session_id}); id('tc-target-name').innerText=`${d.target_name}`; textCallData={}; id('tc-remote-text').innerText=''; id('tc-local-input').value=''; show('text-call-overlay'); });
         socket.on('text_call_rejected', ()=>{ hide('modal-calling'); showToast('通話が拒否されました'); rtcType='none'; });
         socket.on('text_call_sync_receive', d=>{ if (rtcType === 'text') { if (isGroupCall) { textCallData[d.user_id] = `[${d.user_name}] ${d.text}`; id('tc-remote-text').innerText = Object.values(textCallData).join('\n\n'); } else { id('tc-remote-text').innerText=d.text; } } });
@@ -996,9 +1110,14 @@
         const r1 = await apiPost('/api/messages/unread_count');
         if(r1 && r1.ok){ 
             const d=await r1.json();
-            const total = d.unread || 0;
+            
+            const msgTotal = d.unread || 0;
             const b=id('notif-badge'); 
-            if(total>0){ b.innerText=total; show('notif-badge'); } else{ hide('notif-badge'); } 
+            if(msgTotal>0){ b.innerText=msgTotal; show('notif-badge'); } else{ hide('notif-badge'); } 
+            
+            const notifTotal = d.notif_unread || 0;
+            const nb=id('notif-bell-badge');
+            if(notifTotal>0){ nb.innerText=notifTotal; show('notif-bell-badge'); } else{ hide('notif-bell-badge'); }
             
             document.querySelectorAll('.room-unread-badge').forEach(el => el.classList.add('hidden'));
             if(d.room_unread) {
@@ -1026,8 +1145,12 @@
     
     function switchMainPanel(p){
         currentMain = p; localStorage.setItem('activeMain', p); id('slide-menu').classList.remove('open');
-        ['chat','home','settings','qr'].forEach(x=> { id('main-'+x).classList.remove('active'); hide('main-'+x); });
-        show('main-'+p); id('main-'+p).classList.add('active');
+        ['chat','home','settings','qr','notif-settings'].forEach(x=> { 
+            const el = id('main-'+x);
+            if(el) { el.classList.remove('active'); hide('main-'+x); }
+        });
+        const target = id('main-'+p);
+        if(target) { show(target); target.classList.add('active'); }
         if(p==='chat'){ if(currentRoom){show('chat-active');hide('chat-empty');}else{hide('chat-active');show('chat-empty');} }
         if(p==='home') loadTimeline();
         if(html5QrCode && p!=='qr') { html5QrCode.stop().catch(()=>{}); html5QrCode=null; hide('reader'); }
@@ -1070,23 +1193,38 @@
     function showCurrentProfile(){ if(currentTarget) apiPost('/api/friends/list').then(async r=>{ if(r&&r.ok){const l=await r.json(); const u=l.find(x=>x.id===currentTarget); if(u) openProfileModal(u.id, u.username, u.nickname, u.icon_url, u.status_message);} }); }
 
     async function openSelectFriendsModal(type) {
-        currentModalType = type; const r = await apiPost('/api/friends/list'); if(!r||!r.ok)return; const friends = await r.json(); const listDiv = id('msf-list');
-        if (type === 'group') { id('msf-title').innerText = 'グループ作成'; id('msf-extra-input').innerHTML = '<input type="text" id="msf-group-name" placeholder="グループ名" required style="margin:0;">'; } 
-        else { id('msf-title').innerText = '親しい友達リスト設定'; id('msf-extra-input').innerHTML = '<p style="font-size:13px;color:var(--text-sub);">親しい友達に設定する人を選択してください</p>'; }
+        currentModalType = type; const r = await apiPost('/api/friends/list'); if(!r||!r.ok)return; 
+        const friends = await r.json(); const listDiv = id('msf-list');
+        if (type === 'group') { 
+            id('msf-title').innerText = 'グループ作成'; 
+            id('msf-extra-input').innerHTML = '<input type="text" id="msf-group-name" placeholder="グループ名" required style="margin:0;">'; 
+        } else if (type === 'close') { 
+            id('msf-title').innerText = '親しい友達リスト設定'; 
+            id('msf-extra-input').innerHTML = '<p style="font-size:13px;color:var(--text-sub);">親しい友達に設定する人を選択してください</p>'; 
+        } else if (type === 'add_group_member') {
+            id('msf-title').innerText = 'メンバーを追加'; 
+            id('msf-extra-input').innerHTML = '<p style="font-size:13px;color:var(--text-sub);">グループに追加するフレンドを選択してください</p>';
+        }
+        
         listDiv.innerHTML = friends.map(f => {
             const isChecked = (type === 'close' && f.is_close_friend === 1) ? 'checked' : '';
             const ic = f.icon_url && f.icon_url.trim() !== '' ? (f.icon_url.startsWith('http')||f.icon_url.startsWith('.')?f.icon_url:BACKEND_URL+f.icon_url) : './icon.jpeg';
             return `<label style="display:flex;align-items:center;gap:15px;padding:12px;background:var(--bg-panel);border-radius:12px;cursor:pointer;border:1px solid var(--border);transition:all 0.2s;"><input type="checkbox" value="${f.id}" class="msf-checkbox" ${isChecked} style="width:auto;margin:0;"><img src="${ic}" onerror="this.src='./icon.jpeg'" style="width:36px;height:36px;border-radius:50%;"> <span style="font-size:16px;">${f.nickname}</span></label>`;
         }).join('');
-        show('modal-select-friends'); toggleMenu();
+        show('modal-select-friends'); toggleMenu(); hide('chat-menu');
     }
+
     id('msf-submit').onclick = async (e) => {
         e.preventDefault(); const checkboxes = document.querySelectorAll('.msf-checkbox:checked'); const selectedIds = Array.from(checkboxes).map(cb => cb.value);
         if (currentModalType === 'group') {
             const name = id('msf-group-name').value.trim(); if(!name) return showToast('グループ名を入力してください');
             const r = await apiPost('/api/groups/create', {name, members: selectedIds}); if(r&&r.ok) { showToast('グループを作成しました'); hide('modal-select-friends'); }
-        } else {
+        } else if(currentModalType === 'close') {
             const r = await apiPost('/api/friends/set_close_bulk', {friend_ids: selectedIds}); if(r&&r.ok) { showToast('リストを更新しました'); hide('modal-select-friends'); }
+        } else if(currentModalType === 'add_group_member') {
+            if(selectedIds.length === 0) return showToast('メンバーを選択してください');
+            const r = await apiPost('/api/groups/add_members', {group_id: currentRoom, members: selectedIds}); 
+            if(r&&r.ok) { showToast('メンバーを追加しました'); hide('modal-select-friends'); }
         }
     };
 
@@ -1543,6 +1681,7 @@
         Object.keys(peers).forEach(removePeer);
         if(localStream){ localStream.getTracks().forEach(t=>t.stop()); localStream = null; }
         
+        stopCallSound();
         hide('video-overlay'); hide('modal-incoming'); hide('modal-calling'); hide('text-call-overlay');
         incomingData = null; callSession = null; textCallSession = null; rtcType = 'none'; textCallData = {};
     }
@@ -1624,7 +1763,7 @@
     }
 
     async function answerCallSession(a) {
-        hide('modal-incoming'); 
+        hide('modal-incoming'); stopCallSound();
         if(!a){ 
             if (rtcType === 'text') socket.emit('answer_text', { caller_id: incomingData.caller_id, accept: false });
             else socket.emit('answer_call', { target_id: incomingData.caller_id, accept: false });
