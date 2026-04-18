@@ -148,7 +148,8 @@
         .call-controls{position:absolute;bottom:40px;left:50%;transform:translateX(-50%);display:flex;gap:15px;background:rgba(0,0,0,0.7);backdrop-filter:blur(10px);padding:15px 25px;border-radius:40px;box-shadow:0 10px 30px rgba(0,0,0,0.5);}
 
         #text-call-overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:var(--bg-dark);z-index:100;display:flex;flex-direction:column;padding:25px;}
-        .tc-box{flex:1;background:var(--bg-panel);padding:25px;border-radius:20px;overflow-y:auto;border:1px solid var(--border);font-size:32px; line-height:1.4;}
+        .tc-box{flex:1;background:var(--bg-panel);padding:25px;border-radius:20px;overflow-y:auto;border:1px solid var(--border);font-size:32px; line-height:1.4; display:flex; flex-direction:column;}
+        #tc-remote-text{flex:1; white-space:pre-wrap;}
         #tc-local-input{flex:1;font-size:32px;padding:25px;border-radius:20px;border:2px solid var(--accent);background:var(--bg-dark);resize:none;color:var(--text-main); line-height:1.4;}
         
         .sys-call-msg { text-align:center; padding:15px; margin:10px 0; background:rgba(46,204,113,0.1); border:1px solid var(--accent); border-radius:12px; color:var(--accent); }
@@ -171,13 +172,12 @@
 
 <div id="scr-auth">
     <h2 id="auth-title">Friend Station</h2>
-    <!-- ★ エラー詳細表示エリア -->
     <div id="auth-msg" style="color:var(--danger); margin-bottom:10px; text-align:center; font-weight:bold; font-size:14px; background:rgba(231,76,60,0.1); padding:8px; border-radius:8px; display:none;"></div>
     
     <form onsubmit="submitLogin(event); return false;" id="form-login">
         <input type="text" id="l-user" placeholder="ユーザーID" required>
         <input type="password" id="l-pass" placeholder="パスワード" required>
-        <button type="submit" style="width:100%;">ログイン</button>
+        <button type="submit" id="btn-submit-login" style="width:100%;">ログイン</button>
         <div style="margin-top:20px;text-align:center;">
             <button type="button" class="auth-link" onclick="toggleAuth('reg')">アカウント作成</button>
             <button type="button" class="auth-link" onclick="toggleAuth('trans')">データ引き出し(移行)</button>
@@ -310,12 +310,16 @@
                         </div>
                         <div><h3 id="chat-title" style="font-size:18px;">相手</h3></div>
                     </div>
-                    <div style="display:flex;align-items:center;gap:12px;">
+                    <div style="display:flex;align-items:center;gap:12px;position:relative;">
                         <form onsubmit="execChatSearch(event); return false;" id="form-chat-search" class="chat-search-bar hidden"><input type="text" id="chat-s-query" placeholder="履歴検索" required><span onclick="hide('form-chat-search');show('btn-chat-search')" style="cursor:pointer;padding:0 5px;"><i class="fa-solid fa-xmark"></i></span></form>
                         <button type="button" id="btn-chat-search" onclick="show('form-chat-search');hide('btn-chat-search')" style="background:transparent;font-size:18px;padding:5px;"><i class="fa-solid fa-magnifying-glass"></i></button>
                         <button type="button" onclick="startTextCall()" style="background:transparent;font-size:20px;padding:5px;"><i class="fa-solid fa-message"></i></button>
                         <button type="button" onclick="startRtcCall('voice')" style="background:transparent;font-size:20px;padding:5px;"><i class="fa-solid fa-phone"></i></button> 
                         <button type="button" onclick="startRtcCall('video')" style="background:transparent;font-size:20px;padding:5px;"><i class="fa-solid fa-video"></i></button>
+                        <button type="button" onclick="toggleChatMenu(event)" style="background:transparent;font-size:20px;padding:5px;"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+                        <div id="chat-menu" class="hidden" style="position:absolute; right:0; top:40px; background:var(--bg-panel); border:1px solid var(--border); border-radius:12px; z-index:100; box-shadow:0 5px 15px rgba(0,0,0,0.5); white-space:nowrap;">
+                            <div class="ctx-item danger" onclick="execChatMenuAction()"><i class="fa-solid fa-ban"></i> <span id="chat-menu-action-text">ブロック</span></div>
+                        </div>
                     </div>
                 </div>
                 <div class="chat-box" id="ui-msgs" onscroll="saveScroll('chat', this)"></div>
@@ -324,7 +328,7 @@
                     <div id="edit-preview" class="hidden"><span>編集中: <span id="ed-text" style="color:var(--accent);"></span></span><span style="cursor:pointer;font-size:18px;padding:0 8px;" onclick="cancelEdit()"><i class="fa-solid fa-xmark"></i></span></div>
                     <div id="typing-indicator" style="font-size:12px;color:var(--accent);height:14px;margin-bottom:4px;"></div>
                     <div class="chat-input-row">
-                        <label style="cursor:pointer;font-size:22px;margin-bottom:0;color:var(--accent);"><i class="fa-solid fa-image"></i><input type="file" id="chat-file" accept="image/*,video/*" class="hidden" onchange="previewChatFile(this)"></label>
+                        <label style="cursor:pointer;font-size:22px;margin-bottom:0;color:var(--accent);"><i class="fa-solid fa-image"></i><input type="file" id="chat-file" accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/quicktime" class="hidden" onchange="previewMedia(this, 'chat-file-preview', 'chat-file-preview-vid', 'chat-f-status')"></label>
                         <img id="chat-file-preview" src="" style="width:40px;height:40px;object-fit:cover;border-radius:8px;display:none;border:1px solid var(--border);">
                         <span id="chat-f-status" class="file-status"></span>
                         <input type="text" id="msg-input" placeholder="メッセージを入力..." autocomplete="off">
@@ -343,7 +347,7 @@
                         <textarea id="post-text" placeholder="いまどうしてる？ (1日5回まで)" rows="2" style="border:none;background:transparent;resize:none;font-size:18px;padding:5px 0;"></textarea>
                         <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--border);padding-top:15px;margin-top:5px;">
                             <div style="display:flex;align-items:center;gap:15px;">
-                                <label style="cursor:pointer;color:var(--accent);font-size:22px;"><i class="fa-solid fa-image"></i><input type="file" id="post-file" accept="image/*,video/*" class="hidden" onchange="previewPostFile(this)"></label>
+                                <label style="cursor:pointer;color:var(--accent);font-size:22px;"><i class="fa-solid fa-image"></i><input type="file" id="post-file" accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/quicktime" class="hidden" onchange="previewMedia(this, 'post-file-preview', 'post-file-preview-vid', 'post-f-status')"></label>
                                 <img id="post-file-preview" src="" style="width:50px;height:50px;object-fit:cover;border-radius:10px;display:none;border:1px solid var(--border);">
                                 <select id="post-vis" style="border-radius:20px;padding:8px 12px;width:auto;background:var(--bg-panel);color:var(--text-main);border:1px solid var(--border);">
                                     <option value="public">全体</option>
@@ -477,7 +481,7 @@
         <div id="comments-list"></div>
         <div style="display:flex;align-items:center;gap:12px;border-top:1px solid var(--border);padding-top:15px;">
             <form onsubmit="submitComment(event); return false;" id="form-comment" style="display:flex;width:100%;align-items:center;gap:12px;">
-                <label style="cursor:pointer;font-size:24px;margin:0;color:var(--accent);"><i class="fa-solid fa-camera"></i><input type="file" id="c-file" accept="image/*" class="hidden" onchange="previewCommentFile(this, 'c-file-preview', 'c-f-status')"></label>
+                <label style="cursor:pointer;font-size:24px;margin:0;color:var(--accent);"><i class="fa-solid fa-camera"></i><input type="file" id="c-file" accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/quicktime" class="hidden" onchange="previewMedia(this, 'c-file-preview', 'c-file-preview-vid', 'c-f-status')"></label>
                 <img id="c-file-preview" src="" style="width:44px;height:44px;object-fit:cover;border-radius:8px;display:none;border:1px solid var(--border);">
                 <span id="c-f-status" class="file-status"></span>
                 <input type="text" id="c-text" placeholder="コメントを追加..." style="margin:0;border-radius:24px;flex:1;padding:12px 18px;">
@@ -502,8 +506,9 @@
         </div>
         <div style="padding:15px 20px; border-top:1px solid var(--border); background:var(--bg-panel);">
             <form onsubmit="submitComment(event); return false;" id="form-pd-comment" style="display:flex; width:100%; align-items:center; gap:12px;">
-                <label style="cursor:pointer;font-size:24px;margin:0;color:var(--accent);"><i class="fa-solid fa-camera"></i><input type="file" id="pd-c-file" accept="image/*" class="hidden" onchange="previewCommentFile(this, 'pd-c-file-preview', 'pd-c-f-status')"></label>
+                <label style="cursor:pointer;font-size:24px;margin:0;color:var(--accent);"><i class="fa-solid fa-camera"></i><input type="file" id="pd-c-file" accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/quicktime" class="hidden" onchange="previewMedia(this, 'pd-c-file-preview', 'pd-c-file-preview-vid', 'pd-c-f-status')"></label>
                 <img id="pd-c-file-preview" src="" style="width:40px;height:40px;object-fit:cover;border-radius:8px;display:none;border:1px solid var(--border);">
+                <span id="pd-c-f-status" class="file-status hidden"></span>
                 <input type="text" id="pd-c-text" placeholder="返信をポスト..." style="margin:0;border-radius:24px;flex:1;padding:12px 18px;">
                 <button type="submit" style="border-radius:24px;padding:10px 20px;">送信</button>
             </form>
@@ -587,24 +592,27 @@
 </div>
 
 <script>
-    // ★ 自動回避（フォールバック）システムの設定 ★
     const SERVER_URLS = [
-        "https://api.sys-auth.com",       // 新ドメイン（最強）
-        "https://study.sys-auth.com",        // 旧ドメイン（予備）
-        "https://auth.toway.space",     // サブドメイン偽装
-        "https://www.sys-auth.com"     // サブドメイン偽装
+        "https://api.sys-auth.com",
+        "https://study.sys-auth.com",
+        "https://auth.toway.space",
+        "https://www.sys-auth.com"
     ];
 
     let BACKEND_URL = localStorage.getItem("working_url") || SERVER_URLS[0];
 
+    async function fetchWithTimeout(url, options, timeout = 3000) {
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), timeout);
+        const response = await fetch(url, { ...options, signal: controller.signal });
+        clearTimeout(id);
+        return response;
+    }
+
     async function findWorkingServer() {
         for (let url of SERVER_URLS) {
             try {
-                // 生存確認用APIにアクセス (CORS/中間者攻撃回避ヘッダー付与)
-                const res = await fetch(url + "/api/ping", { 
-                    method: "GET", mode: "cors", cache: "no-store", 
-                    headers: {"Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true"} 
-                });
+                const res = await fetchWithTimeout(url + "/api/ping", { method: "GET", mode: "cors", cache: "no-store", headers: {"Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true"} }, 2500);
                 if (res.ok) {
                     console.log("接続成功:", url);
                     BACKEND_URL = url;
@@ -612,7 +620,7 @@
                     return true;
                 }
             } catch (e) {
-                console.warn("ブロックされました(SSL/CORS等):", url);
+                console.warn("ブロック(SSL/CORS等):", url);
             }
         }
         return false; 
@@ -627,7 +635,7 @@
     let rtcType = 'none'; 
     let isGroupCall = false;
     let peers = {}; let streamFlags = { video: true, audio: true };
-    const generateCallId = () => "call_" + Date.now().toString(36) + Math.random().toString(36).substr(2);
+    let textCallData = {};
     
     let html5QrCode = null, currentPostIdForComment = null, currentModalType = '';
     let currentNav = localStorage.getItem('activeNav') || 'chat';
@@ -637,8 +645,39 @@
     let originalTitle = "Friend Station";
     let prevNotifIds = new Set();
     let isFirstLoadNotifs = true;
+    let pendingRead = false;
 
     const id = el => document.getElementById(el), show = el => el && el.classList ? el.classList.remove('hidden') : id(el)?.classList.remove('hidden'), hide = el => el && el.classList ? el.classList.add('hidden') : id(el)?.classList.add('hidden');
+
+    function previewMedia(inp, prevImgId, prevVidId, statusId) {
+        const f = inp.files[0]; const stat = id(statusId);
+        let prevImg = id(prevImgId); let prevVid = id(prevVidId);
+        if (!prevVid) {
+            prevVid = document.createElement('video'); prevVid.id = prevVidId;
+            prevVid.style.width = prevImg.style.width || '40px'; prevVid.style.height = prevImg.style.height || '40px';
+            prevVid.style.objectFit = 'cover'; prevVid.style.borderRadius = prevImg.style.borderRadius || '8px';
+            prevVid.style.border = prevImg.style.border || '1px solid var(--border)'; prevVid.style.display = 'none';
+            prevImg.parentNode.insertBefore(prevVid, prevImg.nextSibling);
+        }
+        if (f) {
+            const allowedImg = ['image/jpeg','image/png','image/gif','image/webp'];
+            const allowedVid = ['video/mp4','video/quicktime'];
+            if (allowedImg.includes(f.type)) {
+                stat.innerText = '添付済'; const r = new FileReader();
+                r.onload = e => { prevImg.src = e.target.result; prevImg.style.display = 'block'; prevVid.style.display = 'none'; prevVid.src = ''; };
+                r.readAsDataURL(f);
+            } else if (allowedVid.includes(f.type)) {
+                stat.innerText = '添付済(動画)'; const r = new FileReader();
+                r.onload = e => { prevVid.src = e.target.result; prevVid.style.display = 'block'; prevImg.style.display = 'none'; prevImg.src = ''; };
+                r.readAsDataURL(f);
+            } else {
+                stat.innerText = ''; prevImg.style.display = 'none'; prevVid.style.display = 'none';
+                showToast('JPG, PNG, GIF, MP4, MOVのみ対応しています'); inp.value = '';
+            }
+        } else {
+            stat.innerText = ''; prevImg.style.display = 'none'; prevImg.src = ''; prevVid.style.display = 'none'; prevVid.src = '';
+        }
+    }
 
     function showToast(msg) {
         const t = id('toast'); t.innerText = msg; t.classList.add('show');
@@ -712,27 +751,20 @@
         });
     }
 
-    // ★ エラー詳細表示＆自動回避システム連動の submitLogin ★
     async function submitLogin(e) {
         if(e) e.preventDefault(); 
         const msgDiv = id('auth-msg');
-        msgDiv.style.display = 'block';
-        msgDiv.innerText = "接続中...";
-
+        msgDiv.style.display = 'block'; msgDiv.innerText = "接続中...";
         try {
             const r = await fetch(BACKEND_URL+'/api/login',{
-                method:'POST',
-                mode: 'cors',
+                method:'POST', mode: 'cors',
                 headers:{'Content-Type':'application/json', "Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true"},
                 body:JSON.stringify({username:id('l-user').value,password:id('l-pass').value})
             }); 
-            
-            // CloudflareのBot防御やHTMLエラーページを検知
             if(!r.ok && r.status !== 401 && r.status !== 403 && r.status !== 400 && r.status !== 404 && r.status !== 409) {
                 msgDiv.innerText = `通信エラー (${r.status}): CloudflareのBot設定またはTunnelが停止しています。`;
                 return;
             }
-
             const d=await r.json(); 
             if(r.ok){ 
                 msgDiv.style.display = 'none';
@@ -740,17 +772,14 @@
             }
             else if(r.status===403 && d.pendingToken) { msgDiv.style.display = 'none'; startPending(d.pendingToken); }
             else { msgDiv.innerText=d.error; }
-
         } catch (err) {
-            // DNSブロックや強制切断（i-フィルター）、SSLインスペクション、CORSエラーの場合
-            msgDiv.innerText = "アクセスブロック(SSL/CORS等)を検知。別ルートを探しています...";
-            
-            // ★ 自動回避システム発動
+            msgDiv.innerText = "アクセスブロック(SSL/CORS等)検知。別ルート探索中...";
             const found = await findWorkingServer();
             if(found) {
-                msgDiv.innerText = "別ルートに接続しました。もう一度ログインを押してください。";
+                msgDiv.innerText = "別ルートに接続しました。ログインを再試行します...";
+                setTimeout(() => id('btn-submit-login').click(), 1000);
             } else {
-                msgDiv.innerText = "【致命的エラー】すべてのサーバーがi-フィルター等にブロックされています。";
+                msgDiv.innerText = "【致命的エラー】すべてのサーバーがブロックされています。";
             }
         }
     }
@@ -814,16 +843,54 @@
         }, 1000);
     }
 
+    function markReadSafely() {
+        if(!currentRoom || document.hidden) return;
+        if(pendingRead) return;
+        pendingRead = true;
+        setTimeout(() => {
+            if(socket) socket.emit('mark_read', currentRoom);
+            pendingRead = false;
+        }, 1000);
+    }
+
     document.addEventListener("visibilitychange", () => {
         if(!document.hidden) {
             if(titleBlinkInterval) { clearInterval(titleBlinkInterval); titleBlinkInterval = null; }
             document.title = originalTitle;
             updateUnreadBadge();
-            if(currentRoom && currentMain === 'chat') { socket.emit('mark_read', currentRoom); }
+            if(currentRoom && currentMain === 'chat') markReadSafely();
         }
     });
 
     window.toggleSetting = (key, val) => { localStorage.setItem('set-' + key, val); };
+
+    function toggleChatMenu(e) {
+        e.stopPropagation();
+        const menu = id('chat-menu');
+        id('chat-menu-action-text').innerText = isGroupCall ? 'グループを退会' : 'ブロック（フレンド解除）';
+        menu.classList.toggle('hidden');
+    }
+
+    document.addEventListener('click', (e)=> { 
+        if(!e.target.closest('.msg') && !e.target.closest('.msg-opt-btn')) hide('context-menu'); 
+        if(!e.target.closest('.msg-react-btn') && !e.target.closest('#reaction-menu')) hide('reaction-menu'); 
+        if(!e.target.closest('#chat-menu') && !e.target.closest('button[onclick="toggleChatMenu(event)"]')) hide('chat-menu');
+    });
+
+    async function execChatMenuAction() {
+        hide('chat-menu');
+        if (isGroupCall) {
+            if(await showConfirm('このグループから退会しますか？')) {
+                const res = await apiPost('/api/groups/leave', { group_id: currentRoom });
+                if(res && res.ok) { showToast('退会しました'); currentRoom = ''; currentTarget = ''; switchNav('chat'); loadGroups(); }
+            }
+        } else {
+            if(await showConfirm('このユーザーをブロック（フレンド解除）しますか？')) {
+                const res = await apiPost('/api/friends/block', { target_id: currentTarget });
+                if(res && res.ok) { showToast('ブロックしました'); currentRoom = ''; currentTarget = ''; switchNav('chat'); loadFriends(); }
+            }
+        }
+    }
 
     async function initApp(){
         if (!token) { logout(); return; }
@@ -854,7 +921,7 @@
             await idbPutMsg(m); 
             if(m.room_id===currentRoom && id('main-chat').classList.contains('active')){
                 renderMsg(m, true); scrollToBottom('chat'); 
-                if(!document.hidden) socket.emit('mark_read', currentRoom); else { startTitleBlink(); playNotifSound(); }
+                if(!document.hidden) markReadSafely(); else { startTitleBlink(); playNotifSound(); }
             } else { 
                 updateUnreadBadge(); 
                 if(m.user_id!==myInfo.id) { startTitleBlink(); if(localStorage.getItem('set-notif')!=='false' && Notification.permission==="granted"){ playNotifSound(); new Notification(m.user_name, {body: m.type==='text'?m.content:'メディア'}); } }
@@ -877,23 +944,25 @@
         setInterval(() => { const now = Date.now(); let updated = false; for(let uid in typingTimers) { if(now - typingTimers[uid].time > 3000) { delete typingTimers[uid]; updated = true; } } if(updated) updateTypingUI(); }, 1000);
         socket.on('typing', d=>{ if(d.room_id === currentRoom && d.user_id !== myInfo.id) { if(d.is_typing) { typingTimers[d.user_id] = { name: d.nickname, time: Date.now() }; } else { delete typingTimers[d.user_id]; } updateTypingUI(); } });
 
+        // Call Handlers
         socket.on('call_error', d=>{ showToast(d.message); hide('modal-calling'); hangUp(false); });
         socket.on('incoming_call', d=>{ incomingData = d; rtcType = d.video ? 'video' : 'voice'; id('caller-name').innerText = d.caller_name || '着信'; id('call-type-txt').innerHTML = d.video?'<i class="fa-solid fa-video"></i> ビデオ通話':'<i class="fa-solid fa-phone"></i> 音声通話'; show('modal-incoming'); playNotifSound(); });
-        socket.on('call_answered', d=>{ hide('modal-calling'); callSession = d.session_id; show('video-overlay'); setupPeer(d.answerer_id, true); });
+        socket.on('call_answered', d=>{ hide('modal-calling'); callSession = d.session_id; show('video-overlay'); setupPeer(d.answerer_id, true, d.icon_url, d.nickname); });
         socket.on('call_rejected', d=>{ hide('modal-calling'); showToast('通話が拒否されました'); hangUp(false); });
-        socket.on('user_joined_call', d=>{ if(d.user_id !== myInfo.id) setupPeer(d.user_id, true); });
+        socket.on('user_joined_call', d=>{ if(d.user_id !== myInfo.id) setupPeer(d.user_id, true, d.icon_url, d.nickname); });
         socket.on('user_left_call', d=>{ removePeer(d.user_id); if (!isGroupCall && Object.keys(peers).length === 0) hangUp(false); });
         socket.on('media_status_update', d => { const vWrap = id('wrap-'+d.user_id); if(vWrap) { const icon = vWrap.querySelector('.no-video-icon'); const mBadge = vWrap.querySelector('.mic-off-badge'); const vid = vWrap.querySelector('video'); if(icon) icon.style.display = d.video ? 'none' : 'block'; if(vid) vid.style.opacity = d.video ? '1' : '0'; if(mBadge) mBadge.style.display = d.audio ? 'none' : 'block'; } });
-        socket.on('webrtc_offer', async d => { setupPeer(d.sender_id, false); try { await peers[d.sender_id].setRemoteDescription(new RTCSessionDescription(d.offer)); const a = await peers[d.sender_id].createAnswer(); await peers[d.sender_id].setLocalDescription(a); if (isGroupCall) { socket.emit('webrtc_answer', {target_id: d.sender_id, answer: a, room_id: currentRoom, session_id: callSession}); } else { socket.emit('webrtc_answer', {target_id: d.sender_id, answer: a}); } } catch(e) {} });
+        socket.on('webrtc_offer', async d => { setupPeer(d.sender_id, false, d.sender_icon, d.sender_name); try { await peers[d.sender_id].setRemoteDescription(new RTCSessionDescription(d.offer)); const a = await peers[d.sender_id].createAnswer(); await peers[d.sender_id].setLocalDescription(a); socket.emit('webrtc_answer', {target_id: d.sender_id, answer: a, session_id: d.session_id}); } catch(e) {} });
         socket.on('webrtc_answer', async d => { if(peers[d.sender_id]) { try { await peers[d.sender_id].setRemoteDescription(new RTCSessionDescription(d.answer)); } catch(e) {} } }); 
         socket.on('webrtc_ice', d => { if (d.candidate && d.candidate.type) { if (d.candidate.type === 'reject_call') { showToast("通話が拒否されました"); hangUp(false); } else if (d.candidate.type === 'hang_up') { hangUp(false); } return; } if(peers[d.sender_id] && d.candidate) { peers[d.sender_id].addIceCandidate(new RTCIceCandidate(d.candidate)).catch(e=>{}); } });
         socket.on('hang_up', d => { hangUp(false); });
 
+        // Text Call Handlers
         socket.on('incoming_text_call', d=>{ incomingData={...d, type:'text'}; rtcType='text'; id('caller-name').innerText=`${d.caller_name}`; id('call-type-txt').innerHTML='<i class="fa-solid fa-message"></i> テキスト通話着信'; show('modal-incoming'); playNotifSound(); });
-        socket.on('text_call_started', d=>{ hide('modal-calling'); textCallSession = d.session_id; localStorage.setItem('tcSession', textCallSession); localStorage.setItem('tcTargetName', d.target_name); socket.emit('join_text_call',{session_id:d.session_id}); id('tc-target-name').innerText=`${d.target_name}`; id('tc-remote-text').innerText=''; id('tc-local-input').value=''; show('text-call-overlay'); });
+        socket.on('text_call_started', d=>{ hide('modal-calling'); textCallSession = d.session_id; localStorage.setItem('tcSession', textCallSession); localStorage.setItem('tcTargetName', d.target_name); socket.emit('join_text_call',{session_id:d.session_id}); id('tc-target-name').innerText=`${d.target_name}`; textCallData={}; id('tc-remote-text').innerText=''; id('tc-local-input').value=''; show('text-call-overlay'); });
         socket.on('text_call_rejected', ()=>{ hide('modal-calling'); showToast('通話が拒否されました'); rtcType='none'; });
-        socket.on('text_call_sync_receive', d=>{ if (rtcType === 'text') { if (isGroupCall) { id('tc-remote-text').innerText = `[${d.user_id.substring(0,5)}] ${d.text}`; } else { id('tc-remote-text').innerText=d.text; } } });
-        socket.on('text_call_ended', () => { cleanupTextCall(); });
+        socket.on('text_call_sync_receive', d=>{ if (rtcType === 'text') { if (isGroupCall) { textCallData[d.user_id] = `[${d.user_name}] ${d.text}`; id('tc-remote-text').innerText = Object.values(textCallData).join('\n\n'); } else { id('tc-remote-text').innerText=d.text; } } });
+        socket.on('text_call_ended', d => { if(isGroupCall && d && d.user_id) { delete textCallData[d.user_id]; id('tc-remote-text').innerText = Object.values(textCallData).join('\n\n'); } else { cleanupTextCall(); } });
         
         id('msg-input').addEventListener('keydown', e=>{ if(e.key==='Enter' && !e.isComposing) { e.preventDefault(); id('btn-send-msg').click(); } });
         id('msg-input').addEventListener('input', () => { if(currentRoom) { socket.emit('typing', {room_id: currentRoom, is_typing: true}); if(typingTimeout) clearTimeout(typingTimeout); typingTimeout = setTimeout(() => { socket.emit('typing', {room_id: currentRoom, is_typing: false}); }, 2000); } });
@@ -1046,7 +1115,7 @@
         const msgs=await idbGetRoomMsgs(rid); id('ui-msgs').innerHTML=''; msgs.forEach(m => renderMsg(m, false));
         if(scrollPos) id('ui-msgs').scrollTop = scrollPos; else scrollToBottom('chat');
         
-        if(!document.hidden) { socket.emit('mark_read', currentRoom); updateUnreadBadge(); }
+        if(!document.hidden) { markReadSafely(); updateUnreadBadge(); }
     }
     
     function renderMsg(m, append = true){
@@ -1137,7 +1206,7 @@
     }
 
     function showReactionMenu(e, msgId) { e.preventDefault(); e.stopPropagation(); ctxTargetMsgId = msgId; const menu = id('reaction-menu'); menu.style.left = e.pageX + 'px'; menu.style.top = e.pageY + 'px'; show('reaction-menu'); }
-    document.addEventListener('click', (e)=> { if(!e.target.closest('.msg') && !e.target.closest('.msg-opt-btn')) hide('context-menu'); if(!e.target.closest('.msg-react-btn') && !e.target.closest('#reaction-menu')) hide('reaction-menu'); });
+    
     function sendReaction(emoji){ if(ctxTargetMsgId && currentRoom){ socket.emit('add_reaction', {msg_id: ctxTargetMsgId, room_id: currentRoom, emoji}); hide('reaction-menu'); hide('context-menu'); } }
     function cancelReply(){ replyTarget=null; hide('reply-preview'); }
     function cancelEdit(){ editTargetMsgId=null; hide('edit-preview'); id('msg-input').value=''; }
@@ -1165,8 +1234,6 @@
         }
     };
     
-    function previewChatFile(inp) { const f = inp.files[0]; const prev = id('chat-file-preview'); const stat = id('chat-f-status'); if (f) { stat.innerText = '添付済'; if (f.type.startsWith('image/')) { const r = new FileReader(); r.onload = e => { prev.src = e.target.result; prev.style.display = 'block'; }; r.readAsDataURL(f); } else { prev.style.display = 'none'; } } else { stat.innerText = ''; prev.style.display = 'none'; prev.src = ''; } }
-
     async function uploadMedia(textMsg){ 
         const f=id('chat-file').files[0]; if(!f)return; 
         const fd=new FormData(); fd.append('file',f); 
@@ -1177,6 +1244,7 @@
             if (textMsg) socket.emit('send_message', {room_id:currentRoom, type:'text', content:textMsg}); 
         } 
         id('chat-file').value=''; id('chat-f-status').innerText=''; id('chat-file-preview').style.display='none'; id('chat-file-preview').src='';
+        const vid = id('chat-file-preview-vid'); if(vid){ vid.style.display='none'; vid.src=''; }
         id('msg-input').value=''; cancelReply(); 
     }
 
@@ -1192,13 +1260,11 @@
         });
     }
 
-    function previewPostFile(inp) { const f = inp.files[0]; const prev = id('post-file-preview'); const stat = id('post-f-status'); if (f) { stat.innerText = '添付済'; if (f.type.startsWith('image/')) { const r = new FileReader(); r.onload = e => { prev.src = e.target.result; prev.style.display = 'block'; }; r.readAsDataURL(f); } else { prev.style.display = 'none'; } } else { stat.innerText = ''; prev.style.display = 'none'; prev.src = ''; } }
-    
     async function loadTimeline(){
         const r=await apiPost('/api/posts/list'); if(!r||!r.ok)return; const l=await r.json();
         id('ui-timeline').innerHTML = l.map(p=>{
             const ic=p.icon_url && p.icon_url.trim() !== '' ?(p.icon_url.startsWith('http')||p.icon_url.startsWith('.')?p.icon_url:BACKEND_URL+p.icon_url):'./icon.jpeg';
-            const m=p.media_url?`<img src="${p.media_url.startsWith('http')?p.media_url:BACKEND_URL+p.media_url}" class="post-media" onclick="event.stopPropagation(); window.open(this.src)">`:'';
+            const m = p.media_url ? (p.media_url.endsWith('.mp4') || p.media_url.endsWith('.mov') ? `<video src="${p.media_url.startsWith('http')?p.media_url:BACKEND_URL+p.media_url}" class="post-media" controls></video>` : `<img src="${p.media_url.startsWith('http')?p.media_url:BACKEND_URL+p.media_url}" class="post-media" onclick="event.stopPropagation(); window.open(this.src)">`) : '';
             const delBtn = p.user_id===myInfo.id ? `<span class="del-post-btn" onclick="event.stopPropagation(); actionPost('delete','${p.id}')"><i class="fa-solid fa-xmark"></i></span>` : '';
             const visBadge = p.visibility==='close' ? `<span style="color:var(--accent);font-size:12px;margin-left:8px;"><i class="fa-solid fa-lock"></i> 親しい友達</span>` : (p.visibility==='friends' ? `<span style="color:var(--accent);font-size:12px;margin-left:8px;"><i class="fa-solid fa-user-group"></i> フレンド</span>` : '');
 
@@ -1217,7 +1283,7 @@
         const txt=id('post-text').value.trim(); const file=id('post-file').files[0]; if(!txt&&!file)return; 
         let media_url=null; if(file){ const fd=new FormData(); fd.append('file',file); const r=await apiPost('/api/upload',fd); if(r&&r.ok){const d=await r.json(); media_url=d.url;} } 
         const res=await apiPost('/api/posts/create', {content:txt, media_url, visibility: id('post-vis').value}); 
-        if(res&&res.ok){ id('post-text').value=''; id('post-file').value=''; id('post-f-status').innerText=''; id('post-file-preview').style.display='none'; id('post-file-preview').src=''; } 
+        if(res&&res.ok){ id('post-text').value=''; id('post-file').value=''; id('post-f-status').innerText=''; id('post-file-preview').style.display='none'; id('post-file-preview').src=''; const vid = id('post-file-preview-vid'); if(vid){ vid.style.display='none'; vid.src=''; } } 
         else if(res) { const e=await res.json(); showToast(e.error); } 
     }
     
@@ -1226,8 +1292,6 @@
         await apiPost(`/api/posts/${action}`, {post_id:pid}); 
     }
 
-    function previewCommentFile(inp, previewId, statusId) { const f = inp.files[0]; const prev = id(previewId); const stat = id(statusId); if (f) { stat.innerText = '添付済'; if (f.type.startsWith('image/')) { const r = new FileReader(); r.onload = e => { prev.src = e.target.result; prev.style.display = 'block'; }; r.readAsDataURL(f); } else { prev.style.display = 'none'; } } else { stat.innerText = ''; prev.style.display = 'none'; prev.src = ''; } }
-    
     async function openPostDetail(pid) {
         currentPostIdForComment = pid; show('modal-post-detail');
         const r1 = await apiPost('/api/posts/list'); if(!r1||!r1.ok)return;
@@ -1235,7 +1299,7 @@
         const p = tList.find(x => x.id === pid);
         if(p) {
             const ic=p.icon_url && p.icon_url.trim() !== '' ?(p.icon_url.startsWith('http')||p.icon_url.startsWith('.')?p.icon_url:BACKEND_URL+p.icon_url):'./icon.jpeg';
-            const m=p.media_url?`<img src="${p.media_url.startsWith('http')?p.media_url:BACKEND_URL+p.media_url}" style="width:100%;border-radius:12px;margin-top:10px;" onclick="window.open(this.src)">`:'';
+            const m = p.media_url ? (p.media_url.endsWith('.mp4') || p.media_url.endsWith('.mov') ? `<video src="${p.media_url.startsWith('http')?p.media_url:BACKEND_URL+p.media_url}" style="width:100%;border-radius:12px;margin-top:10px;" controls></video>` : `<img src="${p.media_url.startsWith('http')?p.media_url:BACKEND_URL+p.media_url}" style="width:100%;border-radius:12px;margin-top:10px;" onclick="window.open(this.src)">`) : '';
             id('pd-post-content').innerHTML = `<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;cursor:pointer;" onclick="openProfileModal('${p.user_id}','${p.username}','${p.nickname}','${ic}','')"><img src="${ic}" onerror="this.src='./icon.jpeg'" style="width:40px;height:40px;border-radius:50%;object-fit:cover;"><div><b style="font-size:16px;">${p.nickname}</b><br><span style="color:var(--text-sub);font-size:12px;">@${p.username}</span></div></div><div style="font-size:16px;line-height:1.5;white-space:pre-wrap;">${(p.content||'').replace(/</g,"&lt;")}</div>${m}`;
             
             const out = id('pd-likes-list');
@@ -1258,14 +1322,14 @@
         if(!cr||!cr.ok) return;
         const cl = await cr.json(); const cout = id('pd-comments-list');
         if(cl.length===0){ cout.innerHTML = '<div style="color:var(--text-sub);text-align:center;padding:20px 0;">コメントはまだありません</div>'; }
-        else { cout.innerHTML = cl.map(c=>{ const ic=c.icon_url && c.icon_url.trim() !== '' ?(c.icon_url.startsWith('http')||c.icon_url.startsWith('.')?c.icon_url:BACKEND_URL+c.icon_url):'./icon.jpeg'; const cim = c.image_url?`<img src="${c.image_url.startsWith('http')?c.image_url:BACKEND_URL+c.image_url}" class="c-media" onclick="window.open(this.src)">`:''; return `<div class="comment-item"><img src="${ic}" onerror="this.src='./icon.jpeg'" class="c-ic"><div><b>${c.nickname}</b><div style="margin-top:4px;line-height:1.4;">${c.content}</div>${cim}</div></div>`; }).join(''); }
+        else { cout.innerHTML = cl.map(c=>{ const ic=c.icon_url && c.icon_url.trim() !== '' ?(c.icon_url.startsWith('http')||c.icon_url.startsWith('.')?c.icon_url:BACKEND_URL+c.icon_url):'./icon.jpeg'; const cim = c.image_url?(c.image_url.endsWith('.mp4') || c.image_url.endsWith('.mov') ? `<video src="${c.image_url.startsWith('http')?c.image_url:BACKEND_URL+c.image_url}" class="c-media" controls></video>`:`<img src="${c.image_url.startsWith('http')?c.image_url:BACKEND_URL+c.image_url}" class="c-media" onclick="window.open(this.src)">`):''; return `<div class="comment-item"><img src="${ic}" onerror="this.src='./icon.jpeg'" class="c-ic"><div><b>${c.nickname}</b><div style="margin-top:4px;line-height:1.4;">${c.content}</div>${cim}</div></div>`; }).join(''); }
     }
 
     function submitComment(e) {
         if(e) e.preventDefault(); if(!currentPostIdForComment)return; const txt=id('pd-c-text').value.trim(); const file=id('pd-c-file').files[0]; if(!txt&&!file)return;
         let image_url=null; 
         if(file){ const fd=new FormData(); fd.append('file',file); apiPost('/api/upload',fd).then(r=>{if(r&&r.ok) return r.json(); return {};}).then(d=> { image_url=d.url; sendComm(txt, image_url); }); } else { sendComm(txt, null); }
-        async function sendComm(t, img) { const res=await apiPost('/api/posts/comment', {post_id: currentPostIdForComment, content:t, image_url:img}); if(res&&res.ok){ id('pd-c-text').value=''; id('pd-c-file').value=''; id('pd-c-f-status').innerText=''; id('pd-c-file-preview').style.display='none'; id('pd-c-file-preview').src=''; openPostDetail(currentPostIdForComment); } }
+        async function sendComm(t, img) { const res=await apiPost('/api/posts/comment', {post_id: currentPostIdForComment, content:t, image_url:img}); if(res&&res.ok){ id('pd-c-text').value=''; id('pd-c-file').value=''; id('pd-c-f-status').innerText=''; id('pd-c-file-preview').style.display='none'; id('pd-c-file-preview').src=''; const vid = id('pd-c-file-preview-vid'); if(vid){ vid.style.display='none'; vid.src=''; } openPostDetail(currentPostIdForComment); } }
     }
     
     async function showInteractions(idStr, type, targetUserId){
@@ -1471,7 +1535,7 @@
                     socket.emit('hang_up', { target_id: currentTarget, session_id: callSession });
                 }
             }
-            if(incomingData && !callSession) {
+            if(incomingData && !callSession && rtcType !== 'text') {
                 socket.emit('answer_call', { target_id: incomingData.caller_id, accept: false });
             }
         }
@@ -1480,7 +1544,7 @@
         if(localStream){ localStream.getTracks().forEach(t=>t.stop()); localStream = null; }
         
         hide('video-overlay'); hide('modal-incoming'); hide('modal-calling'); hide('text-call-overlay');
-        incomingData = null; callSession = null; textCallSession = null; rtcType = 'none';
+        incomingData = null; callSession = null; textCallSession = null; rtcType = 'none'; textCallData = {};
     }
     
     function cancelCall() { hangUp(true); }
@@ -1503,18 +1567,18 @@
             resetCallControls(mode);
             id('local-video').srcObject = localStream;
 
+            const callId = "call_" + Date.now().toString(36) + Math.random().toString(36).substr(2);
+            callSession = callId;
+
             if (isGroupCall) {
                 const sysMsg = v ? 'ビデオ通話が開始されました' : '音声通話が開始されました';
-                const callId = "call_" + Date.now().toString(36) + Math.random().toString(36).substr(2);
                 socket.emit('send_message', {room_id: currentRoom, type: 'system_call', content: `${sysMsg}:${callId}:${mode}`});
-                
                 show('video-overlay');
-                callSession = callId;
                 socket.emit('join_group_call', {room_id: currentRoom, session_id: callSession});
             } else {
                 id('calling-name').innerText = localStorage.getItem('currentTargetName') || '相手';
                 show('modal-calling');
-                socket.emit('call_user', {target_id: currentTarget, room_id: currentRoom, video: v});
+                socket.emit('call_user', {target_id: currentTarget, room_id: currentRoom, video: v, session_id: callSession});
             }
         } catch(e) { 
             await showConfirm("マイクまたはカメラのアクセスが拒否されました。ブラウザの設定から許可してください。"); 
@@ -1552,7 +1616,7 @@
 
     function joinTextCall(sId) {
         textCallSession = sId;
-        rtcType = 'text';
+        rtcType = 'text'; textCallData = {};
         id('tc-target-name').innerText = localStorage.getItem('currentTargetName') || 'グループ';
         id('tc-remote-text').innerText = ''; id('tc-local-input').value = '';
         show('text-call-overlay');
@@ -1562,10 +1626,15 @@
     async function answerCallSession(a) {
         hide('modal-incoming'); 
         if(!a){ 
-            socket.emit('answer_call', { target_id: incomingData.caller_id, accept: false });
+            if (rtcType === 'text') socket.emit('answer_text', { caller_id: incomingData.caller_id, accept: false });
+            else socket.emit('answer_call', { target_id: incomingData.caller_id, accept: false });
             hangUp(false); 
             return; 
         } 
+        if (rtcType === 'text') {
+            socket.emit('answer_text', { caller_id: incomingData.caller_id, caller_name: incomingData.caller_name, accept: true });
+            return;
+        }
         try {
             const v = incomingData.video;
             localStream = await navigator.mediaDevices.getUserMedia({video: v, audio:true});
@@ -1576,16 +1645,16 @@
             callSession = incomingData.session_id;
             
             socket.emit('webrtc_ice', { target_id: incomingData.caller_id, candidate: { type: 'accept_call' } });
-            socket.emit('join_call', {session_id: callSession});
+            socket.emit('answer_call', { target_id: incomingData.caller_id, session_id: callSession, accept: true });
             
         } catch(e) { 
-            await showConfirm("マイクまたはカメラのアクセスが拒否されました。設定から許可してください。"); 
-            socket.emit('webrtc_ice', { target_id: incomingData.caller_id, candidate: { type: 'reject_call' } });
+            showToast("マイクまたはカメラのアクセスが拒否されました。設定から許可してください。"); 
+            socket.emit('answer_call', { target_id: incomingData.caller_id, accept: false });
             hangUp(false); 
         }
     }
 
-    function setupPeer(peerId, initiator){
+    function setupPeer(peerId, initiator, iconUrl, nickname){
         if(peers[peerId]) return;
         const pc = new RTCPeerConnection({
             iceServers:[
@@ -1604,21 +1673,13 @@
             if(!w) {
                 w = document.createElement('div'); w.className = 'video-wrap'; w.id = 'wrap-'+peerId;
                 const v = document.createElement('video'); v.id = 'vid-'+peerId; v.autoplay = true; v.playsinline = true;
-                const ic = document.createElement('img'); ic.className = 'no-video-icon'; ic.src = './icon.jpeg';
-                const nb = document.createElement('div'); nb.className = 'name-badge'; nb.innerText = '通信中...';
+                const ic = document.createElement('img'); ic.className = 'no-video-icon'; 
+                ic.src = iconUrl ? (iconUrl.startsWith('http')||iconUrl.startsWith('.')?iconUrl:BACKEND_URL+iconUrl) : './icon.jpeg';
+                ic.onerror = function() { this.src = './icon.jpeg'; };
+                const nb = document.createElement('div'); nb.className = 'name-badge'; nb.innerText = nickname || '通信中...';
                 const mo = document.createElement('div'); mo.className = 'mic-off-badge'; mo.innerHTML = '<i class="fa-solid fa-microphone-slash"></i>';
                 w.appendChild(v); w.appendChild(ic); w.appendChild(nb); w.appendChild(mo);
                 id('video-grid').appendChild(w);
-                
-                apiPost('/api/friends/list').then(r=>{if(r&&r.ok)return r.json(); return [];}).then(l=>{
-                    const u = l.find(x=>x.id===peerId);
-                    if(u) { 
-                        nb.innerText = u.nickname; 
-                        if(u.icon_url && u.icon_url.trim() !== '') {
-                            ic.src = u.icon_url.startsWith('http')||u.icon_url.startsWith('.')?u.icon_url:BACKEND_URL+u.icon_url; 
-                        }
-                    }
-                });
             }
             const vid = w.querySelector('video');
             if (vid.srcObject !== e.streams[0]) { vid.srcObject = e.streams[0]; }
@@ -1626,8 +1687,7 @@
         
         pc.onicecandidate = e => { 
             if(e.candidate) {
-                const payload = { target_id: peerId, candidate: e.candidate };
-                if (isGroupCall) { payload.room_id = currentRoom; payload.session_id = callSession; }
+                const payload = { target_id: peerId, candidate: e.candidate, session_id: callSession };
                 socket.emit('webrtc_ice', payload); 
             }
         };
@@ -1643,8 +1703,7 @@
             pc.createOffer()
               .then(o => pc.setLocalDescription(o).then(() => o))
               .then(o => {
-                  const payload = { target_id: peerId, offer: o };
-                  if (isGroupCall) { payload.room_id = currentRoom; payload.session_id = callSession; }
+                  const payload = { target_id: peerId, offer: o, session_id: callSession };
                   socket.emit('webrtc_offer', payload);
               })
               .catch(err => console.error("Offer error:", err));
@@ -1678,7 +1737,7 @@
         if (isGroupCall) {
             textCallSession = "tc_" + Date.now();
             id('tc-target-name').innerText = localStorage.getItem('currentTargetName') || 'グループ';
-            id('tc-remote-text').innerText = ''; id('tc-local-input').value = '';
+            id('tc-remote-text').innerText = ''; id('tc-local-input').value = ''; textCallData = {};
             show('text-call-overlay');
             socket.emit('send_message', {room_id: currentRoom, type: 'system_call', content: `テキスト通話が開始されました:${textCallSession}:text`});
             socket.emit('join_text_call', {session_id: textCallSession});
@@ -1698,7 +1757,7 @@
     
     function cleanupTextCall() { 
         hide('text-call-overlay'); 
-        textCallSession=null; rtcType='none'; 
+        textCallSession=null; rtcType='none'; textCallData = {};
         localStorage.removeItem('tcSession'); localStorage.removeItem('tcTargetName'); 
     }
 
