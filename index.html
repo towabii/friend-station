@@ -703,7 +703,7 @@
     let pendingRead = false;
     let currentCallAudio = null;
 
-    const id = el => document.getElementById(el), show = el => el && el.classList ? el.classList.remove('hidden') : id(el)?.classList.remove('hidden'), hide = el => el && el.classList ? el.classList.add('hidden') : id(el)?.classList.add('hidden');
+    const id = el => document.getElementById(el), show = el => { console.log('show called for:', el); const element = el && el.classList ? el : id(el); if(element) { element.classList.remove('hidden'); if(element.id === 'video-overlay') element.style.display = 'flex'; else if(element.id === 'text-call-overlay') element.style.display = 'flex'; else if(element.classList.contains('modal-overlay')) element.style.display = 'flex'; } }, hide = el => { console.log('hide called for:', el); const element = el && el.classList ? el : id(el); if(element) { element.classList.add('hidden'); element.style.display = 'none'; } };
 
     function previewMedia(inp, prevImgId, prevVidId, statusId) {
         const f = inp.files[0]; const stat = id(statusId);
@@ -1059,12 +1059,47 @@
         socket.on('typing', d=>{ if(d.room_id === currentRoom && d.user_id !== myInfo.id) { if(d.is_typing) { typingTimers[d.user_id] = { name: d.nickname, time: Date.now() }; } else { delete typingTimers[d.user_id]; } updateTypingUI(); } });
 
         // Call Handlers
-        socket.on('call_error', d=>{ showToast(d.message); hide('modal-calling'); hangUp(false); });
-        socket.on('incoming_call', d=>{ incomingData = d; rtcType = d.video ? 'video' : 'voice'; id('caller-name').innerText = d.caller_name || '着信'; id('call-type-txt').innerHTML = d.video?'<i class="fa-solid fa-video"></i> ビデオ通話':'<i class="fa-solid fa-phone"></i> 音声通話'; show('modal-incoming'); playCallSound(); });
-        socket.on('call_answered', d=>{ hide('modal-calling'); callSession = d.session_id; show('video-overlay'); setupPeer(d.answerer_id, true, d.icon_url, d.nickname); });
-        socket.on('call_rejected', d=>{ hide('modal-calling'); showToast('通話が拒否されました'); hangUp(false); });
-        socket.on('user_joined_call', d=>{ if(d.user_id !== myInfo.id) setupPeer(d.user_id, true, d.icon_url, d.nickname); });
-        socket.on('user_left_call', d=>{ removePeer(d.user_id); if (!isGroupCall && Object.keys(peers).length === 0) hangUp(false); });
+        socket.on('call_error', d => {
+            showToast(d.message);
+            hide('modal-calling');
+            hide('modal-incoming');
+            hangUp(false);
+        });
+
+        const showIncomingCallUI = d => {
+            console.log('showIncomingCallUI called with:', d);
+            incomingData = d;
+            rtcType = d.video ? 'video' : 'voice';
+            id('caller-name').innerText = d.caller_name || '着信';
+            id('call-type-txt').innerHTML = d.video ? '<i class="fa-solid fa-video"></i> ビデオ通話' : '<i class="fa-solid fa-phone"></i> 音声通話';
+            hide('video-overlay');
+            hide('text-call-overlay');
+            show('modal-incoming');
+            playCallSound();
+        };
+        socket.on('incoming_call', showIncomingCallUI);
+        socket.on('call_received', showIncomingCallUI);
+
+        const showActiveCallUI = d => {
+            console.log('showActiveCallUI called with:', d);
+            hide('modal-calling');
+            hide('modal-incoming');
+            callSession = d.session_id;
+            show('video-overlay');
+            setupPeer(d.answerer_id, true, d.icon_url, d.nickname);
+        };
+        socket.on('call_answered', showActiveCallUI);
+        socket.on('call_started', showActiveCallUI);
+
+        socket.on('call_rejected', d => {
+            hide('modal-calling');
+            hide('modal-incoming');
+            showToast('通話が拒否されました');
+            hangUp(false);
+        });
+
+        socket.on('user_joined_call', d => { if(d.user_id !== myInfo.id) setupPeer(d.user_id, true, d.icon_url, d.nickname); });
+        socket.on('user_left_call', d => { removePeer(d.user_id); if (!isGroupCall && Object.keys(peers).length === 0) hangUp(false); });
         socket.on('media_status_update', d => { const vWrap = id('wrap-'+d.user_id); if(vWrap) { const icon = vWrap.querySelector('.no-video-icon'); const mBadge = vWrap.querySelector('.mic-off-badge'); const vid = vWrap.querySelector('video'); if(icon) icon.style.display = d.video ? 'none' : 'block'; if(vid) vid.style.opacity = d.video ? '1' : '0'; if(mBadge) mBadge.style.display = d.audio ? 'none' : 'block'; } });
         socket.on('webrtc_offer', async d => { setupPeer(d.sender_id, false, d.sender_icon, d.sender_name); try { await peers[d.sender_id].setRemoteDescription(new RTCSessionDescription(d.offer)); const a = await peers[d.sender_id].createAnswer(); await peers[d.sender_id].setLocalDescription(a); socket.emit('webrtc_answer', {target_id: d.sender_id, answer: a, session_id: d.session_id}); } catch(e) {} });
         socket.on('webrtc_answer', async d => { if(peers[d.sender_id]) { try { await peers[d.sender_id].setRemoteDescription(new RTCSessionDescription(d.answer)); } catch(e) {} } }); 
@@ -1072,9 +1107,35 @@
         socket.on('hang_up', d => { hangUp(false); });
 
         // Text Call Handlers
-        socket.on('incoming_text_call', d=>{ incomingData={...d, type:'text'}; rtcType='text'; id('caller-name').innerText=`${d.caller_name}`; id('call-type-txt').innerHTML='<i class="fa-solid fa-message"></i> テキスト通話着信'; show('modal-incoming'); playCallSound(); });
-        socket.on('text_call_started', d=>{ hide('modal-calling'); textCallSession = d.session_id; localStorage.setItem('tcSession', textCallSession); localStorage.setItem('tcTargetName', d.target_name); socket.emit('join_text_call',{session_id:d.session_id}); id('tc-target-name').innerText=`${d.target_name}`; textCallData={}; id('tc-remote-text').innerText=''; id('tc-local-input').value=''; show('text-call-overlay'); });
-        socket.on('text_call_rejected', ()=>{ hide('modal-calling'); showToast('通話が拒否されました'); rtcType='none'; });
+        const showIncomingTextCallUI = d => {
+            console.log('showIncomingTextCallUI called with:', d);
+            incomingData={...d, type:'text'};
+            rtcType='text';
+            id('caller-name').innerText=`${d.caller_name}`;
+            id('call-type-txt').innerHTML='<i class="fa-solid fa-message"></i> テキスト通話着信';
+            hide('video-overlay');
+            hide('text-call-overlay');
+            show('modal-incoming');
+            playCallSound();
+        };
+        socket.on('incoming_text_call', showIncomingTextCallUI);
+        socket.on('text_call_received', showIncomingTextCallUI);
+
+        socket.on('text_call_started', d => {
+            console.log('text_call_started called with:', d);
+            hide('modal-calling');
+            hide('modal-incoming');
+            textCallSession = d.session_id;
+            localStorage.setItem('tcSession', textCallSession);
+            localStorage.setItem('tcTargetName', d.target_name);
+            socket.emit('join_text_call',{session_id:d.session_id});
+            id('tc-target-name').innerText=`${d.target_name}`;
+            textCallData={};
+            id('tc-remote-text').innerText='';
+            id('tc-local-input').value='';
+            show('text-call-overlay');
+        });
+        socket.on('text_call_rejected', ()=>{ hide('modal-calling'); hide('modal-incoming'); showToast('通話が拒否されました'); rtcType='none'; });
         socket.on('text_call_sync_receive', d=>{ if (rtcType === 'text') { if (isGroupCall) { textCallData[d.user_id] = `[${d.user_name}] ${d.text}`; id('tc-remote-text').innerText = Object.values(textCallData).join('\n\n'); } else { id('tc-remote-text').innerText=d.text; } } });
         socket.on('text_call_ended', d => { if(isGroupCall && d && d.user_id) { delete textCallData[d.user_id]; id('tc-remote-text').innerText = Object.values(textCallData).join('\n\n'); } else { cleanupTextCall(); } });
         
@@ -1705,6 +1766,9 @@
             localStream = await navigator.mediaDevices.getUserMedia({video: v, audio: true});
             resetCallControls(mode);
             id('local-video').srcObject = localStream;
+            hide('text-call-overlay');
+            hide('modal-incoming');
+            hide('modal-calling');
 
             const callId = "call_" + Date.now().toString(36) + Math.random().toString(36).substr(2);
             callSession = callId;
@@ -1877,10 +1941,16 @@
             textCallSession = "tc_" + Date.now();
             id('tc-target-name').innerText = localStorage.getItem('currentTargetName') || 'グループ';
             id('tc-remote-text').innerText = ''; id('tc-local-input').value = ''; textCallData = {};
+            hide('video-overlay');
+            hide('modal-incoming');
+            hide('modal-calling');
             show('text-call-overlay');
             socket.emit('send_message', {room_id: currentRoom, type: 'system_call', content: `テキスト通話が開始されました:${textCallSession}:text`});
             socket.emit('join_text_call', {session_id: textCallSession});
         } else {
+            hide('video-overlay');
+            hide('text-call-overlay');
+            hide('modal-incoming');
             show('modal-calling'); 
             socket.emit('call_text', {target_id: currentTarget}); 
         }
