@@ -139,17 +139,13 @@
         .saved-check{color:var(--accent);font-size:13px;margin-left:12px;opacity:0;transition:opacity 0.3s;} .saved-check.show{opacity:1;}
         
         #video-overlay {position:fixed;top:0;left:0;width:100%;height:100%;background:#000;z-index:3000;display:flex;flex-direction:column;}
-        #video-grid { flex:1; display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:15px; padding:20px; padding-top:80px; padding-bottom:120px; overflow-y:auto; }
+        #video-grid { flex:1; display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:15px; padding:20px; padding-bottom:100px; overflow-y:auto; }
         .video-wrap { position:relative; width:100%; max-width:400px; aspect-ratio:4/3; background:#111; border-radius:16px; overflow:hidden; display:flex; align-items:center; justify-content:center; box-shadow:0 10px 30px rgba(0,0,0,0.5); border:1px solid #333; }
         .video-wrap video { width:100%; height:100%; object-fit:cover; transition: opacity 0.3s ease; }
         .video-wrap .no-video-icon { position:absolute; width:120px; height:120px; border-radius:50%; object-fit:cover; display:none; border:3px solid var(--border); box-shadow:0 4px 15px rgba(0,0,0,0.8); z-index:1; }
         .video-wrap .name-badge { position:absolute; bottom:10px; left:10px; background:rgba(0,0,0,0.6); color:#fff; padding:6px 12px; border-radius:12px; font-size:13px; backdrop-filter:blur(5px); font-weight:bold; z-index:2; }
         .video-wrap .mic-off-badge { position:absolute; top:10px; right:10px; color:var(--danger); font-size:18px; display:none; background:rgba(0,0,0,0.6); padding:8px; border-radius:50%; backdrop-filter:blur(5px); z-index:2; }
-        .call-controls{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);display:flex;gap:20px;background:rgba(0,0,0,0.7);backdrop-filter:blur(10px);padding:20px 30px;border-radius:50px;box-shadow:0 10px 30px rgba(0,0,0,0.5);}
-        .call-btn{background:var(--accent);color:#fff;border:none;border-radius:50%;width:60px;height:60px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:24px;transition:all 0.3s ease;box-shadow:0 4px 12px rgba(46,204,113,0.3);}
-        .call-btn:hover{transform:scale(1.1);box-shadow:0 6px 20px rgba(46,204,113,0.5);}
-        .call-btn.danger{background:var(--danger);box-shadow:0 4px 12px rgba(231,76,60,0.3);}
-        .call-btn.danger:hover{box-shadow:0 6px 20px rgba(231,76,60,0.5);}
+        .call-controls{position:absolute;bottom:40px;left:50%;transform:translateX(-50%);display:flex;gap:15px;background:rgba(0,0,0,0.7);backdrop-filter:blur(10px);padding:15px 25px;border-radius:40px;box-shadow:0 10px 30px rgba(0,0,0,0.5);}
 
         #text-call-overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:var(--bg-dark);z-index:100;display:flex;flex-direction:column;padding:25px;}
         .tc-box{flex:1;background:var(--bg-panel);padding:25px;border-radius:20px;overflow-y:auto;border:1px solid var(--border);font-size:32px; line-height:1.4; display:flex; flex-direction:column;}
@@ -629,22 +625,12 @@
             <h4 style="color:var(--text-main); margin-top:20px;">3. 法令順守と情報開示</h4>
             <p>捜査機関や裁判所等の公的機関から適法な手順による開示請求があった場合、運営者はユーザーの同意を得ることなく、保有する全ての情報を開示します。</p>
 <div id="video-overlay" class="hidden">
-    <div style="position:absolute; top:15px; left:15px; right:15px; display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.5); padding:12px 15px; border-radius:12px; backdrop-filter:blur(5px); z-index:10;">
-        <div style="display:flex; align-items:center; gap:12px;">
-            <img id="call-header-icon" src="./icon.jpeg" style="width:40px; height:40px; border-radius:50%; object-fit:cover; border:2px solid var(--accent);">
-            <div>
-                <div id="call-header-name" style="font-weight:bold; font-size:16px; color:#fff;">通話中...</div>
-                <div style="font-size:12px; color:var(--text-sub);" id="call-duration">00:00</div>
-            </div>
-        </div>
-        <button type="button" class="danger" onclick="cancelCall()" style="border-radius:20px; padding:8px 16px; font-size:14px; white-space:nowrap;"><i class="fa-solid fa-phone-slash"></i> 終了</button>
-    </div>
     <div id="video-grid"></div>
     <div class="call-controls">
-        <button type="button" id="btn-mic" class="call-btn success" title="マイク" onclick="toggleMic()"><i class="fa-solid fa-microphone"></i></button>
-        <button type="button" id="btn-cam" class="call-btn success" title="カメラ" onclick="toggleCam()"><i class="fa-solid fa-video"></i></button>
-        <button type="button" id="btn-spk" class="call-btn success" title="スピーカー" onclick="toggleSpk()"><i class="fa-solid fa-volume-high"></i></button>
-        <button type="button" class="call-btn danger" title="通話終了" onclick="cancelCall()"><i class="fa-solid fa-phone-slash"></i></button>
+        <button type="button" id="btn-mic" class="success" onclick="toggleMic()"><i class="fa-solid fa-microphone"></i> ON</button>
+        <button type="button" id="btn-cam" class="success" onclick="toggleCam()"><i class="fa-solid fa-video"></i> ON</button>
+        <button type="button" id="btn-spk" class="success" onclick="toggleSpk()"><i class="fa-solid fa-volume-high"></i> ON</button>
+        <button type="button" class="call-btn danger" onclick="cancelCall()">終</button>
     </div>
 </div>
 
@@ -1075,7 +1061,7 @@
         // Call Handlers
         socket.on('call_error', d=>{ showToast(d.message); hide('modal-calling'); hangUp(false); });
         socket.on('incoming_call', d=>{ incomingData = d; rtcType = d.video ? 'video' : 'voice'; id('caller-name').innerText = d.caller_name || '着信'; id('call-type-txt').innerHTML = d.video?'<i class="fa-solid fa-video"></i> ビデオ通話':'<i class="fa-solid fa-phone"></i> 音声通話'; show('modal-incoming'); playCallSound(); });
-        socket.on('call_answered', d=>{ hide('modal-calling'); callSession = d.session_id; id('call-header-name').innerText = d.nickname || '通話相手'; id('call-header-icon').src = d.icon_url ? (d.icon_url.startsWith('http')||d.icon_url.startsWith('.')?d.icon_url:BACKEND_URL+d.icon_url) : './icon.jpeg'; show('video-overlay'); setupPeer(d.answerer_id, true, d.icon_url, d.nickname); });
+        socket.on('call_answered', d=>{ hide('modal-calling'); callSession = d.session_id; show('video-overlay'); setupPeer(d.answerer_id, true, d.icon_url, d.nickname); });
         socket.on('call_rejected', d=>{ hide('modal-calling'); showToast('通話が拒否されました'); hangUp(false); });
         socket.on('user_joined_call', d=>{ if(d.user_id !== myInfo.id) setupPeer(d.user_id, true, d.icon_url, d.nickname); });
         socket.on('user_left_call', d=>{ removePeer(d.user_id); if (!isGroupCall && Object.keys(peers).length === 0) hangUp(false); });
@@ -1654,10 +1640,10 @@
         rtcType = mode; 
         streamFlags = {video: (mode==='video'), audio: true};
         const bMic=id('btn-mic'), bCam=id('btn-cam'), bSpk=id('btn-spk');
-        bMic.innerHTML='<i class="fa-solid fa-microphone"></i>'; bMic.className="call-btn success";
-        bSpk.innerHTML='<i class="fa-solid fa-volume-high"></i>'; bSpk.className="call-btn success"; 
+        bMic.innerHTML='<i class="fa-solid fa-microphone"></i> ON'; bMic.className="success";
+        bSpk.innerHTML='<i class="fa-solid fa-volume-high"></i> ON'; bSpk.className="success"; 
         
-        if(mode==='video'){ show('btn-cam'); bCam.innerHTML='<i class="fa-solid fa-video"></i>'; bCam.className="call-btn success"; } 
+        if(mode==='video'){ show('btn-cam'); bCam.innerHTML='<i class="fa-solid fa-video"></i> ON'; bCam.className="success"; } 
         else { hide('btn-cam'); }
         
         id('video-grid').innerHTML = ''; 
@@ -1726,15 +1712,10 @@
             if (isGroupCall) {
                 const sysMsg = v ? 'ビデオ通話が開始されました' : '音声通話が開始されました';
                 socket.emit('send_message', {room_id: currentRoom, type: 'system_call', content: `${sysMsg}:${callId}:${mode}`});
-                id('call-header-name').innerText = 'グループ通話中';
-                id('call-header-icon').src = './tag.jpg';
                 show('video-overlay');
                 socket.emit('join_group_call', {room_id: currentRoom, session_id: callSession});
             } else {
-                const targetName = localStorage.getItem('currentTargetName') || '相手';
-                id('calling-name').innerText = targetName;
-                id('call-header-name').innerText = targetName;
-                id('call-header-icon').src = localStorage.getItem('currentTargetIcon') || './icon.jpeg';
+                id('calling-name').innerText = localStorage.getItem('currentTargetName') || '相手';
                 show('modal-calling');
                 socket.emit('call_user', {target_id: currentTarget, room_id: currentRoom, video: v, session_id: callSession});
             }
@@ -1751,8 +1732,6 @@
             localStream = stream;
             resetCallControls(mode); 
             id('local-video').srcObject = localStream;
-            id('call-header-name').innerText = 'グループ通話中';
-            id('call-header-icon').src = './tag.jpg';
             show('video-overlay');
             callSession = sId;
             socket.emit('join_group_call', {room_id: currentRoom, session_id: callSession});
@@ -1762,8 +1741,6 @@
                     localStream = stream;
                     resetCallControls('voice');
                     id('local-video').srcObject=localStream;
-                    id('call-header-name').innerText = 'グループ通話中';
-                    id('call-header-icon').src = './tag.jpg';
                     show('video-overlay');
                     callSession = sId;
                     socket.emit('join_group_call', {room_id: currentRoom, session_id: callSession});
@@ -1803,8 +1780,6 @@
             const mode = v ? 'video' : 'voice';
             resetCallControls(mode); 
             id('local-video').srcObject = localStream;
-            id('call-header-name').innerText = incomingData.caller_name || '相手';
-            id('call-header-icon').src = incomingData.icon_url ? (incomingData.icon_url.startsWith('http')||incomingData.icon_url.startsWith('.')?incomingData.icon_url:BACKEND_URL+incomingData.icon_url) : './icon.jpeg';
             show('video-overlay');
             callSession = incomingData.session_id;
             
@@ -1885,9 +1860,9 @@
         const mo = id('local-mic-off'); if(mo) mo.style.display = streamFlags.audio ? "none" : "block";
     }
 
-    function toggleMic(){ if(localStream){ const t=localStream.getAudioTracks()[0]; if(t){ t.enabled=!t.enabled; streamFlags.audio=t.enabled; const b=id('btn-mic'); if(t.enabled){b.innerHTML='<i class="fa-solid fa-microphone"></i>';b.className="call-btn success";}else{b.innerHTML='<i class="fa-solid fa-microphone-slash"></i>';b.className="call-btn danger";} updateMediaStatus(); } } }
-    function toggleCam(){ if(localStream){ const t=localStream.getVideoTracks()[0]; if(t){ t.enabled=!t.enabled; streamFlags.video=t.enabled; const b=id('btn-cam'); if(t.enabled){b.innerHTML='<i class="fa-solid fa-video"></i>';b.className="call-btn success";}else{b.innerHTML='<i class="fa-solid fa-video-slash"></i>';b.className="call-btn danger";} updateMediaStatus(); } } }
-    function toggleSpk(){ const vs = document.querySelectorAll('#video-grid video'); let muted = false; vs.forEach(v => { v.muted = !v.muted; muted = v.muted; }); const b=id('btn-spk'); if(!muted){b.innerHTML='<i class="fa-solid fa-volume-high"></i>';b.className="call-btn success";}else{b.innerHTML='<i class="fa-solid fa-volume-xmark"></i>';b.className="call-btn danger";} }
+    function toggleMic(){ if(localStream){ const t=localStream.getAudioTracks()[0]; if(t){ t.enabled=!t.enabled; streamFlags.audio=t.enabled; const b=id('btn-mic'); if(t.enabled){b.innerHTML='<i class="fa-solid fa-microphone"></i> ON';b.className="success";}else{b.innerHTML='<i class="fa-solid fa-microphone-slash"></i> OFF';b.className="danger";} updateMediaStatus(); } } }
+    function toggleCam(){ if(localStream){ const t=localStream.getVideoTracks()[0]; if(t){ t.enabled=!t.enabled; streamFlags.video=t.enabled; const b=id('btn-cam'); if(t.enabled){b.innerHTML='<i class="fa-solid fa-video"></i> ON';b.className="success";}else{b.innerHTML='<i class="fa-solid fa-video-slash"></i> OFF';b.className="danger";} updateMediaStatus(); } } }
+    function toggleSpk(){ const vs = document.querySelectorAll('#video-grid video'); let muted = false; vs.forEach(v => { v.muted = !v.muted; muted = v.muted; }); const b=id('btn-spk'); if(!muted){b.innerHTML='<i class="fa-solid fa-volume-high"></i> ON';b.className="success";}else{b.innerHTML='<i class="fa-solid fa-volume-xmark"></i> OFF';b.className="danger";} }
 
     function startTextCall(){ 
         if(!currentRoom) return; 
