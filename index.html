@@ -65,6 +65,10 @@
         
         #slide-menu{position:absolute;top:0;left:240px;width:280px;height:100%;background:var(--bg-panel);border-right:1px solid var(--border);transform:translateX(-100%);transition:transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);z-index:9;padding:25px 20px;display:flex;flex-direction:column;gap:12px; box-shadow: 10px 0 30px rgba(0,0,0,0.5);}
         @media(max-width: 768px){ #slide-menu{left:70px;} } #slide-menu.open{transform:translateX(0);}
+        #chat-menu{position:fixed!important;top:70px!important;right:20px!important;z-index:2147483647!important;left:auto!important;transform:none!important;}
+        #chat-menu, #chat-menu * { z-index:2147483647!important; }
+        .chat-box, .msg-wrap, .msg, .sys-call-msg { z-index:1; }
+        .sys-call-msg { position:relative; z-index:1; }
         .menu-item{padding:14px;border-radius:12px;cursor:pointer;font-weight:bold;display:flex;align-items:center;gap:15px; transition:all 0.2s;} .menu-item:hover{background:var(--bg-hover);color:var(--accent);}
         .menu-item i { width: 20px; text-align:center; }
 
@@ -333,7 +337,7 @@
                         <button type="button" onclick="startRtcCall('voice')" style="background:transparent;font-size:20px;padding:5px;"><i class="fa-solid fa-phone"></i></button> 
                         <button type="button" onclick="startRtcCall('video')" style="background:transparent;font-size:20px;padding:5px;"><i class="fa-solid fa-video"></i></button>
                         <button type="button" onclick="toggleChatMenu(event)" style="background:transparent;font-size:20px;padding:5px;"><i class="fa-solid fa-ellipsis-vertical"></i></button>
-                        <div id="chat-menu" class="hidden" style="position:absolute; right:0; top:40px; background:var(--bg-panel); border:1px solid var(--border); border-radius:12px; z-index:100; box-shadow:0 5px 15px rgba(0,0,0,0.5); white-space:nowrap;">
+                        <div id="chat-menu" class="hidden" style="position:fixed; top:70px; right:20px; background:var(--bg-panel); border:1px solid var(--border); border-radius:12px; z-index:2147483647; box-shadow:0 5px 15px rgba(0,0,0,0.5); white-space:nowrap;">
                             <div class="ctx-item" id="chat-menu-add-member" onclick="openSelectFriendsModal('add_group_member')"><i class="fa-solid fa-user-plus"></i> メンバーを追加</div>
                             <div class="ctx-item danger" onclick="execChatMenuAction()"><i class="fa-solid fa-ban"></i> <span id="chat-menu-action-text">ブロック</span></div>
                         </div>
@@ -569,6 +573,14 @@
     </div>
 </div>
 
+<div id="modal-media-view" class="modal-overlay hidden" onclick="if(event.target===this)closeMediaModal()">
+    <div class="modal" style="max-width:90%;max-height:90%;padding:0;background:transparent;border:none;box-shadow:none;position:relative;overflow:hidden;">
+        <span class="close-btn" style="position:absolute;top:15px;right:20px;z-index:10;" onclick="event.stopPropagation(); closeMediaModal();"><i class="fa-solid fa-xmark"></i></span>
+        <img id="mv-img" src="" style="max-width:100%;max-height:100%;display:block;margin:auto;border-radius:20px;">
+        <video id="mv-video" controls style="max-width:100%;max-height:100%;display:none;margin:auto;border-radius:20px;"></video>
+    </div>
+</div>
+
 <div id="modal-interactions" class="modal-overlay hidden" onclick="if(event.target===this)hide('modal-interactions')">
     <div class="modal" style="max-height:60vh;">
         <span class="close-btn" onclick="hide('modal-interactions')"><i class="fa-solid fa-xmark"></i></span>
@@ -624,13 +636,17 @@
             <p>ユーザーは、運営者がデータベースに直接アクセスし、ユーザー間の「全てのプライベートな通信（個別チャット・通話内容等）」を閲覧、記録、分析することに明確に同意します。本サービスにおいて「プライバシー」とは、第三者に対する秘密を指すものであり、運営者に対する秘密を指すものではありません。</p>
             <h4 style="color:var(--text-main); margin-top:20px;">3. 法令順守と情報開示</h4>
             <p>捜査機関や裁判所等の公的機関から適法な手順による開示請求があった場合、運営者はユーザーの同意を得ることなく、保有する全ての情報を開示します。</p>
+        </div>
+    </div>
+</div>
+
 <div id="video-overlay" class="hidden">
     <div id="video-grid"></div>
     <div class="call-controls">
         <button type="button" id="btn-mic" class="success" onclick="toggleMic()"><i class="fa-solid fa-microphone"></i> ON</button>
         <button type="button" id="btn-cam" class="success" onclick="toggleCam()"><i class="fa-solid fa-video"></i> ON</button>
         <button type="button" id="btn-spk" class="success" onclick="toggleSpk()"><i class="fa-solid fa-volume-high"></i> ON</button>
-        <button type="button" class="call-btn danger" onclick="cancelCall()">終</button>
+        <button type="button" class="call-btn danger" onclick="cancelCall()"><i class="fa-solid fa-phone-slash" style="color: white;"></i></button>
     </div>
 </div>
 
@@ -703,7 +719,7 @@
     let pendingRead = false;
     let currentCallAudio = null;
 
-    const id = el => document.getElementById(el), show = el => { console.log('show called for:', el); const element = el && el.classList ? el : id(el); if(element) { element.classList.remove('hidden'); if(element.id === 'video-overlay') element.style.display = 'flex'; else if(element.id === 'text-call-overlay') element.style.display = 'flex'; else if(element.classList.contains('modal-overlay')) element.style.display = 'flex'; } }, hide = el => { console.log('hide called for:', el); const element = el && el.classList ? el : id(el); if(element) { element.classList.add('hidden'); element.style.display = 'none'; } };
+    const id = el => document.getElementById(el), show = el => el && el.classList ? el.classList.remove('hidden') : id(el)?.classList.remove('hidden'), hide = el => el && el.classList ? el.classList.add('hidden') : id(el)?.classList.add('hidden');
 
     function previewMedia(inp, prevImgId, prevVidId, statusId) {
         const f = inp.files[0]; const stat = id(statusId);
@@ -917,12 +933,41 @@
         }
     }
 
-    function startTitleBlink() {
+    function openMediaModal(url, type = 'image') {
+        const modal = id('modal-media-view');
+        const img = id('mv-img');
+        const vid = id('mv-video');
+        if (type === 'video') {
+            img.style.display = 'none';
+            vid.style.display = 'block';
+            vid.src = url;
+            vid.load();
+        } else {
+            vid.pause();
+            vid.style.display = 'none';
+            vid.src = '';
+            img.style.display = 'block';
+            img.src = url;
+        }
+        show('modal-media-view');
+    }
+
+    function closeMediaModal() {
+        const vid = id('mv-video');
+        if (vid) {
+            vid.pause();
+            vid.src = '';
+        }
+        hide('modal-media-view');
+    }
+
+    function startTitleBlink(type = 'メッセージ') {
         if(!document.hidden) return;
         if(titleBlinkInterval) clearInterval(titleBlinkInterval);
         let showMsg = true;
+        const label = type === '通知' ? '新着通知' : '新着メッセージ';
         titleBlinkInterval = setInterval(() => {
-            document.title = showMsg ? `(!) 【新着メッセージ】` : originalTitle;
+            document.title = showMsg ? `(!) 【${label}】` : originalTitle;
             showMsg = !showMsg;
         }, 1000);
     }
@@ -1047,7 +1092,7 @@
         socket.on('messages_read_bulk', ({roomId, updates}) => { if(roomId === currentRoom) { updates.forEach(u => { const rdEl = id(`rd-${u.msg_id}`); if(rdEl) { if(roomId.startsWith('g_')) { rdEl.innerText = `既読 ${u.read_count}`; rdEl.style.display = 'inline'; } else { rdEl.innerText = `既読`; rdEl.style.display = 'inline'; } } }); } });
         socket.on('messages_read', ({roomId}) => { if(roomId === currentRoom && !roomId.startsWith('g_')) { document.querySelectorAll('.msg-info .is-read').forEach(el => { el.innerText = '既読'; el.style.display = 'inline'; }); } });
 
-        socket.on('new_notification',()=>{loadNotifs(); updateUnreadBadge();});
+        socket.on('new_notification',()=>{loadNotifs(); updateUnreadBadge(); if(document.hidden) startTitleBlink('通知');});
         socket.on('unread_update', updateUnreadBadge);
         socket.on('new_post_timeline',()=>{if(currentMain==='home')loadTimeline();});
         socket.on('notes_update', loadNotes);
@@ -1078,7 +1123,7 @@
             playCallSound();
         };
         socket.on('incoming_call', showIncomingCallUI);
-        socket.on('call_received', showIncomingCallUI);
+        socket.on('call_received', showIncomingCallUI); // ★ 新規イベント？
 
         const showActiveCallUI = d => {
             console.log('showActiveCallUI called with:', d);
@@ -1089,7 +1134,7 @@
             setupPeer(d.answerer_id, true, d.icon_url, d.nickname);
         };
         socket.on('call_answered', showActiveCallUI);
-        socket.on('call_started', showActiveCallUI);
+        socket.on('call_started', showActiveCallUI); // ★ 新規イベント？
 
         socket.on('call_rejected', d => {
             hide('modal-calling');
@@ -1119,7 +1164,7 @@
             playCallSound();
         };
         socket.on('incoming_text_call', showIncomingTextCallUI);
-        socket.on('text_call_received', showIncomingTextCallUI);
+        socket.on('text_call_received', showIncomingTextCallUI); // ★ 新規イベント？
 
         socket.on('text_call_started', d => {
             console.log('text_call_started called with:', d);
@@ -1325,7 +1370,7 @@
         if(m.is_deleted === 1) {
             c = `<span style="color:var(--text-sub); font-style:italic;"><i class="fa-solid fa-ban"></i> 送信を取り消しました</span>`;
         } else {
-            if(m.type==='image') c=`<img src="${m.content.startsWith('http')?m.content:BACKEND_URL+m.content}" onclick="window.open(this.src)">`; 
+            if(m.type==='image') c=`<img src="${m.content.startsWith('http')?m.content:BACKEND_URL+m.content}" onclick="openMediaModal(this.src,'image')">`; 
             else if(m.type==='video') c=`<video src="${m.content.startsWith('http')?m.content:BACKEND_URL+m.content}" controls></video>`; 
             else if(m.type==='system_call') {
                 const parts = m.content.split(':');
@@ -1463,7 +1508,7 @@
         const r=await apiPost('/api/posts/list'); if(!r||!r.ok)return; const l=await r.json();
         id('ui-timeline').innerHTML = l.map(p=>{
             const ic=p.icon_url && p.icon_url.trim() !== '' ?(p.icon_url.startsWith('http')||p.icon_url.startsWith('.')?p.icon_url:BACKEND_URL+p.icon_url):'./icon.jpeg';
-            const m = p.media_url ? (p.media_url.endsWith('.mp4') || p.media_url.endsWith('.mov') ? `<video src="${p.media_url.startsWith('http')?p.media_url:BACKEND_URL+p.media_url}" class="post-media" controls></video>` : `<img src="${p.media_url.startsWith('http')?p.media_url:BACKEND_URL+p.media_url}" class="post-media" onclick="event.stopPropagation(); window.open(this.src)">`) : '';
+            const m = p.media_url ? (p.media_url.endsWith('.mp4') || p.media_url.endsWith('.mov') ? `<video src="${p.media_url.startsWith('http')?p.media_url:BACKEND_URL+p.media_url}" class="post-media" controls></video>` : `<img src="${p.media_url.startsWith('http')?p.media_url:BACKEND_URL+p.media_url}" class="post-media" onclick="event.stopPropagation(); openMediaModal(this.src,'image')">`) : '';
             const delBtn = p.user_id===myInfo.id ? `<span class="del-post-btn" onclick="event.stopPropagation(); actionPost('delete','${p.id}')"><i class="fa-solid fa-xmark"></i></span>` : '';
             const visBadge = p.visibility==='close' ? `<span style="color:var(--accent);font-size:12px;margin-left:8px;"><i class="fa-solid fa-lock"></i> 親しい友達</span>` : (p.visibility==='friends' ? `<span style="color:var(--accent);font-size:12px;margin-left:8px;"><i class="fa-solid fa-user-group"></i> フレンド</span>` : '');
 
@@ -1498,7 +1543,7 @@
         const p = tList.find(x => x.id === pid);
         if(p) {
             const ic=p.icon_url && p.icon_url.trim() !== '' ?(p.icon_url.startsWith('http')||p.icon_url.startsWith('.')?p.icon_url:BACKEND_URL+p.icon_url):'./icon.jpeg';
-            const m = p.media_url ? (p.media_url.endsWith('.mp4') || p.media_url.endsWith('.mov') ? `<video src="${p.media_url.startsWith('http')?p.media_url:BACKEND_URL+p.media_url}" style="width:100%;border-radius:12px;margin-top:10px;" controls></video>` : `<img src="${p.media_url.startsWith('http')?p.media_url:BACKEND_URL+p.media_url}" style="width:100%;border-radius:12px;margin-top:10px;" onclick="window.open(this.src)">`) : '';
+            const m = p.media_url ? (p.media_url.endsWith('.mp4') || p.media_url.endsWith('.mov') ? `<video src="${p.media_url.startsWith('http')?p.media_url:BACKEND_URL+p.media_url}" style="width:100%;border-radius:12px;margin-top:10px;" controls></video>` : `<img src="${p.media_url.startsWith('http')?p.media_url:BACKEND_URL+p.media_url}" style="width:100%;border-radius:12px;margin-top:10px;" onclick="openMediaModal(this.src,'image')">`) : '';
             id('pd-post-content').innerHTML = `<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;cursor:pointer;" onclick="openProfileModal('${p.user_id}','${p.username}','${p.nickname}','${ic}','')"><img src="${ic}" onerror="this.src='./icon.jpeg'" style="width:40px;height:40px;border-radius:50%;object-fit:cover;"><div><b style="font-size:16px;">${p.nickname}</b><br><span style="color:var(--text-sub);font-size:12px;">@${p.username}</span></div></div><div style="font-size:16px;line-height:1.5;white-space:pre-wrap;">${(p.content||'').replace(/</g,"&lt;")}</div>${m}`;
             
             const out = id('pd-likes-list');
@@ -1521,7 +1566,7 @@
         if(!cr||!cr.ok) return;
         const cl = await cr.json(); const cout = id('pd-comments-list');
         if(cl.length===0){ cout.innerHTML = '<div style="color:var(--text-sub);text-align:center;padding:20px 0;">コメントはまだありません</div>'; }
-        else { cout.innerHTML = cl.map(c=>{ const ic=c.icon_url && c.icon_url.trim() !== '' ?(c.icon_url.startsWith('http')||c.icon_url.startsWith('.')?c.icon_url:BACKEND_URL+c.icon_url):'./icon.jpeg'; const cim = c.image_url?(c.image_url.endsWith('.mp4') || c.image_url.endsWith('.mov') ? `<video src="${c.image_url.startsWith('http')?c.image_url:BACKEND_URL+c.image_url}" class="c-media" controls></video>`:`<img src="${c.image_url.startsWith('http')?c.image_url:BACKEND_URL+c.image_url}" class="c-media" onclick="window.open(this.src)">`):''; return `<div class="comment-item"><img src="${ic}" onerror="this.src='./icon.jpeg'" class="c-ic"><div><b>${c.nickname}</b><div style="margin-top:4px;line-height:1.4;">${c.content}</div>${cim}</div></div>`; }).join(''); }
+        else { cout.innerHTML = cl.map(c=>{ const ic=c.icon_url && c.icon_url.trim() !== '' ?(c.icon_url.startsWith('http')||c.icon_url.startsWith('.')?c.icon_url:BACKEND_URL+c.icon_url):'./icon.jpeg'; const cim = c.image_url?(c.image_url.endsWith('.mp4') || c.image_url.endsWith('.mov') ? `<video src="${c.image_url.startsWith('http')?c.image_url:BACKEND_URL+c.image_url}" class="c-media" controls></video>`:`<img src="${c.image_url.startsWith('http')?c.image_url:BACKEND_URL+c.image_url}" class="c-media" onclick="openMediaModal(this.src,'image')">`):''; return `<div class="comment-item"><img src="${ic}" onerror="this.src='./icon.jpeg'" class="c-ic"><div><b>${c.nickname}</b><div style="margin-top:4px;line-height:1.4;">${c.content}</div>${cim}</div></div>`; }).join(''); }
     }
 
     function submitComment(e) {
