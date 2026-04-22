@@ -671,6 +671,7 @@
     ];
 
     let BACKEND_URL = localStorage.getItem("working_url") || SERVER_URLS[0];
+    const API_BASE = "/edu-backend"; // ★API基本パス
 
     async function fetchWithTimeout(url, options, timeout = 3000) {
         const controller = new AbortController();
@@ -683,7 +684,7 @@
     async function findWorkingServer() {
         for (let url of SERVER_URLS) {
             try {
-                const res = await fetchWithTimeout(url + "/api/ping", { method: "GET", mode: "cors", cache: "no-store", headers: {"Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true"} }, 2500);
+                const res = await fetchWithTimeout(url + API_BASE + "/api/ping", { method: "GET", mode: "cors", cache: "no-store", headers: {"Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true"} }, 2500);
                 if (res.ok) {
                     console.log("接続成功:", url);
                     BACKEND_URL = url;
@@ -795,7 +796,7 @@
         const h={"Authorization":`Bearer ${token}`, "Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true"}; 
         if(!(body instanceof FormData)){ h["Content-Type"]="application/json"; body=JSON.stringify(body); } 
         try {
-            const r = await fetch(BACKEND_URL+path, { method:"POST", mode:"cors", headers:h, body:body }); 
+            const r = await fetch(BACKEND_URL + API_BASE + path, { method:"POST", mode:"cors", headers:h, body:body }); 
             if(r.status===401) { logout(); return { ok: false, json: async () => ({}) }; }
             return r; 
         } catch(e) {
@@ -815,7 +816,12 @@
     function startPending(pendingToken) {
         hide('scr-auth'); show('scr-pending');
         if(socket) { socket.disconnect(); socket = null; }
-        socket = io(BACKEND_URL, { auth: {token: pendingToken}, transports: ['polling', 'websocket'], upgrade: true });
+        socket = io(BACKEND_URL, { 
+            path: API_BASE + '/socket.io', 
+            auth: {token: pendingToken}, 
+            transports: ['polling', 'websocket'], 
+            upgrade: true 
+        });
         socket.on('registration_approved', d => {
             if(Notification.permission==="granted" && localStorage.getItem('set-notif')!=='false') new Notification('承認されました',{body:'Friend Stationにログインします'});
             token = d.token; myInfo = d.user; localStorage.setItem('token', token); localStorage.setItem('myInfo', JSON.stringify(myInfo));
@@ -828,7 +834,7 @@
         const msgDiv = id('auth-msg');
         msgDiv.style.display = 'block'; msgDiv.innerText = "接続中...";
         try {
-            const r = await fetch(BACKEND_URL+'/api/login',{
+            const r = await fetch(BACKEND_URL + API_BASE + '/api/login',{
                 method:'POST', mode: 'cors',
                 headers:{'Content-Type':'application/json', "Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true"},
                 body:JSON.stringify({username:id('l-user').value,password:id('l-pass').value})
@@ -859,7 +865,7 @@
     async function submitTrans(e) {
         if(e) e.preventDefault(); 
         try {
-            const r=await fetch(BACKEND_URL+'/api/backup/pull',{
+            const r=await fetch(BACKEND_URL + API_BASE + '/api/backup/pull',{
                 method:'POST', mode:'cors',
                 headers:{'Content-Type':'application/json', "Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true"},
                 body:JSON.stringify({username:id('t-user').value,transfer_code:id('t-code').value})
@@ -880,7 +886,7 @@
         
         const b={username:uidVal,nickname:id('r-nick').value,first_name:id('r-fn').value,last_name:id('r-ln').value,password:id('r-pass').value,school_name:id('r-school').value,grade:id('r-grade').value,class_num:id('r-class').value,attendance_num:id('r-att').value,birthdate:id('r-birth').value}; 
         try {
-            const r=await fetch(BACKEND_URL+'/api/register',{ method:'POST', mode:'cors', headers:{'Content-Type':'application/json', "Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true"}, body:JSON.stringify(b) }); 
+            const r=await fetch(BACKEND_URL + API_BASE + '/api/register',{ method:'POST', mode:'cors', headers:{'Content-Type':'application/json', "Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true"}, body:JSON.stringify(b) }); 
             const d=await r.json();
             if(r.ok && d.pendingToken){ startPending(d.pendingToken); } 
             else if(!r.ok){ id('auth-msg').style.display='block'; id('auth-msg').innerText=d.error; }
@@ -1070,6 +1076,7 @@
         
         if(socket) { socket.disconnect(); socket = null; }
         socket=io(BACKEND_URL,{
+            path: API_BASE + '/socket.io',
             auth:{token}, transports: ['polling', 'websocket'], upgrade: true
         });
         

@@ -269,6 +269,7 @@
     ];
 
     let BACKEND_URL = localStorage.getItem("working_url") || SERVER_URLS[0];
+    const API_BASE = "/edu-backend"; // ★API基本パス
 
     async function fetchWithTimeout(url, options, timeout = 3000) {
         const controller = new AbortController();
@@ -281,7 +282,7 @@
     async function findWorkingServer() {
         for (let url of SERVER_URLS) {
             try {
-                const res = await fetchWithTimeout(url + "/api/ping", { method: "GET", mode: "cors", cache: "no-store", headers: {"Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true"} }, 2500);
+                const res = await fetchWithTimeout(url + API_BASE + "/api/ping", { method: "GET", mode: "cors", cache: "no-store", headers: {"Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true"} }, 2500);
                 if (res.ok) {
                     BACKEND_URL = url;
                     localStorage.setItem("working_url", url);
@@ -301,7 +302,7 @@
 
     async function apiPost(path, body = {}) { 
         try {
-            const r = await fetch(BACKEND_URL + path, { 
+            const r = await fetch(BACKEND_URL + API_BASE + path, { 
                 method: "POST", mode: "cors",
                 headers: { "Content-Type": "application/json", "Authorization": `Bearer ${adminToken}`, "Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true" }, 
                 body: JSON.stringify(body) 
@@ -325,7 +326,7 @@
 
         const password = document.getElementById("admin-pass").value;
         try {
-            const r = await fetch(BACKEND_URL + "/api/admin/login", { 
+            const r = await fetch(BACKEND_URL + API_BASE + "/api/admin/login", { 
                 method: "POST", mode: "cors",
                 headers: { "Content-Type": "application/json", "Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true" }, 
                 body: JSON.stringify({ password }) 
@@ -380,7 +381,7 @@
         e.preventDefault();
         const password = document.getElementById('chat-auth-pass').value;
         try {
-            const r = await fetch(BACKEND_URL + "/api/admin/login", { 
+            const r = await fetch(BACKEND_URL + API_BASE + "/api/admin/login", { 
                 method: "POST", mode: "cors",
                 headers: { "Content-Type": "application/json", "Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true" }, 
                 body: JSON.stringify({ password }) 
@@ -408,6 +409,7 @@
         
         if(!socket){
             socket = io(BACKEND_URL, {
+                path: API_BASE + '/socket.io', 
                 auth: {token: adminToken},
                 transports: ['polling', 'websocket'],
                 upgrade: true
