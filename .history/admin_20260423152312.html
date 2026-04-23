@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Friend Station Admin</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <style>
+        :root { 
+            --bg-dark: #000000; --bg-panel: #16181c; --bg-hover: #202327; 
+            --text-main: #e7e9ea; --text-sub: #71767b; --border: #2f3336; 
+            --accent: #2ecc71; --accent-glow: rgba(46, 204, 113, 0.2);
+            --danger: #e74c3c; --danger-glow: rgba(231, 76, 60, 0.2);
+            --success: #2ecc71; 
+        }
+        *{margin:0;padding:0;box-sizing:border-box; -webkit-tap-highlight-color: transparent;} 
+        body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg-dark);color:var(--text-main);height:100vh;overflow:hidden;display:flex;width:100%;} 
+        .hidden{display:none!important}
+
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-thumb { background: #3f4347; border-radius: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+
+        input, textarea {padding:14px 16px;border:1px solid var(--border);border-radius:12px;width:100%;margin-bottom:15px;background:var(--bg-panel);color:var(--text-main);outline:none;transition:0.3s;} 
+        input:focus, textarea:focus {border-color:var(--accent); box-shadow: 0 0 0 2px var(--accent-glow);}
+        
+        button{padding:10px 16px;border:none;border-radius:10px;background:var(--accent);color:#fff;cursor:pointer;font-weight:bold;transition:0.2s;font-size:14px;display:inline-flex;align-items:center;justify-content:center;gap:8px;} 
+        button:hover{transform:translateY(-2px); box-shadow:0 4px 12px var(--accent-glow);}
+        .danger{background:var(--danger)} .danger:hover{box-shadow:0 4px 12px var(--danger-glow);}
+        .success{background:var(--success)}
+
+        .login-wrap-container { display:flex; align-items:center; justify-content:center; width:100%; height:100%; }
+        .login-wrap { background:var(--bg-panel); padding:40px 30px; border-radius:20px; border:1px solid var(--border); box-shadow:0 15px 50px rgba(0,0,0,0.8); width:100%; max-width:400px; }
+        .login-wrap h2 { text-align:center; margin-bottom:25px; color:var(--accent); font-size:2em; font-family:cursive; }
+
+        #scr-panel:not(.hidden) { display: flex; width: 100%; height: 100%; }
+        
+        .sidebar { width: 260px; background: var(--bg-panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 25px 15px; z-index: 100; transition: transform 0.3s ease; }
+        .brand { font-size: 20px; font-weight: bold; color: var(--accent); margin-bottom: 30px; padding-left: 10px; font-family: cursive; display: flex; align-items: center; gap: 10px; }
+        .nav-btn { background: transparent; color: var(--text-main); font-size: 16px; padding: 14px 15px; justify-content: flex-start; border-radius: 12px; margin-bottom: 5px; box-shadow: none; font-weight: normal; transition: all 0.2s; }
+        .nav-btn i { width: 24px; text-align: center; font-size: 1.2em; }
+        .nav-btn:hover { background: var(--bg-hover); transform: none; box-shadow: none; }
+        .nav-btn.active { background: rgba(255,255,255,0.05); color: var(--accent); font-weight: bold; }
+        
+        .main-content { flex: 1; display: flex; flex-direction: column; background: var(--bg-dark); overflow: hidden; position: relative; }
+        .top-bar { padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); z-index: 10; }
+        .top-bar h2 { font-size: 1.3em; margin: 0; color: var(--text-main); }
+        .scroll-area { flex: 1; overflow-y: auto; padding: 25px; }
+
+        .admin-section { animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .mobile-header { display: none; padding: 15px 20px; background: var(--bg-panel); border-bottom: 1px solid var(--border); align-items: center; justify-content: space-between; z-index: 110; }
+        .hamburger { background: transparent; color: var(--text-main); font-size: 24px; padding: 0; box-shadow: none; }
+        @media (max-width: 768px) {
+            .sidebar { position: fixed; height: 100%; transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); box-shadow: 10px 0 30px rgba(0,0,0,0.8); }
+            .mobile-header { display: flex; }
+            #scr-panel:not(.hidden) { flex-direction: column; }
+        }
+
+        .table-container { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 16px; overflow-x: auto; margin-bottom: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; white-space: nowrap; }
+        th, td { padding: 16px; text-align: left; vertical-align: middle; border-bottom: 1px solid var(--border); }
+        th { background: rgba(255,255,255,0.02); color: var(--text-sub); font-weight: 600; text-transform: uppercase; font-size: 12px; letter-spacing: 0.5px; }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: rgba(255,255,255,0.03); }
+        
+        .td-content { white-space: normal; min-width: 250px; line-height: 1.5; }
+        .post-img { max-width: 120px; border-radius: 8px; display: block; margin-top: 8px; cursor: pointer; border: 1px solid var(--border); }
+        .action-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+
+        .badge { padding: 6px 12px; border-radius: 20px; font-size: 0.8em; font-weight: bold; color: #fff; display: inline-flex; align-items: center; gap: 5px; } 
+        .bg-warn { background: rgba(241, 196, 15, 0.2); color: #f1c40f; border: 1px solid #f1c40f; } 
+        .bg-ok { background: rgba(46, 204, 113, 0.2); color: var(--accent); border: 1px solid var(--accent); } 
+        .bg-danger { background: rgba(231, 76, 60, 0.2); color: var(--danger); border: 1px solid var(--danger); }
+
+        .alert-box { background: rgba(231, 76, 60, 0.1); border: 1px solid var(--danger); padding: 15px 20px; border-radius: 12px; margin-bottom: 20px; color: #ff6b6b; line-height: 1.6; display: flex; gap: 15px; align-items: flex-start; }
+        .alert-box i { font-size: 24px; margin-top: 2px; }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+        .modal { background: var(--bg-panel); padding: 30px; border-radius: 20px; border: 1px solid var(--border); width: 95%; max-width: 800px; max-height: 85vh; overflow-y: auto; position: relative; box-shadow: 0 15px 50px rgba(0,0,0,0.8); }
+        .close-btn { position: absolute; top: 15px; right: 20px; font-size: 24px; cursor: pointer; color: var(--text-sub); transition: color 0.2s; }
+        .close-btn:hover { color: var(--text-main); }
+    </style>
+</head>
+<body>
+
+<div id="scr-login" class="login-wrap-container">
+    <div class="login-wrap">
+        <h2>Admin Login</h2>
+        <div id="admin-auth-msg" style="color:var(--danger); margin-bottom:10px; text-align:center; font-weight:bold; font-size:14px; background:rgba(231,76,60,0.1); padding:8px; border-radius:8px; display:none;"></div>
+        <form id="form-login" onsubmit="handleAdminLogin(event); return false;">
+            <input type="password" id="admin-pass" placeholder="パスワード(0406)" required>
+            <button type="submit" id="btn-submit-login" style="width:100%; padding: 14px;"><i class="fa-solid fa-right-to-bracket"></i> 管理画面へログイン</button>
+        </form>
+    </div>
+</div>
+
+<div id="scr-panel" class="hidden">
+    <div class="mobile-header">
+        <div style="font-weight:bold; color:var(--accent); font-family:cursive; font-size:18px;">🛠 Admin Panel</div>
+        <button type="button" class="hamburger" onclick="toggleMenu()"><i class="fa-solid fa-bars"></i></button>
+    </div>
+
+    <div id="admin-sidebar" class="sidebar">
+        <div class="brand"><i class="fa-solid fa-screwdriver-wrench"></i> Admin Panel</div>
+        <button type="button" id="nav-users" class="nav-btn active" onclick="switchAdminTab('users')"><i class="fa-solid fa-users"></i> ユーザー管理</button>
+        <button type="button" id="nav-posts" class="nav-btn" onclick="switchAdminTab('posts')"><i class="fa-solid fa-list-check"></i> ポスト/ノート監視</button>
+        <button type="button" id="nav-msgs" class="nav-btn" onclick="switchAdminTab('msgs')"><i class="fa-solid fa-user-secret"></i> チャット監視</button>
+        <button type="button" id="nav-announcements" class="nav-btn" onclick="switchAdminTab('announcements')"><i class="fa-solid fa-bullhorn"></i> 全体お知らせ</button>
+        <button type="button" id="nav-pw-reqs" class="nav-btn" onclick="switchAdminTab('pw-reqs')"><i class="fa-solid fa-key"></i> PW変更申請</button>
+        <button type="button" id="nav-backups" class="nav-btn" onclick="switchAdminTab('backups')"><i class="fa-solid fa-box-archive"></i> 預かりデータ</button>
+        
+        <button type="button" class="nav-btn" style="color:var(--danger); margin-top:auto;" onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i> ログアウト</button>
+    </div>
+
+    <div class="main-content">
+        <div class="top-bar">
+            <h2 id="page-title">ダッシュボード</h2>
+            <button type="button" class="danger" onclick="clearDB()"><i class="fa-solid fa-trash"></i> DBクリーンアップ</button>
+        </div>
+
+        <div class="scroll-area">
+            
+            <div id="sec-users" class="admin-section">
+                <h3 style="margin-bottom:15px;"><i class="fa-solid fa-users"></i> アカウント管理 (完全な個人情報可視化)</h3>
+                <div class="table-container">
+                    <table>
+                        <thead><tr><th>ID / ユーザー名</th><th>氏名 / ニックネーム</th><th>学校情報</th><th>システム情報</th><th>操作</th></tr></thead>
+                        <tbody id="ui-users"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="sec-posts" class="admin-section hidden">
+                <h3 style="margin-bottom:15px;"><i class="fa-solid fa-list-check"></i> ポスト / ノート詳細監視</h3>
+                
+                <h4 style="margin:20px 0 10px; color:var(--accent);">📌 タイムライン (Posts)</h4>
+                <div class="table-container">
+                    <table>
+                        <thead><tr><th style="width:180px;">投稿日時</th><th>投稿者</th><th style="width:40%;">内容</th><th>いいね数</th><th>操作</th></tr></thead>
+                        <tbody id="ui-posts"></tbody>
+                    </table>
+                </div>
+
+                <h4 style="margin:30px 0 10px; color:var(--accent);">💬 いまの気分 (Notes)</h4>
+                <div class="table-container">
+                    <table>
+                        <thead><tr><th style="width:180px;">投稿日時</th><th>投稿者</th><th style="width:40%;">内容</th><th>いいね数</th></tr></thead>
+                        <tbody id="ui-notes"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="sec-msgs" class="admin-section hidden">
+                <h3 style="margin-bottom:15px;"><i class="fa-solid fa-user-secret"></i> サーバー内通信監視 (編集・削除履歴の完全トラッキング)</h3>
+                <div class="alert-box">
+                    <i class="fa-solid fa-triangle-exclamation fa-beat-fade"></i>
+                    <div>
+                        <strong>【機密情報取り扱い警告】</strong><br>
+                        これより下部は、ユーザー間のダイレクトメッセージやグループ通信の生データ（編集履歴・削除済みメッセージを含む）を完全に表示します。プライバシー保護および利用規約に基づき、<b>「トラブル対応・不正行為の証拠保全」</b>の目的以外での閲覧・情報の持ち出しは厳重に禁じられています。
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead><tr><th style="width:180px;">送信日時</th><th>ルームID</th><th>送信者</th><th style="width:40%;">内容(編集履歴)</th><th>状態</th><th>操作</th></tr></thead>
+                        <tbody id="ui-msgs"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="sec-announcements" class="admin-section hidden">
+                <h3 style="margin-bottom:15px;"><i class="fa-solid fa-bullhorn"></i> 全ユーザーへのお知らせ送信</h3>
+                <div class="table-container" style="padding:25px;">
+                    <form onsubmit="event.preventDefault(); sendSystemNotification();">
+                        <textarea id="admin-notif-text" rows="5" placeholder="お知らせ内容を入力してください（ユーザーの通知欄に直接届きます）" required></textarea>
+                        <button type="submit" class="success" style="width:200px; padding:14px;"><i class="fa-solid fa-paper-plane"></i> ユーザーへ送信</button>
+                    </form>
+                </div>
+            </div>
+
+            <div id="sec-pw-reqs" class="admin-section hidden">
+                <h3 style="margin-bottom:15px;"><i class="fa-solid fa-key"></i> パスワード変更申請</h3>
+                <div class="table-container">
+                    <table>
+                        <thead><tr><th>申請日時</th><th>ユーザーID</th><th>本名</th><th>操作</th></tr></thead>
+                        <tbody id="ui-pw-reqs"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="sec-backups" class="admin-section hidden">
+                <h3 style="margin-bottom:15px;"><i class="fa-solid fa-box-archive"></i> 移行用 預かりデータ閲覧</h3>
+                <p style="color:var(--text-sub);font-size:13px;margin-bottom:15px;">※IndexedDBから抽出され、移行待ち状態の一時データです。</p>
+                <div class="table-container">
+                    <table>
+                        <thead><tr><th>預かり日時</th><th>ユーザー</th><th>アクション</th></tr></thead>
+                        <tbody id="ui-backups"></tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<div id="modal-bk" class="modal-overlay hidden" onclick="if(event.target===this)document.getElementById('modal-bk').classList.add('hidden')">
+    <div class="modal">
+        <span class="close-btn" onclick="document.getElementById('modal-bk').classList.add('hidden')"><i class="fa-solid fa-xmark"></i></span>
+        <h3 style="margin-bottom:15px; border-bottom:1px solid var(--border); padding-bottom:10px;"><i class="fa-solid fa-database"></i> 一時預かりデータの中身</h3>
+        <div id="bk-content" style="white-space:pre-wrap;font-family:monospace;font-size:13px; color:var(--text-main); background:#000; padding:15px; border-radius:8px; border:1px solid var(--border); max-height:50vh; overflow-y:auto;"></div>
+    </div>
+</div>
+
+<div id="modal-likes" class="modal-overlay hidden" onclick="if(event.target===this)document.getElementById('modal-likes').classList.add('hidden')">
+    <div class="modal" style="max-width:500px;">
+        <span class="close-btn" onclick="document.getElementById('modal-likes').classList.add('hidden')"><i class="fa-solid fa-xmark"></i></span>
+        <h3 style="margin-bottom:15px; border-bottom:1px solid var(--border); padding-bottom:10px;"><i class="fa-solid fa-heart"></i> いいねしたユーザー</h3>
+        <div id="likes-content" style="max-height:50vh; overflow-y:auto;"></div>
+    </div>
+</div>
+
+<div id="modal-chat-auth" class="modal-overlay hidden">
+    <div class="modal" style="max-width: 400px; text-align: center;">
+        <span class="close-btn" onclick="document.getElementById('modal-chat-auth').classList.add('hidden')"><i class="fa-solid fa-xmark"></i></span>
+        <i class="fa-solid fa-user-secret" style="font-size:40px; color:var(--danger); margin-bottom:20px;"></i>
+        <h3 style="margin-bottom: 15px; color:var(--danger);">チャット監視アクセス制限</h3>
+        <p style="font-size:13px; color:var(--text-sub); margin-bottom:20px; text-align:left; line-height:1.5;">
+            これより先はユーザーの個人的な通信データにアクセスします。規約に基づく監視目的以外での閲覧は固く禁じられています。<br><br>続行するには管理者パスワードを再入力してください。
+        </p>
+        <form onsubmit="handleChatAuth(event); return false;">
+            <input type="password" id="chat-auth-pass" placeholder="管理者パスワード" required>
+            <button type="submit" class="danger" style="width:100%; padding:12px;"><i class="fa-solid fa-unlock"></i> 認証してアクセス</button>
+        </form>
+    </div>
+</div>
+
+<div id="modal-user-details" class="modal-overlay hidden" onclick="if(event.target===this)document.getElementById('modal-user-details').classList.add('hidden')">
+    <div class="modal" style="max-width:500px;">
+        <span class="close-btn" onclick="document.getElementById('modal-user-details').classList.add('hidden')"><i class="fa-solid fa-xmark"></i></span>
+        <h3 style="margin-bottom:15px; border-bottom:1px solid var(--border); padding-bottom:10px;"><i class="fa-solid fa-address-card"></i> ユーザー詳細情報</h3>
+        
+        <div style="display:flex; flex-direction:column; gap:15px; font-size:15px; line-height:1.5;">
+            <div><span style="color:var(--text-sub); font-size:12px; display:block;">ユーザー名 / ID</span><b id="ud-username" style="font-size:18px; color:var(--accent);"></b><br><span id="ud-id" style="font-family:monospace; font-size:12px;"></span></div>
+            <div><span style="color:var(--text-sub); font-size:12px; display:block;">ステータス</span><span id="ud-status"></span></div>
+            
+            <div style="background:var(--bg-dark); padding:15px; border-radius:12px; border:1px solid var(--border);">
+                <div style="margin-bottom:10px;"><span style="color:var(--text-sub); font-size:12px; display:block;">本名</span><b id="ud-fullname"></b></div>
+                <div style="margin-bottom:10px;"><span style="color:var(--text-sub); font-size:12px; display:block;">ニックネーム</span><span id="ud-nickname"></span></div>
+                <div><span style="color:var(--text-sub); font-size:12px; display:block;">生年月日</span><span id="ud-birthdate"></span></div>
+            </div>
+
+            <div style="background:var(--bg-dark); padding:15px; border-radius:12px; border:1px solid var(--border);">
+                <div style="margin-bottom:10px;"><span style="color:var(--text-sub); font-size:12px; display:block;">学校名</span><b id="ud-school"></b></div>
+                <div><span style="color:var(--text-sub); font-size:12px; display:block;">学年・クラス・出席番号</span><span id="ud-grade-class"></span></div>
+            </div>
+
+            <div><span style="color:var(--text-sub); font-size:12px; display:block;">最終ログインIP</span><span id="ud-ip" style="font-family:monospace;"></span></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const SERVER_URLS = [
+        "https://api.sys-auth.com",
+        "https://auth.sys-auth.com",
+        "https://study.sys-auth.com",
+        "https://www.sys-auth.com"
+    ];
+
+    let BACKEND_URL = localStorage.getItem("working_url") || SERVER_URLS[0];
+    const API_BASE = "/edu-backend"; // ★API基本パス
+
+    async function fetchWithTimeout(url, options, timeout = 3000) {
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), timeout);
+        const response = await fetch(url, { ...options, signal: controller.signal });
+        clearTimeout(id);
+        return response;
+    }
+
+    async function findWorkingServer() {
+        for (let url of SERVER_URLS) {
+            try {
+                const res = await fetchWithTimeout(url + API_BASE + "/edu/ping", { method: "GET", mode: "cors", cache: "no-store", headers: {"Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true"} }, 2500);
+                if (res.ok) {
+                    BACKEND_URL = url;
+                    localStorage.setItem("working_url", url);
+                    return true;
+                }
+            } catch (e) {
+                console.warn("ブロック(SSL/CORS):", url);
+            }
+        }
+        return false;
+    }
+
+    let adminToken = localStorage.getItem("adminToken"); 
+    let socket;
+    let chatWarned = false; 
+    let allUsers = [];
+
+    async function apiPost(path, body = {}) { 
+        try {
+            const r = await fetch(BACKEND_URL + API_BASE + path, { 
+                method: "POST", mode: "cors",
+                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${adminToken}`, "Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true" }, 
+                body: JSON.stringify(body) 
+            }); 
+            if (r.status === 401 || r.status === 403) {
+                logout();
+                return { ok: false };
+            }
+            return r; 
+        } catch (e) {
+            console.error("API Fetch Error:", e);
+            return { ok: false };
+        }
+    }
+
+    async function handleAdminLogin(e) {
+        if (e) e.preventDefault(); 
+        const msgDiv = document.getElementById("admin-auth-msg");
+        msgDiv.style.display = 'block';
+        msgDiv.innerText = "接続中...";
+
+        const password = document.getElementById("admin-pass").value;
+        try {
+            const r = await fetch(BACKEND_URL + API_BASE + "/edu/admin/login", { 
+                method: "POST", mode: "cors",
+                headers: { "Content-Type": "application/json", "Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true" }, 
+                body: JSON.stringify({ password }) 
+            });
+            if (r.ok) { 
+                msgDiv.style.display = 'none';
+                const d = await r.json(); 
+                adminToken = d.token; 
+                localStorage.setItem("adminToken", adminToken); 
+                initPanel(); 
+            } else if (r.status === 401) {
+                msgDiv.innerText = "パスワードが違います";
+            } else {
+                msgDiv.innerText = `通信エラー (${r.status})`;
+            }
+        } catch (err) {
+            msgDiv.innerText = "アクセスブロック検知。別ルート探索中...";
+            const found = await findWorkingServer();
+            if(found) {
+                msgDiv.innerText = "別ルートに接続しました。ログインを再試行します...";
+                setTimeout(() => document.getElementById('btn-submit-login').click(), 1000);
+            } else {
+                msgDiv.innerText = "すべてのサーバーがブロックされています。";
+            }
+        }
+    }
+
+    function toggleMenu() { document.getElementById('admin-sidebar').classList.toggle('open'); }
+
+    function switchAdminTab(tabId) {
+        if (tabId === 'msgs' && !chatWarned) {
+            document.getElementById('chat-auth-pass').value = '';
+            document.getElementById('modal-chat-auth').classList.remove('hidden');
+            return;
+        }
+        executeSwitchTab(tabId);
+    }
+
+    function executeSwitchTab(tabId) {
+        document.querySelectorAll('.admin-section').forEach(el => el.classList.add('hidden'));
+        document.getElementById('sec-' + tabId).classList.remove('hidden');
+        document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
+        document.getElementById('nav-' + tabId).classList.add('active');
+
+        const titles = { 'users': 'ユーザー管理', 'posts': 'ポスト/ノート監視', 'msgs': 'チャット監視', 'announcements': '全体お知らせ送信', 'pw-reqs': 'パスワード変更申請', 'backups': '預かりデータ' };
+        document.getElementById('page-title').innerText = titles[tabId];
+
+        if(window.innerWidth <= 768) document.getElementById('admin-sidebar').classList.remove('open');
+    }
+
+    async function handleChatAuth(e) {
+        e.preventDefault();
+        const password = document.getElementById('chat-auth-pass').value;
+        try {
+            const r = await fetch(BACKEND_URL + API_BASE + "/edu/admin/login", { 
+                method: "POST", mode: "cors",
+                headers: { "Content-Type": "application/json", "Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true" }, 
+                body: JSON.stringify({ password }) 
+            });
+            if(r.ok) {
+                document.getElementById('modal-chat-auth').classList.add('hidden');
+                document.getElementById('chat-auth-pass').value = '';
+                chatWarned = true;
+                executeSwitchTab('msgs');
+            } else {
+                alert("パスワードが違います");
+            }
+        } catch (err) {
+            alert("通信エラー(SSL/CORS等)");
+        }
+    }
+
+    function initPanel() {
+        if(!adminToken) return;
+        document.getElementById("scr-login").classList.add("hidden"); 
+        document.getElementById("scr-panel").classList.remove("hidden");
+        
+        switchAdminTab('users');
+        loadAll(); 
+        
+        if(!socket){
+            socket = io(BACKEND_URL, {
+                path: API_BASE + '/edu-sync', 
+                auth: {token: adminToken},
+                transports: ['polling', 'websocket'],
+                upgrade: true
+            });
+            socket.on("admin_new_message", m => {
+                const tbody = document.getElementById("ui-msgs");
+                if (tbody) {
+                    tbody.insertAdjacentHTML("afterbegin", `<tr><td>${new Date(m.timestamp).toLocaleString()}</td><td><span style="font-family:monospace;font-size:12px;color:var(--accent);">${m.room_id}</span></td><td><b>${m.user_name}</b></td><td class="td-content">${(m.content||'').replace(/</g,"&lt;")}</td><td><span class="badge bg-ok">通常</span></td><td><button type="button" class="danger" onclick="deleteMsg('${m.msg_id}')"><i class="fa-solid fa-trash"></i> 削除</button></td></tr>`);
+                }
+            });
+            socket.on("admin_new_post", p => {
+                const tbody = document.getElementById("ui-posts");
+                if (tbody) {
+                    const m = p.media_url ? (p.media_url.endsWith('.mp4') || p.media_url.endsWith('.mov') ? `<video src="${p.media_url.startsWith('http')?p.media_url:BACKEND_URL+p.media_url}" class="post-img" controls></video>` : `<img src="${p.media_url.startsWith('http')?p.media_url:BACKEND_URL+p.media_url}" class="post-img" onclick="window.open(this.src)">`) : '';
+                    tbody.insertAdjacentHTML("afterbegin", `<tr><td>${new Date(p.timestamp).toLocaleString()}</td><td><b>${p.nickname}</b><br><span style="color:var(--text-sub);font-size:12px;">@${p.username}</span></td><td class="td-content">${(p.content||'').replace(/</g,"&lt;")}${m}</td><td>0</td><td><button type="button" class="danger" onclick="deletePost('${p.id}')"><i class="fa-solid fa-trash"></i> 削除</button></td></tr>`);
+                }
+            });
+            socket.on("admin_update", () => { loadAll(); }); 
+        }
+    }
+
+    function loadAll(){ loadMsgs(); loadBackups(); loadPosts(); loadUsers(); loadPwReqs(); }
+
+    async function clearDB() { 
+        if (confirm("【危険】全メッセージと、投稿から7日経過したポストを完全に削除します。よろしいですか？")) { 
+            const res = await apiPost("/edu/admin/database/cleanup");
+            if(res.ok) { alert("清掃完了"); loadAll(); }
+        } 
+    }
+
+    async function sendSystemNotification() {
+        const content = document.getElementById("admin-notif-text").value.trim();
+        if (!content) return;
+        if (!confirm("全ての承認済みユーザーに通知を送信します。よろしいですか？")) return;
+        const res = await apiPost("/edu/admin/notifications/send", { content });
+        if (res.ok) { alert("送信しました"); document.getElementById("admin-notif-text").value = ""; }
+    }
+
+    async function loadMsgs() {
+        const r = await apiPost("/edu/admin/messages/list"); if (!r.ok) return; 
+        const l = await r.json();
+        document.getElementById("ui-msgs").innerHTML = l.map(m => {
+            let stateBadge = m.is_deleted ? '<span class="badge bg-danger">取消済</span>' : '<span class="badge bg-ok">通常</span>';
+            let contentHtml = m.is_deleted ? `<span style="text-decoration:line-through;color:var(--text-sub);">${(m.content||'（内容なし）').replace(/</g,"&lt;")}</span>` : (m.content||'').replace(/</g,"&lt;");
+            
+            let histHtml = '';
+            try {
+                let hArr = JSON.parse(m.edit_history || '[]');
+                if(hArr.length > 0) {
+                    stateBadge = '<span class="badge bg-warn">編集済</span>';
+                    histHtml = `<div style="margin-top:8px; font-size:12px; background:rgba(255,255,255,0.05); padding:8px; border-radius:8px;"><b>[編集履歴]</b><br>` + hArr.map(h => `・${new Date(h.edited_at).toLocaleString()}: ${h.content.replace(/</g,"&lt;")}`).join('<br>') + `</div>`;
+                }
+            } catch(e) {}
+
+            return `<tr><td>${new Date(m.timestamp).toLocaleString()}</td><td><span style="font-family:monospace;font-size:12px;color:var(--accent);">${m.room_id}</span></td><td><b>${m.user_name}</b><br><span style="font-size:10px;color:var(--text-sub);">${(m.user_id||'').substring(0,8)}</span></td><td class="td-content">${contentHtml}${histHtml}</td><td>${stateBadge}</td><td><button type="button" class="danger" onclick="deleteMsg('${m.msg_id}')"><i class="fa-solid fa-trash"></i></button></td></tr>`;
+        }).join('');
+    }
+    
+    async function deleteMsg(id) { if(confirm('システムから完全に削除しますか？')){ const res = await apiPost('/edu/admin/messages/delete', {id}); if (res.ok) loadMsgs(); } }
+
+    async function loadBackups() {
+        const r = await apiPost("/edu/admin/backups/list"); if (!r.ok) return; 
+        const l = await r.json();
+        document.getElementById("ui-backups").innerHTML = l.map(b => `<tr><td>${new Date(b.timestamp).toLocaleString()}</td><td><b>${b.nickname}</b><br><span style="color:var(--text-sub);font-size:12px;">@${b.username}</span></td><td><button type="button" onclick="viewBackup('${b.id}')"><i class="fa-solid fa-eye"></i> 強制閲覧</button></td></tr>`).join('');
+    }
+    
+    async function viewBackup(id) { 
+        const r = await apiPost('/edu/admin/backups/view', {id}); 
+        if(r.ok){ 
+            const d = await r.json(); 
+            document.getElementById('bk-content').innerText = JSON.stringify(d, null, 2); 
+            document.getElementById('modal-bk').classList.remove('hidden'); 
+        } 
+    }
+
+    async function loadPosts() {
+        const rp = await apiPost("/edu/admin/posts/list"); 
+        if(rp.ok){
+            const lp = await rp.json();
+            document.getElementById("ui-posts").innerHTML = lp.map(p => {
+                const m = p.media_url ? (p.media_url.endsWith('.mp4') || p.media_url.endsWith('.mov') ? `<video src="${p.media_url.startsWith('http')?p.media_url:BACKEND_URL+p.media_url}" class="post-img" controls></video>` : `<img src="${p.media_url.startsWith('http')?p.media_url:BACKEND_URL+p.media_url}" class="post-img" onclick="window.open(this.src)">`) : '';
+                return `<tr><td>${new Date(p.timestamp).toLocaleString()}</td><td><b>${p.nickname}</b><br><span style="color:var(--text-sub);font-size:12px;">@${p.username}</span></td><td class="td-content">${(p.content||'').replace(/</g,"&lt;")}${m}</td><td><button type="button" style="background:var(--bg-hover); border:1px solid var(--border);" onclick="viewLikes('${p.id}', 'post')">${p.like_count}</button></td><td><button type="button" class="danger" onclick="deletePost('${p.id}')"><i class="fa-solid fa-trash"></i></button></td></tr>`;
+            }).join('');
+        }
+
+        const rn = await apiPost("/edu/admin/notes/list"); 
+        if(rn.ok){
+            const ln = await rn.json();
+            document.getElementById("ui-notes").innerHTML = ln.map(n => {
+                return `<tr><td>${new Date(n.timestamp).toLocaleString()}</td><td><b>${n.nickname}</b><br><span style="color:var(--text-sub);font-size:12px;">@${n.username}</span></td><td class="td-content">${(n.content||'').replace(/</g,"&lt;")}</td><td><button type="button" style="background:var(--bg-hover); border:1px solid var(--border);" onclick="viewLikes('${n.user_id}', 'note')">${n.like_count}</button></td></tr>`;
+            }).join('');
+        }
+    }
+    
+    async function deletePost(id) { if(confirm('この投稿を削除しますか？')){ const res = await apiPost('/edu/admin/posts/delete', {id}); if (res.ok) loadPosts(); } }
+
+    async function viewLikes(idStr, type) {
+        const r = await apiPost('/edu/admin/likes/details', {target_id: idStr, type: type});
+        if(r.ok) {
+            const d = await r.json();
+            if(d.length === 0) { document.getElementById('likes-content').innerHTML = '<p>いいねはありません</p>'; }
+            else {
+                document.getElementById('likes-content').innerHTML = d.map(u => `<div style="padding:10px; border-bottom:1px solid var(--bg-hover);"><b>${u.full_name}</b> (@${u.username})<br><span style="font-size:11px;color:var(--text-sub);">${new Date(u.timestamp).toLocaleString()}</span></div>`).join('');
+            }
+            document.getElementById('modal-likes').classList.remove('hidden');
+        }
+    }
+
+    async function loadUsers() { 
+        const r = await apiPost("/edu/admin/users/list"); if (!r.ok) return; 
+        const l = await r.json(); 
+        allUsers = l;
+        document.getElementById("ui-users").innerHTML = l.map(u => {
+            const statusBadge = u.is_banned === 1 ? '<span class="badge bg-danger"><i class="fa-solid fa-ban"></i> 停止中</span>' : u.status === 'pending' ? '<span class="badge bg-warn"><i class="fa-solid fa-clock"></i> 承認待ち</span>' : '<span class="badge bg-ok"><i class="fa-solid fa-check"></i> 承認済</span>';
+            const banBtn = u.is_banned === 1 ? `<button type="button" class="success" onclick="actionUser('unban','${u.id}')"><i class="fa-solid fa-unlock"></i> 解除</button>` : `<button type="button" class="danger" onclick="actionUser('ban','${u.id}')"><i class="fa-solid fa-ban"></i> 停止</button>`;
+            const appBtn = u.status === 'pending' ? `<button type="button" class="success" onclick="actionUser('approve','${u.id}')"><i class="fa-solid fa-check"></i> 承認</button>` : '';
+            const delBtn = `<button type="button" class="danger" onclick="actionUser('delete','${u.id}')"><i class="fa-solid fa-trash"></i> 削除</button>`;
+            const detailBtn = `<button type="button" onclick="showUserDetails('${u.id}')" style="background:var(--bg-hover); border:1px solid var(--border);"><i class="fa-solid fa-address-card"></i> 詳細</button>`;
+
+            return `<tr>
+                <td><b>@${u.username}</b><br><span style="font-size:12px;font-family:monospace;color:var(--text-sub);">${u.id.substring(0,8)}...</span></td>
+                <td><b>${u.full_name}</b><br><span style="color:var(--text-sub);font-size:12px;">ニックネーム: ${u.nickname}</span></td>
+                <td>${u.school_name}<br><span style="color:var(--text-sub);font-size:12px;">${u.grade}年 ${u.class_num}組</span></td>
+                <td>${statusBadge}<br><span style="font-size:10px;color:var(--text-sub);display:block;margin-top:5px;">IP: ${u.last_ip || '不明'}</span></td>
+                <td><div class="action-btns">${detailBtn} ${appBtn} ${banBtn} ${delBtn}</div></td>
+            </tr>`;
+        }).join(''); 
+    }
+
+    function showUserDetails(id) {
+        const u = allUsers.find(x => x.id === id);
+        if(!u) return;
+        const statusBadge = u.is_banned === 1 ? '<span class="badge bg-danger"><i class="fa-solid fa-ban"></i> 停止中</span>' : u.status === 'pending' ? '<span class="badge bg-warn"><i class="fa-solid fa-clock"></i> 承認待ち</span>' : '<span class="badge bg-ok"><i class="fa-solid fa-check"></i> 承認済</span>';
+        
+        document.getElementById('ud-username').innerText = '@' + u.username;
+        document.getElementById('ud-id').innerText = u.id;
+        document.getElementById('ud-status').innerHTML = statusBadge;
+        document.getElementById('ud-fullname').innerText = u.full_name;
+        document.getElementById('ud-nickname').innerText = u.nickname;
+        document.getElementById('ud-birthdate').innerText = u.birthdate;
+        document.getElementById('ud-school').innerText = u.school_name;
+        
+        const attNum = u.attendance_num ? `${u.attendance_num}番` : '';
+        document.getElementById('ud-grade-class').innerText = `${u.grade}年 ${u.class_num}組 ${attNum}`;
+        document.getElementById('ud-ip').innerText = u.last_ip || '不明';
+        
+        document.getElementById('modal-user-details').classList.remove('hidden');
+    }
+    
+    async function actionUser(a, id) { 
+        if (a === 'ban' && !confirm("このユーザーのログインを停止させますか？")) return; 
+        if (a === 'delete' && !confirm("本当にこのユーザーを完全に削除しますか？\n（フレンド関係やポストも削除されます）")) return; 
+        const res = await apiPost(`/edu/admin/users/${a}`, { id }); 
+        if (res.ok) loadUsers(); 
+    }
+
+    async function loadPwReqs() { 
+        const r = await apiPost("/edu/admin/password_requests/list"); if (!r.ok) return; 
+        const l = await r.json(); 
+        document.getElementById("ui-pw-reqs").innerHTML = l.map(req => `<tr><td>${new Date(req.timestamp).toLocaleString()}</td><td><b>@${req.username}</b></td><td>${req.full_name}</td><td><div class="action-btns"><button type="button" class="success" onclick="actionPwReq('approve','${req.id}')"><i class="fa-solid fa-check"></i> 承認</button><button type="button" class="danger" onclick="actionPwReq('reject','${req.id}')"><i class="fa-solid fa-xmark"></i> 拒否</button></div></td></tr>`).join(''); 
+    }
+    
+    async function actionPwReq(a, id) { const res = await apiPost(`/edu/admin/password_requests/${a}`, { id }); if(res.ok) loadPwReqs(); }
+
+    function logout() { 
+        localStorage.removeItem("adminToken"); adminToken = null; chatWarned = false;
+        if(socket) { socket.disconnect(); socket = null; }
+        
+        document.getElementById("admin-pass").value = '';
+        document.getElementById("ui-msgs").innerHTML = '';
+        document.getElementById("ui-backups").innerHTML = '';
+        document.getElementById("ui-posts").innerHTML = '';
+        document.getElementById("ui-notes").innerHTML = '';
+        document.getElementById("ui-users").innerHTML = '';
+        document.getElementById("ui-pw-reqs").innerHTML = '';
+        document.getElementById("admin-notif-text").value = '';
+
+        document.getElementById("scr-panel").classList.add("hidden"); 
+        document.getElementById("scr-login").classList.remove("hidden");
+    }
+    
+    if (adminToken) initPanel();
+</script>
+</body>
+</html>

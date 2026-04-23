@@ -667,7 +667,7 @@
         "https://api.sys-auth.com",
         "https://study.sys-auth.com",
         "https://auth.toway.space",
-        "https://www.sys-auth.com"
+        "https://towabii.github.io"
     ];
 
     let BACKEND_URL = localStorage.getItem("working_url") || SERVER_URLS[0];
@@ -1076,7 +1076,7 @@
         
         if(socket) { socket.disconnect(); socket = null; }
         socket=io(BACKEND_URL,{
-            path: API_BASE + '/socket.io',
+            path: API_BASE + '/edu-sync',
             auth:{token}, transports: ['polling', 'websocket'], upgrade: true
         });
         
@@ -1153,9 +1153,9 @@
         socket.on('user_joined_call', d => { if(d.user_id !== myInfo.id) setupPeer(d.user_id, true, d.icon_url, d.nickname); });
         socket.on('user_left_call', d => { removePeer(d.user_id); if (!isGroupCall && Object.keys(peers).length === 0) hangUp(false); });
         socket.on('media_status_update', d => { const vWrap = id('wrap-'+d.user_id); if(vWrap) { const icon = vWrap.querySelector('.no-video-icon'); const mBadge = vWrap.querySelector('.mic-off-badge'); const vid = vWrap.querySelector('video'); if(icon) icon.style.display = d.video ? 'none' : 'block'; if(vid) vid.style.opacity = d.video ? '1' : '0'; if(mBadge) mBadge.style.display = d.audio ? 'none' : 'block'; } });
-        socket.on('webrtc_offer', async d => { setupPeer(d.sender_id, false, d.sender_icon, d.sender_name); try { await peers[d.sender_id].setRemoteDescription(new RTCSessionDescription(d.offer)); const a = await peers[d.sender_id].createAnswer(); await peers[d.sender_id].setLocalDescription(a); socket.emit('webrtc_answer', {target_id: d.sender_id, answer: a, session_id: d.session_id}); } catch(e) {} });
-        socket.on('webrtc_answer', async d => { if(peers[d.sender_id]) { try { await peers[d.sender_id].setRemoteDescription(new RTCSessionDescription(d.answer)); } catch(e) {} } }); 
-        socket.on('webrtc_ice', d => { if (d.candidate && d.candidate.type) { if (d.candidate.type === 'reject_call') { showToast("通話が拒否されました"); hangUp(false); } else if (d.candidate.type === 'hang_up') { hangUp(false); } return; } if(peers[d.sender_id] && d.candidate) { peers[d.sender_id].addIceCandidate(new RTCIceCandidate(d.candidate)).catch(e=>{}); } });
+        socket.on('sync_offer', async d => { setupPeer(d.sender_id, false, d.sender_icon, d.sender_name); try { await peers[d.sender_id].setRemoteDescription(new RTCSessionDescription(d.offer)); const a = await peers[d.sender_id].createAnswer(); await peers[d.sender_id].setLocalDescription(a); socket.emit('sync_answer', {target_id: d.sender_id, answer: a, session_id: d.session_id}); } catch(e) {} });
+        socket.on('sync_answer', async d => { if(peers[d.sender_id]) { try { await peers[d.sender_id].setRemoteDescription(new RTCSessionDescription(d.answer)); } catch(e) {} } }); 
+        socket.on('sync_ice', d => { if (d.candidate && d.candidate.type) { if (d.candidate.type === 'reject_call') { showToast("通話が拒否されました"); hangUp(false); } else if (d.candidate.type === 'hang_up') { hangUp(false); } return; } if(peers[d.sender_id] && d.candidate) { peers[d.sender_id].addIceCandidate(new RTCIceCandidate(d.candidate)).catch(e=>{}); } });
         socket.on('hang_up', d => { hangUp(false); });
 
         // Text Call Handlers
@@ -1540,7 +1540,7 @@
     
     async function actionPost(action, pid){ 
         if(action==='delete'){ if(!(await showConfirm("削除しますか？"))) return; }
-        await apiPost(`/api/posts/${action}`, {post_id:pid}); 
+        await apiPost(`/edu/posts/${action}`, {post_id:pid}); 
     }
 
     async function openPostDetail(pid) {
@@ -1632,7 +1632,6 @@
     function submitNote(e) { if(e) e.preventDefault(); apiPost('/edu/notes/post',{content:id('note-input').value, visibility:id('note-vis').value}).then(r=>{if(r&&r.ok) id('note-input').value='';}); }
     
     async function loadNotes(){ 
-<<<<<<< HEAD
         const r=await apiPost('/edu/notes/list'); if(!r||!r.ok)return; const l=await r.json(); 
         const now = Date.now();
         const EXPIRY_24H = 24 * 60 * 60 * 1000; // 24時間（ミリ秒）
@@ -1645,11 +1644,6 @@
         
         let myNote = validNotes.find(n => n.user_id === myInfo.id);
         let otherNotes = validNotes.filter(n => n.user_id !== myInfo.id);
-=======
-        const r=await apiPost('/api/notes/list'); if(!r||!r.ok)return; const l=await r.json(); 
-        let myNote = l.find(n => n.user_id === myInfo.id);
-        let otherNotes = l.filter(n => n.user_id !== myInfo.id);
->>>>>>> parent of 43aeab1 (修正)
         let html = '';
         if(myNote) {
             const ic = myNote.icon_url && myNote.icon_url.trim() !== '' ? (myNote.icon_url.startsWith('http')||myNote.icon_url.startsWith('.') ? myNote.icon_url : BACKEND_URL+myNote.icon_url) : './icon.jpeg';
@@ -1914,7 +1908,7 @@
             show('video-overlay');
             callSession = incomingData.session_id;
             
-            socket.emit('webrtc_ice', { target_id: incomingData.caller_id, candidate: { type: 'accept_call' } });
+            socket.emit('sync_ice', { target_id: incomingData.caller_id, candidate: { type: 'accept_call' } });
             socket.emit('answer_call', { target_id: incomingData.caller_id, session_id: callSession, accept: true });
             
         } catch(e) { 
@@ -1958,7 +1952,7 @@
         pc.onicecandidate = e => { 
             if(e.candidate) {
                 const payload = { target_id: peerId, candidate: e.candidate, session_id: callSession };
-                socket.emit('webrtc_ice', payload); 
+                socket.emit('sync_ice', payload); 
             }
         };
         
@@ -1974,7 +1968,7 @@
               .then(o => pc.setLocalDescription(o).then(() => o))
               .then(o => {
                   const payload = { target_id: peerId, offer: o, session_id: callSession };
-                  socket.emit('webrtc_offer', payload);
+                  socket.emit('sync_offer', payload);
               })
               .catch(err => console.error("Offer error:", err));
         }
