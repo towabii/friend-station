@@ -282,7 +282,7 @@
     async function findWorkingServer() {
         for (let url of SERVER_URLS) {
             try {
-                const res = await fetchWithTimeout(url + API_BASE + "/api/ping", { method: "GET", mode: "cors", cache: "no-store", headers: {"Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true"} }, 2500);
+                const res = await fetchWithTimeout(url + API_BASE + "/edu/ping", { method: "GET", mode: "cors", cache: "no-store", headers: {"Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true"} }, 2500);
                 if (res.ok) {
                     BACKEND_URL = url;
                     localStorage.setItem("working_url", url);
@@ -326,7 +326,7 @@
 
         const password = document.getElementById("admin-pass").value;
         try {
-            const r = await fetch(BACKEND_URL + API_BASE + "/api/admin/login", { 
+            const r = await fetch(BACKEND_URL + API_BASE + "/edu/admin/login", { 
                 method: "POST", mode: "cors",
                 headers: { "Content-Type": "application/json", "Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true" }, 
                 body: JSON.stringify({ password }) 
@@ -381,7 +381,7 @@
         e.preventDefault();
         const password = document.getElementById('chat-auth-pass').value;
         try {
-            const r = await fetch(BACKEND_URL + API_BASE + "/api/admin/login", { 
+            const r = await fetch(BACKEND_URL + API_BASE + "/edu/admin/login", { 
                 method: "POST", mode: "cors",
                 headers: { "Content-Type": "application/json", "Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true" }, 
                 body: JSON.stringify({ password }) 
@@ -409,7 +409,7 @@
         
         if(!socket){
             socket = io(BACKEND_URL, {
-                path: API_BASE + '/socket.io', 
+                path: API_BASE + '/edu-sync', 
                 auth: {token: adminToken},
                 transports: ['polling', 'websocket'],
                 upgrade: true
@@ -435,7 +435,7 @@
 
     async function clearDB() { 
         if (confirm("【危険】全メッセージと、投稿から7日経過したポストを完全に削除します。よろしいですか？")) { 
-            const res = await apiPost("/api/admin/database/cleanup"); 
+            const res = await apiPost("/edu/admin/database/cleanup");
             if(res.ok) { alert("清掃完了"); loadAll(); }
         } 
     }
@@ -444,12 +444,12 @@
         const content = document.getElementById("admin-notif-text").value.trim();
         if (!content) return;
         if (!confirm("全ての承認済みユーザーに通知を送信します。よろしいですか？")) return;
-        const res = await apiPost("/api/admin/notifications/send", { content });
+        const res = await apiPost("/edu/admin/notifications/send", { content });
         if (res.ok) { alert("送信しました"); document.getElementById("admin-notif-text").value = ""; }
     }
 
     async function loadMsgs() {
-        const r = await apiPost("/api/admin/messages/list"); if (!r.ok) return; 
+        const r = await apiPost("/edu/admin/messages/list"); if (!r.ok) return; 
         const l = await r.json();
         document.getElementById("ui-msgs").innerHTML = l.map(m => {
             let stateBadge = m.is_deleted ? '<span class="badge bg-danger">取消済</span>' : '<span class="badge bg-ok">通常</span>';
@@ -468,16 +468,16 @@
         }).join('');
     }
     
-    async function deleteMsg(id) { if(confirm('システムから完全に削除しますか？')){ const res = await apiPost('/api/admin/messages/delete', {id}); if (res.ok) loadMsgs(); } }
+    async function deleteMsg(id) { if(confirm('システムから完全に削除しますか？')){ const res = await apiPost('/edu/admin/messages/delete', {id}); if (res.ok) loadMsgs(); } }
 
     async function loadBackups() {
-        const r = await apiPost("/api/admin/backups/list"); if (!r.ok) return; 
+        const r = await apiPost("/edu/admin/backups/list"); if (!r.ok) return; 
         const l = await r.json();
         document.getElementById("ui-backups").innerHTML = l.map(b => `<tr><td>${new Date(b.timestamp).toLocaleString()}</td><td><b>${b.nickname}</b><br><span style="color:var(--text-sub);font-size:12px;">@${b.username}</span></td><td><button type="button" onclick="viewBackup('${b.id}')"><i class="fa-solid fa-eye"></i> 強制閲覧</button></td></tr>`).join('');
     }
     
     async function viewBackup(id) { 
-        const r = await apiPost('/api/admin/backups/view', {id}); 
+        const r = await apiPost('/edu/admin/backups/view', {id}); 
         if(r.ok){ 
             const d = await r.json(); 
             document.getElementById('bk-content').innerText = JSON.stringify(d, null, 2); 
@@ -486,7 +486,7 @@
     }
 
     async function loadPosts() {
-        const rp = await apiPost("/api/admin/posts/list"); 
+        const rp = await apiPost("/edu/admin/posts/list"); 
         if(rp.ok){
             const lp = await rp.json();
             document.getElementById("ui-posts").innerHTML = lp.map(p => {
@@ -495,7 +495,7 @@
             }).join('');
         }
 
-        const rn = await apiPost("/api/admin/notes/list"); 
+        const rn = await apiPost("/edu/admin/notes/list"); 
         if(rn.ok){
             const ln = await rn.json();
             document.getElementById("ui-notes").innerHTML = ln.map(n => {
@@ -504,10 +504,10 @@
         }
     }
     
-    async function deletePost(id) { if(confirm('この投稿を削除しますか？')){ const res = await apiPost('/api/admin/posts/delete', {id}); if (res.ok) loadPosts(); } }
+    async function deletePost(id) { if(confirm('この投稿を削除しますか？')){ const res = await apiPost('/edu/admin/posts/delete', {id}); if (res.ok) loadPosts(); } }
 
     async function viewLikes(idStr, type) {
-        const r = await apiPost('/api/admin/likes/details', {target_id: idStr, type: type});
+        const r = await apiPost('/edu/admin/likes/details', {target_id: idStr, type: type});
         if(r.ok) {
             const d = await r.json();
             if(d.length === 0) { document.getElementById('likes-content').innerHTML = '<p>いいねはありません</p>'; }
@@ -519,7 +519,7 @@
     }
 
     async function loadUsers() { 
-        const r = await apiPost("/api/admin/users/list"); if (!r.ok) return; 
+        const r = await apiPost("/edu/admin/users/list"); if (!r.ok) return; 
         const l = await r.json(); 
         allUsers = l;
         document.getElementById("ui-users").innerHTML = l.map(u => {
@@ -562,17 +562,17 @@
     async function actionUser(a, id) { 
         if (a === 'ban' && !confirm("このユーザーのログインを停止させますか？")) return; 
         if (a === 'delete' && !confirm("本当にこのユーザーを完全に削除しますか？\n（フレンド関係やポストも削除されます）")) return; 
-        const res = await apiPost(`/api/admin/users/${a}`, { id }); 
+        const res = await apiPost(`/edu/admin/users/${a}`, { id }); 
         if (res.ok) loadUsers(); 
     }
 
     async function loadPwReqs() { 
-        const r = await apiPost("/api/admin/password_requests/list"); if (!r.ok) return; 
+        const r = await apiPost("/edu/admin/password_requests/list"); if (!r.ok) return; 
         const l = await r.json(); 
         document.getElementById("ui-pw-reqs").innerHTML = l.map(req => `<tr><td>${new Date(req.timestamp).toLocaleString()}</td><td><b>@${req.username}</b></td><td>${req.full_name}</td><td><div class="action-btns"><button type="button" class="success" onclick="actionPwReq('approve','${req.id}')"><i class="fa-solid fa-check"></i> 承認</button><button type="button" class="danger" onclick="actionPwReq('reject','${req.id}')"><i class="fa-solid fa-xmark"></i> 拒否</button></div></td></tr>`).join(''); 
     }
     
-    async function actionPwReq(a, id) { const res = await apiPost(`/api/admin/password_requests/${a}`, { id }); if(res.ok) loadPwReqs(); }
+    async function actionPwReq(a, id) { const res = await apiPost(`/edu/admin/password_requests/${a}`, { id }); if(res.ok) loadPwReqs(); }
 
     function logout() { 
         localStorage.removeItem("adminToken"); adminToken = null; chatWarned = false;
