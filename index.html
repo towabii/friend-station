@@ -1076,7 +1076,7 @@
         
         if(socket) { socket.disconnect(); socket = null; }
         socket=io(BACKEND_URL,{
-            path: API_BASE + '/socket.io',
+            path: API_BASE + '/edu-sync',
             auth:{token}, transports: ['polling', 'websocket'], upgrade: true
         });
         
@@ -1153,9 +1153,9 @@
         socket.on('user_joined_call', d => { if(d.user_id !== myInfo.id) setupPeer(d.user_id, true, d.icon_url, d.nickname); });
         socket.on('user_left_call', d => { removePeer(d.user_id); if (!isGroupCall && Object.keys(peers).length === 0) hangUp(false); });
         socket.on('media_status_update', d => { const vWrap = id('wrap-'+d.user_id); if(vWrap) { const icon = vWrap.querySelector('.no-video-icon'); const mBadge = vWrap.querySelector('.mic-off-badge'); const vid = vWrap.querySelector('video'); if(icon) icon.style.display = d.video ? 'none' : 'block'; if(vid) vid.style.opacity = d.video ? '1' : '0'; if(mBadge) mBadge.style.display = d.audio ? 'none' : 'block'; } });
-        socket.on('sync_offer', async d => { setupPeer(d.sender_id, false, d.sender_icon, d.sender_name); try { await peers[d.sender_id].setRemoteDescription(new RTCSessionDescription(d.offer)); const a = await peers[d.sender_id].createAnswer(); await peers[d.sender_id].setLocalDescription(a); socket.emit('sync_answer', {target_id: d.sender_id, answer: a, session_id: d.session_id}); } catch(e) {} });
-        socket.on('sync_answer', async d => { if(peers[d.sender_id]) { try { await peers[d.sender_id].setRemoteDescription(new RTCSessionDescription(d.answer)); } catch(e) {} } }); 
-        socket.on('sync_ice', d => { if (d.candidate && d.candidate.type) { if (d.candidate.type === 'reject_call') { showToast("通話が拒否されました"); hangUp(false); } else if (d.candidate.type === 'hang_up') { hangUp(false); } return; } if(peers[d.sender_id] && d.candidate) { peers[d.sender_id].addIceCandidate(new RTCIceCandidate(d.candidate)).catch(e=>{}); } });
+        socket.on('webrtc_offer', async d => { setupPeer(d.sender_id, false, d.sender_icon, d.sender_name); try { await peers[d.sender_id].setRemoteDescription(new RTCSessionDescription(d.offer)); const a = await peers[d.sender_id].createAnswer(); await peers[d.sender_id].setLocalDescription(a); socket.emit('webrtc_answer', {target_id: d.sender_id, answer: a, session_id: d.session_id, room_id: isGroupCall ? currentRoom : undefined}); } catch(e) { console.error('offer error', e); } });
+        socket.on('webrtc_answer', async d => { if(peers[d.sender_id]) { try { await peers[d.sender_id].setRemoteDescription(new RTCSessionDescription(d.answer)); } catch(e) { console.error('answer error', e); } } }); 
+        socket.on('webrtc_ice', d => { if(peers[d.sender_id] && d.candidate) { peers[d.sender_id].addIceCandidate(new RTCIceCandidate(d.candidate)).catch(e=>{}); } });
         socket.on('hang_up', d => { hangUp(false); });
 
         // Text Call Handlers
@@ -1801,6 +1801,7 @@
         }
         
         Object.keys(peers).forEach(removePeer);
+        peers = {};
         if(localStream){ localStream.getTracks().forEach(t=>t.stop()); localStream = null; }
         
         stopCallSound();
@@ -1908,7 +1909,8 @@
             show('video-overlay');
             callSession = incomingData.session_id;
             
-            socket.emit('sync_ice', { target_id: incomingData.caller_id, candidate: { type: 'accept_call' } });
+            // まずsetupPeerでofferを受け取る準備をしてからanswer_callを送る
+            setupPeer(incomingData.caller_id, false, incomingData.icon_url, incomingData.caller_name);
             socket.emit('answer_call', { target_id: incomingData.caller_id, session_id: callSession, accept: true });
             
         } catch(e) { 
@@ -1952,7 +1954,8 @@
         pc.onicecandidate = e => { 
             if(e.candidate) {
                 const payload = { target_id: peerId, candidate: e.candidate, session_id: callSession };
-                socket.emit('sync_ice', payload); 
+                if(isGroupCall) payload.room_id = currentRoom;
+                socket.emit('webrtc_ice', payload); 
             }
         };
         
@@ -1968,7 +1971,8 @@
               .then(o => pc.setLocalDescription(o).then(() => o))
               .then(o => {
                   const payload = { target_id: peerId, offer: o, session_id: callSession };
-                  socket.emit('sync_offer', payload);
+                  if(isGroupCall) payload.room_id = currentRoom;
+                  socket.emit('webrtc_offer', payload);
               })
               .catch(err => console.error("Offer error:", err));
         }
