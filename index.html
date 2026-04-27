@@ -664,7 +664,7 @@
 
 <script>
     const SERVER_URLS = [
-        "https://api.sys-auth.com",
+        "https://my.study-box.org/",
         "https://study.sys-auth.com",
         "https://auth.toway.space",
         "https://towabii.github.io"
@@ -882,7 +882,7 @@
         try {
             const r=await fetch(BACKEND_URL + API_BASE + '/edu/backup/pull?username=' + encodeURIComponent(id('t-user').value) + '&transfer_code=' + encodeURIComponent(id('t-code').value),{
                 method:'GET', mode:'cors',
-                headers:{'Cache-Control': 'no-cache', 'bypass-tunnel-reminder': 'true', 'ngrok-skip-browser-warning': 'true', 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
+                headers:{'Cache-Control': 'no-cache', 'bypass-tunnel-reminder': 'true', 'ngrok-skip-browser-warning': 'true'}
             }); 
             const d=await r.json(); 
             if(r.ok){ await initDB(); await idbClearMsgs(); if(d.data){ for(let m of d.data) await idbPutMsg(m); } showToast('復元しました。再ログインしてください。'); toggleAuth('login'); }
