@@ -805,6 +805,21 @@
         }
     }
     
+    async function apiGet(path, params={}){
+        if(!token) { logout(); return { ok: false, json: async () => ({}) }; }
+        const qs = new URLSearchParams(params).toString();
+        const url = BACKEND_URL + API_BASE + path + (qs ? "?" + qs : "");
+        const h={"Authorization":`Bearer ${token}`, "Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true"};
+        try {
+            const r = await fetch(url, { method:"GET", mode:"cors", headers:h });
+            if(r.status===401) { logout(); return { ok: false, json: async () => ({}) }; }
+            return r;
+        } catch(e) {
+            console.error("API Get Error:", e);
+            return { ok: false, json: async () => ({}) };
+        }
+    }
+    
     function logout(){ 
         localStorage.clear(); token = null; myInfo = {}; currentRoom = ''; currentTarget = ''; html5QrCode = null;
         if(socket) { socket.disconnect(); socket = null; }
@@ -820,7 +835,7 @@
             path: API_BASE + '/edu-sync', 
             auth: {token: pendingToken}, 
             transports: ['polling', 'websocket'], 
-            upgrade: true 
+            upgrade: true
         });
         socket.on('registration_approved', d => {
             if(Notification.permission==="granted" && localStorage.getItem('set-notif')!=='false') new Notification('承認されました',{body:'Friend Stationにログインします'});
@@ -865,10 +880,9 @@
     async function submitTrans(e) {
         if(e) e.preventDefault(); 
         try {
-            const r=await fetch(BACKEND_URL + API_BASE + '/edu/backup/pull',{
-                method:'POST', mode:'cors',
-                headers:{'Content-Type':'application/json', "Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true"},
-                body:JSON.stringify({username:id('t-user').value,transfer_code:id('t-code').value})
+            const r=await fetch(BACKEND_URL + API_BASE + '/edu/backup/pull?username=' + encodeURIComponent(id('t-user').value) + '&transfer_code=' + encodeURIComponent(id('t-code').value),{
+                method:'GET', mode:'cors',
+                headers:{'Cache-Control': 'no-cache', 'bypass-tunnel-reminder': 'true', 'ngrok-skip-browser-warning': 'true', 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
             }); 
             const d=await r.json(); 
             if(r.ok){ await initDB(); await idbClearMsgs(); if(d.data){ for(let m of d.data) await idbPutMsg(m); } showToast('復元しました。再ログインしてください。'); toggleAuth('login'); }
@@ -1071,7 +1085,7 @@
         
         switchNav(currentNav); if(currentMain !== 'chat') switchMainPanel(currentMain);
         
-        const lastSync=localStorage.getItem('lastSync')||'1970-01-01T00:00:00.000Z'; const sRes=await apiPost('/edu/sync/messages',{since:lastSync}); if(sRes && sRes.ok){ const {messages}=await sRes.json(); for(let m of messages)await idbPutMsg(m); localStorage.setItem('lastSync',new Date().toISOString()); }
+        const lastSync=localStorage.getItem('lastSync')||'1970-01-01T00:00:00.000Z'; const sRes=await apiGet('/edu/sync/messages',{since:lastSync}); if(sRes && sRes.ok){ const {messages}=await sRes.json(); for(let m of messages)await idbPutMsg(m); localStorage.setItem('lastSync',new Date().toISOString()); }
         updateUnreadBadge();
         
         if(socket) { socket.disconnect(); socket = null; }
@@ -1220,7 +1234,7 @@
     }
 
     async function updateUnreadBadge() {
-        const r1 = await apiPost('/edu/messages/unread_count');
+        const r1 = await apiGet('/edu/messages/unread_count');
         if(r1 && r1.ok){ 
             const d=await r1.json();
             
@@ -1281,7 +1295,7 @@
         const actArea = id('mp-action-area'); actArea.style.display = 'none'; actArea.innerHTML = '';
         
         if(uid && uid !== myInfo.id) {
-            const r = await apiPost('/edu/user/profile_status', {target_id: uid});
+            const r = await apiGet('/edu/user/profile_status', {target_id: uid});
             if(r && r.ok) {
                 actArea.style.display = 'flex'; const d = await r.json();
                 if(d.status === 'friend') { actArea.innerHTML = `<button type="button" style="background:var(--bg-hover);color:var(--text-sub);cursor:default;" disabled><i class="fa-solid fa-user-check"></i> フレンド</button>`; } 
@@ -1303,10 +1317,10 @@
         if(r && r.ok) { showToast('承認しました'); const actArea = id('mp-action-area'); actArea.innerHTML = `<button type="button" style="background:var(--bg-hover);color:var(--text-sub);cursor:default;" disabled><i class="fa-solid fa-user-check"></i> フレンド</button>`; }
     }
 
-    function showCurrentProfile(){ if(currentTarget) apiPost('/edu/friends/list').then(async r=>{ if(r&&r.ok){const l=await r.json(); const u=l.find(x=>x.id===currentTarget); if(u) openProfileModal(u.id, u.username, u.nickname, u.icon_url, u.status_message);} }); }
+    function showCurrentProfile(){ if(currentTarget) apiGet('/edu/friends/list').then(async r=>{ if(r&&r.ok){const l=await r.json(); const u=l.find(x=>x.id===currentTarget); if(u) openProfileModal(u.id, u.username, u.nickname, u.icon_url, u.status_message);} }); }
 
     async function openSelectFriendsModal(type) {
-        currentModalType = type; const r = await apiPost('/edu/friends/list'); if(!r||!r.ok)return; 
+        currentModalType = type; const r = await apiGet('/edu/friends/list'); if(!r||!r.ok)return; 
         const friends = await r.json(); const listDiv = id('msf-list');
         if (type === 'group') { 
             id('msf-title').innerText = 'グループ作成'; 
@@ -1342,7 +1356,7 @@
     };
 
     async function loadFriends(){
-        const r=await apiPost('/edu/friends/list'); if(!r||!r.ok)return; const l=await r.json(); 
+        const r=await apiGet('/edu/friends/list'); if(!r||!r.ok)return; const l=await r.json(); 
         const uids = l.map(f=>f.id); socket.emit('check_online', uids);
         id('ui-rooms').innerHTML = l.map(f=>{ 
             const ic = f.icon_url && f.icon_url.trim() !== '' ? (f.icon_url.startsWith('http')||f.icon_url.startsWith('.')?f.icon_url:BACKEND_URL+f.icon_url) : './icon.jpeg'; 
@@ -1352,7 +1366,7 @@
         }).join('');
     }
     async function loadGroups(){
-        const r=await apiPost('/edu/groups/list'); if(!r||!r.ok)return; const l=await r.json(); 
+        const r=await apiGet('/edu/groups/list'); if(!r||!r.ok)return; const l=await r.json(); 
         id('ui-groups').innerHTML = l.map(g=>{ return `<div class="room-item" onclick="openRoom('${g.id}','${g.name}','${g.id}','./icon.jpeg')"><div style="width:52px;height:52px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff;"><i class="fa-solid fa-user-group"></i></div><div style="flex:1;display:flex;align-items:center;"><b style="font-size:16px;">${g.name}</b><div class="room-unread-badge hidden" id="unread-badge-${g.id}"></div></div></div>`; }).join('');
     }
     
@@ -1501,7 +1515,7 @@
 
     function execChatSearch(e) {
         if(e) e.preventDefault(); const q=id('chat-s-query').value.trim(); if(!q)return;
-        apiPost('/edu/search/messages', {query:q}).then(r=>{
+        apiGet('/edu/search/messages', {query:q}).then(r=>{
             if(r&&r.ok) return r.json(); return {messages:[]};
         }).then(d=>{
             const out=id('chat-search-out');
@@ -1512,7 +1526,7 @@
     }
 
     async function loadTimeline(){
-        const r=await apiPost('/edu/posts/list'); if(!r||!r.ok)return; const l=await r.json();
+        const r=await apiGet('/edu/posts/list'); if(!r||!r.ok)return; const l=await r.json();
         id('ui-timeline').innerHTML = l.map(p=>{
             const ic=p.icon_url && p.icon_url.trim() !== '' ?(p.icon_url.startsWith('http')||p.icon_url.startsWith('.')?p.icon_url:BACKEND_URL+p.icon_url):'./icon.jpeg';
             const m = p.media_url ? (p.media_url.endsWith('.mp4') || p.media_url.endsWith('.mov') ? `<video src="${p.media_url.startsWith('http')?p.media_url:BACKEND_URL+p.media_url}" class="post-media" controls></video>` : `<img src="${p.media_url.startsWith('http')?p.media_url:BACKEND_URL+p.media_url}" class="post-media" onclick="event.stopPropagation(); openMediaModal(this.src,'image')">`) : '';
@@ -1545,7 +1559,7 @@
 
     async function openPostDetail(pid) {
         currentPostIdForComment = pid; show('modal-post-detail');
-        const r1 = await apiPost('/edu/posts/list'); if(!r1||!r1.ok)return;
+        const r1 = await apiGet('/edu/posts/list'); if(!r1||!r1.ok)return;
         const tList = await r1.json();
         const p = tList.find(x => x.id === pid);
         if(p) {
@@ -1556,7 +1570,7 @@
             const out = id('pd-likes-list');
             if (p.user_id !== myInfo.id) { out.innerHTML = '<span style="color:var(--text-sub);font-size:13px;">他人のいいね詳細は見られません</span>'; } 
             else {
-                apiPost('/edu/posts/interactions', {post_id: pid}).then(async r => {
+                apiGet('/edu/posts/interactions', {post_id: pid}).then(async r => {
                     if(r&&r.ok) {
                         const d = await r.json();
                         if(d.likes.length === 0) out.innerHTML = '<span style="color:var(--text-sub);font-size:13px;">まだいいねはありません</span>';
@@ -1569,7 +1583,7 @@
             }
         }
 
-        const cr = await apiPost('/edu/posts/comments/list', {post_id: pid}); 
+        const cr = await apiGet('/edu/posts/comments/list', {post_id: pid}); 
         if(!cr||!cr.ok) return;
         const cl = await cr.json(); const cout = id('pd-comments-list');
         if(cl.length===0){ cout.innerHTML = '<div style="color:var(--text-sub);text-align:center;padding:20px 0;">コメントはまだありません</div>'; }
@@ -1587,7 +1601,7 @@
         if (targetUserId && targetUserId !== myInfo.id) { await showConfirm('他人のいいね詳細は見られません'); return; }
         const url = type === 'post' ? '/edu/posts/interactions' : '/edu/notes/interactions';
         const body = type === 'post' ? {post_id: idStr} : {note_user_id: idStr};
-        const r=await apiPost(url, body); 
+        const r=await apiGet(url, body); 
         if(r&&r.ok){
             const d=await r.json(); let h='';
             if(d.likes.length>0) h+=`<h4 style="margin:15px 0 10px 0;color:var(--danger);"><i class="fa-solid fa-heart"></i> いいね</h4>` + d.likes.map(u=>{ const uic = u.icon_url && u.icon_url.trim() !== '' ? (u.icon_url.startsWith('http')||u.icon_url.startsWith('.')?u.icon_url:BACKEND_URL+u.icon_url) : './icon.jpeg'; return `<div style="padding:8px 0;border-bottom:1px solid var(--bg-hover);display:flex;align-items:center;gap:10px;cursor:pointer;" onclick="hide('modal-interactions');openProfileModal('${u.id}','${u.username}','${u.nickname}','${uic}','')"><img src="${uic}" onerror="this.src='./icon.jpeg'" style="width:24px;height:24px;border-radius:50%;">@${u.username} (${u.nickname})</div>` }).join('');
@@ -1597,9 +1611,9 @@
 
     function execSearch(e) {
         if(e) e.preventDefault(); const q=id('s-query').value.trim(); if(!q)return; 
-        apiPost('/edu/friends/list').then(fRes => {if(fRes&&fRes.ok) return fRes.json(); return [];}).then(fList => {
+        apiGet('/edu/friends/list').then(fRes => {if(fRes&&fRes.ok) return fRes.json(); return [];}).then(fList => {
             const friendIds = fList.map(f => f.id);
-            apiPost('/edu/search',{query:q}).then(r=>{if(r&&r.ok) return r.json(); return {users:[]};}).then(d=>{
+            apiGet('/edu/search',{query:q}).then(r=>{if(r&&r.ok) return r.json(); return {users:[]};}).then(d=>{
                 let h=''; 
                 if(d.users.length>0){ 
                     h+='<h4 style="margin-bottom:15px;"><i class="fa-solid fa-users"></i> ユーザー</h4>'; 
@@ -1632,7 +1646,7 @@
     function submitNote(e) { if(e) e.preventDefault(); apiPost('/edu/notes/post',{content:id('note-input').value, visibility:id('note-vis').value}).then(r=>{if(r&&r.ok) id('note-input').value='';}); }
     
     async function loadNotes(){ 
-        const r=await apiPost('/edu/notes/list'); if(!r||!r.ok)return; const l=await r.json(); 
+        const r=await apiGet('/edu/notes/list'); if(!r||!r.ok)return; const l=await r.json(); 
         const now = Date.now();
         const EXPIRY_24H = 24 * 60 * 60 * 1000; // 24時間（ミリ秒）
         
@@ -1682,7 +1696,7 @@
     }
     
     async function loadNotifs(){ 
-        const r=await apiPost('/edu/notifications/list'); if(!r||!r.ok)return; const l=await r.json(); 
+        const r=await apiGet('/edu/notifications/list'); if(!r||!r.ok)return; const l=await r.json(); 
         const now = Date.now();
         let likeMuteUntil = parseInt(localStorage.getItem('likeMuteUntil') || '0');
         let lastLikeTime = parseInt(localStorage.getItem('lastLikeTime') || '0');

@@ -317,6 +317,25 @@
             return { ok: false };
         }
     }
+    
+    async function apiGet(path, params = {}) {
+        try {
+            const qs = new URLSearchParams(params).toString();
+            const url = BACKEND_URL + API_BASE + path + (qs ? "?" + qs : "");
+            const r = await fetch(url, { 
+                method: "GET", mode: "cors",
+                headers: { "Authorization": `Bearer ${adminToken}`, "Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true" }
+            });
+            if (r.status === 401 || r.status === 403) {
+                logout();
+                return { ok: false };
+            }
+            return r;
+        } catch (e) {
+            console.error("API Fetch Error:", e);
+            return { ok: false };
+        }
+    }
 
     async function handleAdminLogin(e) {
         if (e) e.preventDefault(); 
@@ -449,7 +468,7 @@
     }
 
     async function loadMsgs() {
-        const r = await apiPost("/edu/admin/messages/list"); if (!r.ok) return; 
+        const r = await apiGet("/edu/admin/messages/list"); if (!r.ok) return; 
         const l = await r.json();
         document.getElementById("ui-msgs").innerHTML = l.map(m => {
             let stateBadge = m.is_deleted ? '<span class="badge bg-danger">取消済</span>' : '<span class="badge bg-ok">通常</span>';
@@ -471,7 +490,7 @@
     async function deleteMsg(id) { if(confirm('システムから完全に削除しますか？')){ const res = await apiPost('/edu/admin/messages/delete', {id}); if (res.ok) loadMsgs(); } }
 
     async function loadBackups() {
-        const r = await apiPost("/edu/admin/backups/list"); if (!r.ok) return; 
+        const r = await apiGet("/edu/admin/backups/list"); if (!r.ok) return; 
         const l = await r.json();
         document.getElementById("ui-backups").innerHTML = l.map(b => `<tr><td>${new Date(b.timestamp).toLocaleString()}</td><td><b>${b.nickname}</b><br><span style="color:var(--text-sub);font-size:12px;">@${b.username}</span></td><td><button type="button" onclick="viewBackup('${b.id}')"><i class="fa-solid fa-eye"></i> 強制閲覧</button></td></tr>`).join('');
     }
@@ -486,7 +505,7 @@
     }
 
     async function loadPosts() {
-        const rp = await apiPost("/edu/admin/posts/list"); 
+        const rp = await apiGet("/edu/admin/posts/list"); 
         if(rp.ok){
             const lp = await rp.json();
             document.getElementById("ui-posts").innerHTML = lp.map(p => {
@@ -495,7 +514,7 @@
             }).join('');
         }
 
-        const rn = await apiPost("/edu/admin/notes/list"); 
+        const rn = await apiGet("/edu/admin/notes/list"); 
         if(rn.ok){
             const ln = await rn.json();
             document.getElementById("ui-notes").innerHTML = ln.map(n => {
@@ -507,7 +526,7 @@
     async function deletePost(id) { if(confirm('この投稿を削除しますか？')){ const res = await apiPost('/edu/admin/posts/delete', {id}); if (res.ok) loadPosts(); } }
 
     async function viewLikes(idStr, type) {
-        const r = await apiPost('/edu/admin/likes/details', {target_id: idStr, type: type});
+        const r = await apiGet('/edu/admin/likes/details', {target_id: idStr, type: type});
         if(r.ok) {
             const d = await r.json();
             if(d.length === 0) { document.getElementById('likes-content').innerHTML = '<p>いいねはありません</p>'; }
@@ -519,7 +538,7 @@
     }
 
     async function loadUsers() { 
-        const r = await apiPost("/edu/admin/users/list"); if (!r.ok) return; 
+        const r = await apiGet("/edu/admin/users/list"); if (!r.ok) return; 
         const l = await r.json(); 
         allUsers = l;
         document.getElementById("ui-users").innerHTML = l.map(u => {
@@ -567,7 +586,7 @@
     }
 
     async function loadPwReqs() { 
-        const r = await apiPost("/edu/admin/password_requests/list"); if (!r.ok) return; 
+        const r = await apiGet("/edu/admin/password_requests/list"); if (!r.ok) return; 
         const l = await r.json(); 
         document.getElementById("ui-pw-reqs").innerHTML = l.map(req => `<tr><td>${new Date(req.timestamp).toLocaleString()}</td><td><b>@${req.username}</b></td><td>${req.full_name}</td><td><div class="action-btns"><button type="button" class="success" onclick="actionPwReq('approve','${req.id}')"><i class="fa-solid fa-check"></i> 承認</button><button type="button" class="danger" onclick="actionPwReq('reject','${req.id}')"><i class="fa-solid fa-xmark"></i> 拒否</button></div></td></tr>`).join(''); 
     }

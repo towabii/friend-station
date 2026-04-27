@@ -65,6 +65,10 @@
         
         #slide-menu{position:absolute;top:0;left:240px;width:280px;height:100%;background:var(--bg-panel);border-right:1px solid var(--border);transform:translateX(-100%);transition:transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);z-index:9;padding:25px 20px;display:flex;flex-direction:column;gap:12px; box-shadow: 10px 0 30px rgba(0,0,0,0.5);}
         @media(max-width: 768px){ #slide-menu{left:70px;} } #slide-menu.open{transform:translateX(0);}
+        #chat-menu{position:fixed!important;top:70px!important;right:20px!important;z-index:2147483647!important;left:auto!important;transform:none!important;}
+        #chat-menu, #chat-menu * { z-index:2147483647!important; }
+        .chat-box, .msg-wrap, .msg, .sys-call-msg { z-index:1; }
+        .sys-call-msg { position:relative; z-index:1; }
         .menu-item{padding:14px;border-radius:12px;cursor:pointer;font-weight:bold;display:flex;align-items:center;gap:15px; transition:all 0.2s;} .menu-item:hover{background:var(--bg-hover);color:var(--accent);}
         .menu-item i { width: 20px; text-align:center; }
 
@@ -136,6 +140,7 @@
         #context-menu{position:fixed;background:var(--bg-panel);border:1px solid var(--border);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,0.8);z-index:2500;padding:8px;display:flex;flex-direction:column;gap:4px;}
         .ctx-item{padding:12px 16px;cursor:pointer;border-radius:8px;display:flex;align-items:center;gap:12px; font-size:15px; transition:background 0.2s;} .ctx-item:hover{background:var(--bg-hover);}
         .emoji-btn{background:none;border:none;font-size:26px;cursor:pointer;}
+        .saved-check{color:var(--accent);font-size:13px;margin-left:12px;opacity:0;transition:opacity 0.3s;} .saved-check.show{opacity:1;}
         
         #video-overlay {position:fixed;top:0;left:0;width:100%;height:100%;background:#000;z-index:3000;display:flex;flex-direction:column;}
         #video-grid { flex:1; display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:15px; padding:20px; padding-bottom:100px; overflow-y:auto; }
@@ -155,13 +160,6 @@
     </style>
 </head>
 <body>
-
-<script>
-    // XSS対策・エスケープ用ヘルパー
-    const htmlEsc = s => (s||'').toString().replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    const jsEsc = s => (s||'').toString().replace(/'/g, "\\'").replace(/\n/g, "\\n");
-    const jsHtmlEsc = s => jsEsc(htmlEsc(s));
-</script>
 
 <div id="toast" class="toast">メッセージ</div>
 
@@ -266,7 +264,7 @@
 
 <div id="scr-main" class="hidden">
     <div class="sidebar">
-        <div class="brand"><img src="./tag.jpg" onerror="this.src='./icon.jpeg'" style="width:28px;height:28px;border-radius:6px;margin-right:10px;">Friend Station</div>
+        <div class="brand"><img src="./tag.jpg" onerror="this.src='./tag.jpg'" style="width:28px;height:28px;border-radius:6px;margin-right:10px;">Friend Station</div>
         <button type="button" class="nav-btn" id="nav-home" onclick="switchNav('home')"><i class="fa-solid fa-house"></i> <span>ホーム</span></button>
         <button type="button" class="nav-btn" id="nav-chat" onclick="switchNav('chat')"><i class="fa-solid fa-message"></i> <span>メッセージ</span><div id="notif-badge" class="badge hidden">0</div></button>
         <button type="button" class="nav-btn" id="nav-search" onclick="switchNav('search')"><i class="fa-solid fa-magnifying-glass"></i> <span>検索</span></button>
@@ -339,8 +337,7 @@
                         <button type="button" onclick="startRtcCall('voice')" style="background:transparent;font-size:20px;padding:5px;"><i class="fa-solid fa-phone"></i></button> 
                         <button type="button" onclick="startRtcCall('video')" style="background:transparent;font-size:20px;padding:5px;"><i class="fa-solid fa-video"></i></button>
                         <button type="button" onclick="toggleChatMenu(event)" style="background:transparent;font-size:20px;padding:5px;"><i class="fa-solid fa-ellipsis-vertical"></i></button>
-                        <div id="chat-menu" class="hidden" style="position:absolute; right:0; top:40px; background:var(--bg-panel); border:1px solid var(--border); border-radius:12px; z-index:2500; box-shadow:0 5px 15px rgba(0,0,0,0.5); white-space:nowrap;">
-                            <div class="ctx-item" id="chat-menu-pin" onclick="togglePinCurrentRoom()"><i class="fa-solid fa-thumbtack"></i> <span id="chat-menu-pin-text">ピン留め</span></div>
+                        <div id="chat-menu" class="hidden" style="position:fixed; top:70px; right:20px; background:var(--bg-panel); border:1px solid var(--border); border-radius:12px; z-index:2147483647; box-shadow:0 5px 15px rgba(0,0,0,0.5); white-space:nowrap;">
                             <div class="ctx-item" id="chat-menu-add-member" onclick="openSelectFriendsModal('add_group_member')"><i class="fa-solid fa-user-plus"></i> メンバーを追加</div>
                             <div class="ctx-item danger" onclick="execChatMenuAction()"><i class="fa-solid fa-ban"></i> <span id="chat-menu-action-text">ブロック</span></div>
                         </div>
@@ -395,20 +392,11 @@
                 <label style="cursor:pointer;color:var(--accent);font-weight:bold;padding:12px 20px;border:1px solid var(--accent);border-radius:24px;transition:all 0.3s;">アイコン変更<input type="file" accept="image/*" class="hidden" onchange="uploadIcon(this)"></label>
             </div>
             <label style="font-size:13px;color:var(--text-sub);">ユーザーID (変更は30日に1回のみ)</label>
-            <div style="display:flex;gap:12px;align-items:center;margin-bottom:15px;">
-                <input type="text" id="set-id" style="margin:0;">
-                <button type="button" onclick="updateProfile('username', id('set-id').value, this)">保存</button>
-            </div>
+            <div style="display:flex;gap:12px;align-items:center;margin-bottom:15px;"><input type="text" id="set-id" style="margin:0;"><button type="button" onclick="updateProfile('username', id('set-id').value)">保存</button><span class="saved-check" id="sc-id">✔ 保存済</span></div>
             <label style="font-size:13px;color:var(--text-sub);">ニックネーム</label>
-            <div style="display:flex;gap:12px;align-items:center;margin-bottom:15px;">
-                <input type="text" id="set-nick" style="margin:0;">
-                <button type="button" onclick="updateProfile('nickname', id('set-nick').value, this)">保存</button>
-            </div>
+            <div style="display:flex;gap:12px;align-items:center;margin-bottom:15px;"><input type="text" id="set-nick" style="margin:0;"><button type="button" onclick="updateProfile('nickname', id('set-nick').value)">保存</button><span class="saved-check" id="sc-nick">✔ 保存済</span></div>
             <label style="font-size:13px;color:var(--text-sub);">自己紹介</label>
-            <div style="display:flex;gap:12px;align-items:flex-start;">
-                <textarea id="set-status" rows="3" style="margin:0;"></textarea>
-                <button type="button" onclick="updateProfile('status_message', id('set-status').value, this)">保存</button>
-            </div>
+            <div style="display:flex;gap:12px;align-items:flex-start;"><textarea id="set-status" rows="3" style="margin:0;"></textarea><button type="button" onclick="updateProfile('status_message', id('set-status').value)">保存</button><span class="saved-check" id="sc-status">✔ 保存済</span></div>
             
             <h3 style="margin-top:40px;margin-bottom:15px;border-bottom:1px solid var(--border);padding-bottom:10px;">セキュリティ</h3>
             <form onsubmit="requestPwChange(event); return false;" id="form-pw-req" style="display:flex;gap:12px;margin-top:15px;"><input type="password" id="set-new-pw" placeholder="新しいパスワード" required style="margin:0;"><button type="submit">変更申請</button></form>
@@ -679,10 +667,11 @@
         "https://api.sys-auth.com",
         "https://study.sys-auth.com",
         "https://auth.toway.space",
-        "https://www.sys-auth.com"
+        "https://towabii.github.io"
     ];
 
     let BACKEND_URL = localStorage.getItem("working_url") || SERVER_URLS[0];
+    const API_BASE = "/edu-backend"; // ★API基本パス
 
     async function fetchWithTimeout(url, options, timeout = 3000) {
         const controller = new AbortController();
@@ -695,7 +684,7 @@
     async function findWorkingServer() {
         for (let url of SERVER_URLS) {
             try {
-                const res = await fetchWithTimeout(url + "/api/ping", { method: "GET", mode: "cors", cache: "no-store", headers: {"Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true"} }, 2500);
+                const res = await fetchWithTimeout(url + API_BASE + "/edu/ping", { method: "GET", mode: "cors", cache: "no-store", headers: {"Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true"} }, 2500);
                 if (res.ok) {
                     console.log("接続成功:", url);
                     BACKEND_URL = url;
@@ -719,7 +708,6 @@
     let isGroupCall = false;
     let peers = {}; let streamFlags = { video: true, audio: true };
     let textCallData = {};
-    let pinnedRooms = JSON.parse(localStorage.getItem('pinnedRooms') || '[]');
     
     let html5QrCode = null, currentPostIdForComment = null, currentModalType = '';
     let currentNav = localStorage.getItem('activeNav') || 'chat';
@@ -803,16 +791,33 @@
     function idbUpdateReaction(msgId, reactions) { if (!db) return; const tx = db.transaction('messages', 'readwrite'); const store = tx.objectStore('messages'); const req = store.get(msgId); req.onsuccess = () => { const m = req.result; if (m) { m.reactions = JSON.stringify(reactions); store.put(m); } }; }
     function idbUpdateMsgStatus(msgId, content, isDeleted, history) { if(!db) return; const tx = db.transaction('messages', 'readwrite'); const store = tx.objectStore('messages'); const req = store.get(msgId); req.onsuccess = () => { const m = req.result; if(m) { m.content = content; m.is_deleted = isDeleted; m.edit_history = history; store.put(m); } }; }
 
+    const USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+    
     async function apiPost(path, body={}){ 
         if(!token) { logout(); return { ok: false, json: async () => ({}) }; }
-        const h={"Authorization":`Bearer ${token}`, "Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true"}; 
+        const h={"Authorization":`Bearer ${token}`, "Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true", "User-Agent": USER_AGENT}; 
         if(!(body instanceof FormData)){ h["Content-Type"]="application/json"; body=JSON.stringify(body); } 
         try {
-            const r = await fetch(BACKEND_URL+path, { method:"POST", mode:"cors", headers:h, body:body }); 
+            const r = await fetch(BACKEND_URL + API_BASE + path, { method:"POST", mode:"cors", headers:h, body:body }); 
             if(r.status===401) { logout(); return { ok: false, json: async () => ({}) }; }
             return r; 
         } catch(e) {
             console.error("API Post Error:", e);
+            return { ok: false, json: async () => ({}) };
+        }
+    }
+    
+    async function apiGet(path, params={}){
+        if(!token) { logout(); return { ok: false, json: async () => ({}) }; }
+        const qs = new URLSearchParams(params).toString();
+        const url = BACKEND_URL + API_BASE + path + (qs ? "?" + qs : "");
+        const h={"Authorization":`Bearer ${token}`, "Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true", "User-Agent": USER_AGENT};
+        try {
+            const r = await fetch(url, { method:"GET", mode:"cors", headers:h });
+            if(r.status===401) { logout(); return { ok: false, json: async () => ({}) }; }
+            return r;
+        } catch(e) {
+            console.error("API Get Error:", e);
             return { ok: false, json: async () => ({}) };
         }
     }
@@ -828,7 +833,16 @@
     function startPending(pendingToken) {
         hide('scr-auth'); show('scr-pending');
         if(socket) { socket.disconnect(); socket = null; }
-        socket = io(BACKEND_URL, { auth: {token: pendingToken}, transports: ['polling', 'websocket'], upgrade: true });
+        socket = io(BACKEND_URL, { 
+            path: API_BASE + '/edu-sync', 
+            auth: {token: pendingToken}, 
+            transports: ['polling', 'websocket'], 
+            upgrade: true,
+            rejectUnauthorized: false,
+            extraHeaders: {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            }
+        });
         socket.on('registration_approved', d => {
             if(Notification.permission==="granted" && localStorage.getItem('set-notif')!=='false') new Notification('承認されました',{body:'Friend Stationにログインします'});
             token = d.token; myInfo = d.user; localStorage.setItem('token', token); localStorage.setItem('myInfo', JSON.stringify(myInfo));
@@ -841,7 +855,7 @@
         const msgDiv = id('auth-msg');
         msgDiv.style.display = 'block'; msgDiv.innerText = "接続中...";
         try {
-            const r = await fetch(BACKEND_URL+'/api/login',{
+            const r = await fetch(BACKEND_URL + API_BASE + '/edu/login',{
                 method:'POST', mode: 'cors',
                 headers:{'Content-Type':'application/json', "Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true"},
                 body:JSON.stringify({username:id('l-user').value,password:id('l-pass').value})
@@ -872,7 +886,7 @@
     async function submitTrans(e) {
         if(e) e.preventDefault(); 
         try {
-            const r=await fetch(BACKEND_URL+'/api/backup/pull',{
+            const r=await fetch(BACKEND_URL + API_BASE + '/edu/backup/pull',{
                 method:'POST', mode:'cors',
                 headers:{'Content-Type':'application/json', "Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true"},
                 body:JSON.stringify({username:id('t-user').value,transfer_code:id('t-code').value})
@@ -893,7 +907,7 @@
         
         const b={username:uidVal,nickname:id('r-nick').value,first_name:id('r-fn').value,last_name:id('r-ln').value,password:id('r-pass').value,school_name:id('r-school').value,grade:id('r-grade').value,class_num:id('r-class').value,attendance_num:id('r-att').value,birthdate:id('r-birth').value}; 
         try {
-            const r=await fetch(BACKEND_URL+'/api/register',{ method:'POST', mode:'cors', headers:{'Content-Type':'application/json', "Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true"}, body:JSON.stringify(b) }); 
+            const r=await fetch(BACKEND_URL + API_BASE + '/edu/register',{ method:'POST', mode:'cors', headers:{'Content-Type':'application/json', "Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true"}, body:JSON.stringify(b) }); 
             const d=await r.json();
             if(r.ok && d.pendingToken){ startPending(d.pendingToken); } 
             else if(!r.ok){ id('auth-msg').style.display='block'; id('auth-msg').innerText=d.error; }
@@ -1011,26 +1025,7 @@
         const menu = id('chat-menu');
         id('chat-menu-action-text').innerText = isGroupCall ? 'グループを退会' : 'ブロック（フレンド解除）';
         id('chat-menu-add-member').style.display = isGroupCall ? 'flex' : 'none';
-        
-        id('chat-menu-pin-text').innerText = pinnedRooms.includes(currentRoom) ? 'ピン留め解除' : 'ピン留め';
-        
         menu.classList.toggle('hidden');
-    }
-    
-    function togglePinCurrentRoom() {
-        hide('chat-menu');
-        if (!currentRoom) return;
-        const idx = pinnedRooms.indexOf(currentRoom);
-        if (idx > -1) {
-            pinnedRooms.splice(idx, 1);
-            showToast('ピン留めを解除しました');
-        } else {
-            pinnedRooms.push(currentRoom);
-            showToast('ピン留めしました');
-        }
-        localStorage.setItem('pinnedRooms', JSON.stringify(pinnedRooms));
-        loadFriends();
-        loadGroups();
     }
 
     document.addEventListener('click', (e)=> { 
@@ -1043,19 +1038,19 @@
         hide('chat-menu');
         if (isGroupCall) {
             if(await showConfirm('このグループから退会しますか？')) {
-                const res = await apiPost('/api/groups/leave', { group_id: currentRoom });
+                const res = await apiPost('/edu/groups/leave', { group_id: currentRoom });
                 if(res && res.ok) { showToast('退会しました'); currentRoom = ''; currentTarget = ''; switchNav('chat'); loadGroups(); }
             }
         } else {
             if(await showConfirm('このユーザーをブロック（フレンド解除）しますか？')) {
-                const res = await apiPost('/api/friends/block', { target_id: currentTarget });
+                const res = await apiPost('/edu/friends/block', { target_id: currentTarget });
                 if(res && res.ok) { showToast('ブロックしました'); currentRoom = ''; currentTarget = ''; switchNav('chat'); loadFriends(); }
             }
         }
     }
 
     async function openBlockListModal() {
-        const r = await apiPost('/api/friends/block_list');
+        const r = await apiPost('/edu/friends/block_list');
         if(r && r.ok) {
             const list = await r.json();
             const out = id('block-list-content');
@@ -1064,7 +1059,7 @@
                 const ic = u.icon_url && u.icon_url.trim() !== '' ? (u.icon_url.startsWith('http')||u.icon_url.startsWith('.')?u.icon_url:BACKEND_URL+u.icon_url) : './icon.jpeg';
                 return `<div style="display:flex; align-items:center; gap:10px; padding:10px; border-bottom:1px solid var(--border);">
                     <img src="${ic}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;">
-                    <div style="flex:1;"><b>${htmlEsc(u.nickname)}</b><br><span style="font-size:12px;color:var(--text-sub);">@${u.username}</span></div>
+                    <div style="flex:1;"><b>${u.nickname}</b><br><span style="font-size:12px;color:var(--text-sub);">@${u.username}</span></div>
                     <button type="button" class="success" style="padding:6px 12px; font-size:12px;" onclick="unblockUser('${u.id}')">解除</button>
                 </div>`;
             }).join('');
@@ -1074,7 +1069,7 @@
 
     async function unblockUser(uid) {
         if(await showConfirm('ブロックを解除しますか？')) {
-            const r = await apiPost('/api/friends/unblock', {target_id: uid});
+            const r = await apiPost('/edu/friends/unblock', {target_id: uid});
             if(r && r.ok) { showToast('解除しました'); openBlockListModal(); loadFriends(); }
         }
     }
@@ -1097,12 +1092,17 @@
         
         switchNav(currentNav); if(currentMain !== 'chat') switchMainPanel(currentMain);
         
-        const lastSync=localStorage.getItem('lastSync')||'1970-01-01T00:00:00.000Z'; const sRes=await apiPost('/api/sync/messages',{since:lastSync}); if(sRes && sRes.ok){ const {messages}=await sRes.json(); for(let m of messages)await idbPutMsg(m); localStorage.setItem('lastSync',new Date().toISOString()); }
+        const lastSync=localStorage.getItem('lastSync')||'1970-01-01T00:00:00.000Z'; const sRes=await apiGet('/edu/sync/messages',{since:lastSync}); if(sRes && sRes.ok){ const {messages}=await sRes.json(); for(let m of messages)await idbPutMsg(m); localStorage.setItem('lastSync',new Date().toISOString()); }
         updateUnreadBadge();
         
         if(socket) { socket.disconnect(); socket = null; }
         socket=io(BACKEND_URL,{
-            auth:{token}, transports: ['polling', 'websocket'], upgrade: true
+            path: API_BASE + '/edu-sync',
+            auth:{token}, transports: ['polling', 'websocket'], upgrade: true,
+            rejectUnauthorized: false,
+            extraHeaders: {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            }
         });
         
         socket.on("connect_error", (err) => { if (err.message === "NoToken" || err.message === "InvToken") { logout(); } });
@@ -1144,6 +1144,7 @@
         });
 
         const showIncomingCallUI = d => {
+            console.log('showIncomingCallUI called with:', d);
             incomingData = d;
             rtcType = d.video ? 'video' : 'voice';
             id('caller-name').innerText = d.caller_name || '着信';
@@ -1154,9 +1155,10 @@
             playCallSound();
         };
         socket.on('incoming_call', showIncomingCallUI);
-        socket.on('call_received', showIncomingCallUI);
+        socket.on('call_received', showIncomingCallUI); // ★ 新規イベント？
 
         const showActiveCallUI = d => {
+            console.log('showActiveCallUI called with:', d);
             hide('modal-calling');
             hide('modal-incoming');
             callSession = d.session_id;
@@ -1164,7 +1166,7 @@
             setupPeer(d.answerer_id, true, d.icon_url, d.nickname);
         };
         socket.on('call_answered', showActiveCallUI);
-        socket.on('call_started', showActiveCallUI); 
+        socket.on('call_started', showActiveCallUI); // ★ 新規イベント？
 
         socket.on('call_rejected', d => {
             hide('modal-calling');
@@ -1176,13 +1178,14 @@
         socket.on('user_joined_call', d => { if(d.user_id !== myInfo.id) setupPeer(d.user_id, true, d.icon_url, d.nickname); });
         socket.on('user_left_call', d => { removePeer(d.user_id); if (!isGroupCall && Object.keys(peers).length === 0) hangUp(false); });
         socket.on('media_status_update', d => { const vWrap = id('wrap-'+d.user_id); if(vWrap) { const icon = vWrap.querySelector('.no-video-icon'); const mBadge = vWrap.querySelector('.mic-off-badge'); const vid = vWrap.querySelector('video'); if(icon) icon.style.display = d.video ? 'none' : 'block'; if(vid) vid.style.opacity = d.video ? '1' : '0'; if(mBadge) mBadge.style.display = d.audio ? 'none' : 'block'; } });
-        socket.on('webrtc_offer', async d => { setupPeer(d.sender_id, false, d.sender_icon, d.sender_name); try { await peers[d.sender_id].setRemoteDescription(new RTCSessionDescription(d.offer)); const a = await peers[d.sender_id].createAnswer(); await peers[d.sender_id].setLocalDescription(a); socket.emit('webrtc_answer', {target_id: d.sender_id, answer: a, session_id: d.session_id}); } catch(e) {} });
-        socket.on('webrtc_answer', async d => { if(peers[d.sender_id]) { try { await peers[d.sender_id].setRemoteDescription(new RTCSessionDescription(d.answer)); } catch(e) {} } }); 
-        socket.on('webrtc_ice', d => { if (d.candidate && d.candidate.type) { if (d.candidate.type === 'reject_call') { showToast("通話が拒否されました"); hangUp(false); } else if (d.candidate.type === 'hang_up') { hangUp(false); } return; } if(peers[d.sender_id] && d.candidate) { peers[d.sender_id].addIceCandidate(new RTCIceCandidate(d.candidate)).catch(e=>{}); } });
+        socket.on('webrtc_offer', async d => { setupPeer(d.sender_id, false, d.sender_icon, d.sender_name); try { await peers[d.sender_id].setRemoteDescription(new RTCSessionDescription(d.offer)); const a = await peers[d.sender_id].createAnswer(); await peers[d.sender_id].setLocalDescription(a); socket.emit('webrtc_answer', {target_id: d.sender_id, answer: a, session_id: d.session_id, room_id: isGroupCall ? currentRoom : undefined}); } catch(e) { console.error('offer error', e); } });
+        socket.on('webrtc_answer', async d => { if(peers[d.sender_id]) { try { await peers[d.sender_id].setRemoteDescription(new RTCSessionDescription(d.answer)); } catch(e) { console.error('answer error', e); } } }); 
+        socket.on('webrtc_ice', d => { if(peers[d.sender_id] && d.candidate) { peers[d.sender_id].addIceCandidate(new RTCIceCandidate(d.candidate)).catch(e=>{}); } });
         socket.on('hang_up', d => { hangUp(false); });
 
         // Text Call Handlers
         const showIncomingTextCallUI = d => {
+            console.log('showIncomingTextCallUI called with:', d);
             incomingData={...d, type:'text'};
             rtcType='text';
             id('caller-name').innerText=`${d.caller_name}`;
@@ -1193,9 +1196,10 @@
             playCallSound();
         };
         socket.on('incoming_text_call', showIncomingTextCallUI);
-        socket.on('text_call_received', showIncomingTextCallUI); 
+        socket.on('text_call_received', showIncomingTextCallUI); // ★ 新規イベント？
 
         socket.on('text_call_started', d => {
+            console.log('text_call_started called with:', d);
             hide('modal-calling');
             hide('modal-incoming');
             textCallSession = d.session_id;
@@ -1241,7 +1245,7 @@
     }
 
     async function updateUnreadBadge() {
-        const r1 = await apiPost('/api/messages/unread_count');
+        const r1 = await apiGet('/edu/messages/unread_count');
         if(r1 && r1.ok){ 
             const d=await r1.json();
             
@@ -1274,7 +1278,7 @@
         ['chat','search','notif'].forEach(x=>{ id('nav-'+x)?.classList.toggle('active',x===t); if(id('panel-'+x)) id('panel-'+x).classList.toggle('hidden',x!==t); });
         id('nav-home').classList.toggle('active', t==='home');
         if(t==='home') { id('list-panel').style.display='none'; switchMainPanel('home'); } else { id('list-panel').style.display='flex'; switchMainPanel('chat'); }
-        if(t==='notif') apiPost('/api/notifications/read').then(r=>{ if(r&&r.ok) loadNotifs(); });
+        if(t==='notif') apiPost('/edu/notifications/read').then(r=>{ if(r&&r.ok) loadNotifs(); });
     }
     
     function switchMainPanel(p){
@@ -1302,7 +1306,7 @@
         const actArea = id('mp-action-area'); actArea.style.display = 'none'; actArea.innerHTML = '';
         
         if(uid && uid !== myInfo.id) {
-            const r = await apiPost('/api/user/profile_status', {target_id: uid});
+            const r = await apiGet('/edu/user/profile_status', {target_id: uid});
             if(r && r.ok) {
                 actArea.style.display = 'flex'; const d = await r.json();
                 if(d.status === 'friend') { actArea.innerHTML = `<button type="button" style="background:var(--bg-hover);color:var(--text-sub);cursor:default;" disabled><i class="fa-solid fa-user-check"></i> フレンド</button>`; } 
@@ -1315,19 +1319,19 @@
     }
     
     async function requestFriendFromProfile(username, uid) {
-        const r = await apiPost('/api/friends/request', {username});
+        const r = await apiPost('/edu/friends/request', {username});
         if(r && r.ok) { showToast('申請しました'); const actArea = id('mp-action-area'); actArea.innerHTML = `<button type="button" style="background:var(--bg-hover);color:var(--text-sub);cursor:default;" disabled><i class="fa-solid fa-clock"></i> 申請中</button>`; } else { const d = await r.json(); showToast(d.error); }
     }
 
     async function acceptRequestFromProfile(reqId, uid) {
-        const r = await apiPost('/api/friends/accept', {request_id: reqId});
+        const r = await apiPost('/edu/friends/accept', {request_id: reqId});
         if(r && r.ok) { showToast('承認しました'); const actArea = id('mp-action-area'); actArea.innerHTML = `<button type="button" style="background:var(--bg-hover);color:var(--text-sub);cursor:default;" disabled><i class="fa-solid fa-user-check"></i> フレンド</button>`; }
     }
 
-    function showCurrentProfile(){ if(currentTarget) apiPost('/api/friends/list').then(async r=>{ if(r&&r.ok){const l=await r.json(); const u=l.find(x=>x.id===currentTarget); if(u) openProfileModal(u.id, u.username, u.nickname, u.icon_url, u.status_message);} }); }
+    function showCurrentProfile(){ if(currentTarget) apiGet('/edu/friends/list').then(async r=>{ if(r&&r.ok){const l=await r.json(); const u=l.find(x=>x.id===currentTarget); if(u) openProfileModal(u.id, u.username, u.nickname, u.icon_url, u.status_message);} }); }
 
     async function openSelectFriendsModal(type) {
-        currentModalType = type; const r = await apiPost('/api/friends/list'); if(!r||!r.ok)return; 
+        currentModalType = type; const r = await apiGet('/edu/friends/list'); if(!r||!r.ok)return; 
         const friends = await r.json(); const listDiv = id('msf-list');
         if (type === 'group') { 
             id('msf-title').innerText = 'グループ作成'; 
@@ -1343,7 +1347,7 @@
         listDiv.innerHTML = friends.map(f => {
             const isChecked = (type === 'close' && f.is_close_friend === 1) ? 'checked' : '';
             const ic = f.icon_url && f.icon_url.trim() !== '' ? (f.icon_url.startsWith('http')||f.icon_url.startsWith('.')?f.icon_url:BACKEND_URL+f.icon_url) : './icon.jpeg';
-            return `<label style="display:flex;align-items:center;gap:15px;padding:12px;background:var(--bg-panel);border-radius:12px;cursor:pointer;border:1px solid var(--border);transition:all 0.2s;"><input type="checkbox" value="${f.id}" class="msf-checkbox" ${isChecked} style="width:auto;margin:0;"><img src="${ic}" onerror="this.src='./icon.jpeg'" style="width:36px;height:36px;border-radius:50%;"> <span style="font-size:16px;">${htmlEsc(f.nickname)}</span></label>`;
+            return `<label style="display:flex;align-items:center;gap:15px;padding:12px;background:var(--bg-panel);border-radius:12px;cursor:pointer;border:1px solid var(--border);transition:all 0.2s;"><input type="checkbox" value="${f.id}" class="msf-checkbox" ${isChecked} style="width:auto;margin:0;"><img src="${ic}" onerror="this.src='./icon.jpeg'" style="width:36px;height:36px;border-radius:50%;"> <span style="font-size:16px;">${f.nickname}</span></label>`;
         }).join('');
         show('modal-select-friends'); toggleMenu(); hide('chat-menu');
     }
@@ -1352,54 +1356,29 @@
         e.preventDefault(); const checkboxes = document.querySelectorAll('.msf-checkbox:checked'); const selectedIds = Array.from(checkboxes).map(cb => cb.value);
         if (currentModalType === 'group') {
             const name = id('msf-group-name').value.trim(); if(!name) return showToast('グループ名を入力してください');
-            const r = await apiPost('/api/groups/create', {name, members: selectedIds}); if(r&&r.ok) { showToast('グループを作成しました'); hide('modal-select-friends'); }
+            const r = await apiPost('/edu/groups/create', {name, members: selectedIds}); if(r&&r.ok) { showToast('グループを作成しました'); hide('modal-select-friends'); }
         } else if(currentModalType === 'close') {
-            const r = await apiPost('/api/friends/set_close_bulk', {friend_ids: selectedIds}); if(r&&r.ok) { showToast('リストを更新しました'); hide('modal-select-friends'); }
+            const r = await apiPost('/edu/friends/set_close_bulk', {friend_ids: selectedIds}); if(r&&r.ok) { showToast('リストを更新しました'); hide('modal-select-friends'); }
         } else if(currentModalType === 'add_group_member') {
             if(selectedIds.length === 0) return showToast('メンバーを選択してください');
-            const r = await apiPost('/api/groups/add_members', {group_id: currentRoom, members: selectedIds}); 
+            const r = await apiPost('/edu/groups/add_members', {group_id: currentRoom, members: selectedIds}); 
             if(r&&r.ok) { showToast('メンバーを追加しました'); hide('modal-select-friends'); }
         }
     };
 
     async function loadFriends(){
-        const r=await apiPost('/api/friends/list'); if(!r||!r.ok)return; const l=await r.json(); 
+        const r=await apiGet('/edu/friends/list'); if(!r||!r.ok)return; const l=await r.json(); 
         const uids = l.map(f=>f.id); socket.emit('check_online', uids);
-        
-        l.sort((a, b) => {
-            const ridA = [myInfo.id, a.id].sort().join('_');
-            const ridB = [myInfo.id, b.id].sort().join('_');
-            const pinA = pinnedRooms.includes(ridA) ? 1 : 0;
-            const pinB = pinnedRooms.includes(ridB) ? 1 : 0;
-            return pinB - pinA; 
-        });
-
         id('ui-rooms').innerHTML = l.map(f=>{ 
             const ic = f.icon_url && f.icon_url.trim() !== '' ? (f.icon_url.startsWith('http')||f.icon_url.startsWith('.')?f.icon_url:BACKEND_URL+f.icon_url) : './icon.jpeg'; 
             const clFlag=f.is_close_friend===1?'<span style="font-size:12px;color:var(--accent);margin-left:5px;"><i class="fa-solid fa-lock"></i></span>':''; 
             const rid = [myInfo.id, f.id].sort().join('_');
-            const pinIcon = pinnedRooms.includes(rid) ? '<span style="color:var(--text-sub);font-size:12px;margin-left:8px;transform:rotate(45deg);display:inline-block;"><i class="fa-solid fa-thumbtack"></i></span>' : '';
-            const safeNick = jsHtmlEsc(f.nickname);
-            const safeStatus = jsHtmlEsc(f.status_message);
-
-            return `<div class="room-item" data-uid="${f.id}" onclick="openRoom('${rid}','${safeNick}','${f.id}','${ic}')"><div style="position:relative;"><img src="${ic}" onerror="this.src='./icon.jpeg'" onclick="event.stopPropagation(); openProfileModal('${f.id}','${f.username}','${safeNick}','${ic}','${safeStatus}')"><div class="online-badge"></div></div><div style="flex:1;display:flex;align-items:center;"><b style="font-size:16px;">${htmlEsc(f.nickname)} ${clFlag}</b>${pinIcon}<div class="room-unread-badge hidden" id="unread-badge-${rid}"></div></div></div>`; 
+            return `<div class="room-item" data-uid="${f.id}" onclick="openRoom('${rid}','${f.nickname}','${f.id}','${ic}')"><div style="position:relative;"><img src="${ic}" onerror="this.src='./icon.jpeg'" onclick="event.stopPropagation(); openProfileModal('${f.id}','${f.username}','${f.nickname}','${ic}','${f.status_message}')"><div class="online-badge"></div></div><div style="flex:1;display:flex;align-items:center;"><b style="font-size:16px;">${f.nickname} ${clFlag}</b><div class="room-unread-badge hidden" id="unread-badge-${rid}"></div></div></div>`; 
         }).join('');
     }
-    
     async function loadGroups(){
-        const r=await apiPost('/api/groups/list'); if(!r||!r.ok)return; const l=await r.json(); 
-        
-        l.sort((a, b) => {
-            const pinA = pinnedRooms.includes(a.id) ? 1 : 0;
-            const pinB = pinnedRooms.includes(b.id) ? 1 : 0;
-            return pinB - pinA;
-        });
-
-        id('ui-groups').innerHTML = l.map(g=>{ 
-            const pinIcon = pinnedRooms.includes(g.id) ? '<span style="color:var(--text-sub);font-size:12px;margin-left:8px;transform:rotate(45deg);display:inline-block;"><i class="fa-solid fa-thumbtack"></i></span>' : '';
-            const safeName = jsHtmlEsc(g.name);
-            return `<div class="room-item" onclick="openRoom('${g.id}','${safeName}','${g.id}','./icon.jpeg')"><div style="width:52px;height:52px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff;"><i class="fa-solid fa-user-group"></i></div><div style="flex:1;display:flex;align-items:center;"><b style="font-size:16px;">${htmlEsc(g.name)}</b>${pinIcon}<div class="room-unread-badge hidden" id="unread-badge-${g.id}"></div></div></div>`; 
-        }).join('');
+        const r=await apiGet('/edu/groups/list'); if(!r||!r.ok)return; const l=await r.json(); 
+        id('ui-groups').innerHTML = l.map(g=>{ return `<div class="room-item" onclick="openRoom('${g.id}','${g.name}','${g.id}','./icon.jpeg')"><div style="width:52px;height:52px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff;"><i class="fa-solid fa-user-group"></i></div><div style="flex:1;display:flex;align-items:center;"><b style="font-size:16px;">${g.name}</b><div class="room-unread-badge hidden" id="unread-badge-${g.id}"></div></div></div>`; }).join('');
     }
     
     async function openRoom(rid, name, tid, icon, scrollPos=0){ 
@@ -1417,7 +1396,7 @@
     
     function renderMsg(m, append = true){
         const b=id('ui-msgs'), isMe=m.user_id===myInfo.id, cls=isMe?'my-msg':'other-msg', t=new Date(m.timestamp).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-        let rep=''; if(m.reply_to){ try{const r=JSON.parse(m.reply_to); rep=`<div class="reply-banner"><i class="fa-solid fa-reply"></i> ${htmlEsc(r.name)}: ${htmlEsc(r.text.substring(0,15))}...</div>`;}catch(e){} }
+        let rep=''; if(m.reply_to){ try{const r=JSON.parse(m.reply_to); rep=`<div class="reply-banner"><i class="fa-solid fa-reply"></i> ${r.name}: ${r.text.substring(0,15)}...</div>`;}catch(e){} }
         
         let c=''; 
         if(m.is_deleted === 1) {
@@ -1430,10 +1409,10 @@
                 const msgTxt = parts[0]; const sId = parts[1]; const cType = parts.length > 2 ? parts[2] : 'voice';
                 
                 if (cType === 'text') {
-                    c = `<div class="sys-call-msg"><i class="fa-solid fa-message"></i> ${htmlEsc(msgTxt)} <button type="button" class="success" style="margin-left:10px;padding:6px 12px;font-size:13px;" onclick="joinTextCall('${sId}')"><i class="fa-solid fa-right-to-bracket"></i> 参加</button></div>`;
+                    c = `<div class="sys-call-msg"><i class="fa-solid fa-message"></i> ${msgTxt} <button type="button" class="success" style="margin-left:10px;padding:6px 12px;font-size:13px;" onclick="joinTextCall('${sId}')"><i class="fa-solid fa-right-to-bracket"></i> 参加</button></div>`;
                 } else {
                     const iconCls = cType === 'video' ? 'fa-video' : 'fa-phone';
-                    c = `<div class="sys-call-msg"><i class="fa-solid ${iconCls}"></i> ${htmlEsc(msgTxt)} <button type="button" class="success" style="margin-left:10px;padding:6px 12px;font-size:13px;" onclick="joinGroupCall('${sId}', '${cType}')"><i class="fa-solid fa-right-to-bracket"></i> 参加</button></div>`;
+                    c = `<div class="sys-call-msg"><i class="fa-solid ${iconCls}"></i> ${msgTxt} <button type="button" class="success" style="margin-left:10px;padding:6px 12px;font-size:13px;" onclick="joinGroupCall('${sId}', '${cType}')"><i class="fa-solid fa-right-to-bracket"></i> 参加</button></div>`;
                 }
             }
             else c=m.content.replace(/</g,"&lt;").replace(/>/g,"&gt;");
@@ -1457,7 +1436,7 @@
         let reBadge=''; try{const r=JSON.parse(m.reactions||'{}'); const eArr=[]; Object.entries(r).forEach(([emoji,uids])=>{if(uids.length>0)eArr.push(`${emoji}${uids.length>1?uids.length:''}`)}); if(eArr.length>0) reBadge=`<div class="reactions-badge" id="react-${m.msg_id}">${eArr.join(' ')}</div>`; else reBadge=`<div class="reactions-badge" id="react-${m.msg_id}" style="display:none;"></div>`;}catch(e){}
         
         let senderNameHtml = '';
-        if (!isMe && m.room_id.startsWith('g_')) { senderNameHtml = `<div style="font-size:11px; color:var(--text-sub); margin-bottom:2px; margin-left:10px;">${htmlEsc(m.user_name)}</div>`; }
+        if (!isMe && m.room_id.startsWith('g_')) { senderNameHtml = `<div style="font-size:11px; color:var(--text-sub); margin-bottom:2px; margin-left:10px;">${m.user_name}</div>`; }
 
         const reactBtn = m.type!=='system_call' ? `<button type="button" class="msg-react-btn" onclick="showReactionMenu(event, '${m.msg_id}')">😊</button>` : '';
         const optBtn = m.type!=='system_call' ? `<button type="button" class="msg-opt-btn" onclick="openMsgOpt(event, '${m.msg_id}', ${isMe}, '${m.timestamp}')"><i class="fa-solid fa-ellipsis-vertical"></i></button>` : '';
@@ -1498,7 +1477,7 @@
             if(diff <= 60 * 60 * 1000) show(editBtn); else hide(editBtn);
             
             editBtn.onclick = () => { editTargetMsgId = msgId; id('ed-text').innerText = textPreview; show('edit-preview'); hide('context-menu'); id('msg-input').focus(); };
-            delBtn.onclick = async () => { hide('context-menu'); if(await showConfirm('送信を取り消しますか？')) await apiPost('/api/messages/delete_msg', {msg_id: msgId}); };
+            delBtn.onclick = async () => { hide('context-menu'); if(await showConfirm('送信を取り消しますか？')) await apiPost('/edu/messages/delete_msg', {msg_id: msgId}); };
         } else { hide(editBtn); hide(delBtn); }
     }
 
@@ -1521,7 +1500,7 @@
         if(!v && !f) return; 
         
         if(editTargetMsgId && !f) {
-            const res = await apiPost('/api/messages/edit_msg', {msg_id: editTargetMsgId, content: v});
+            const res = await apiPost('/edu/messages/edit_msg', {msg_id: editTargetMsgId, content: v});
             if(res && res.ok) { cancelEdit(); } else { const d = await res.json(); showToast(d.error); }
         } else if(f) {
             uploadMedia(v);
@@ -1534,7 +1513,7 @@
     async function uploadMedia(textMsg){ 
         const f=id('chat-file').files[0]; if(!f)return; 
         const fd=new FormData(); fd.append('file',f); 
-        const r=await apiPost('/api/upload',fd); 
+        const r=await apiPost('/edu/upload',fd); 
         if(r && r.ok){ 
             const d=await r.json(); 
             socket.emit('send_message',{room_id:currentRoom,type:f.type.startsWith('video')?'video':'image',content:d.url, reply_to:replyTarget?JSON.stringify(replyTarget):null}); 
@@ -1547,28 +1526,27 @@
 
     function execChatSearch(e) {
         if(e) e.preventDefault(); const q=id('chat-s-query').value.trim(); if(!q)return;
-        apiPost('/api/search/messages', {query:q}).then(r=>{
+        apiGet('/edu/search/messages', {query:q}).then(r=>{
             if(r&&r.ok) return r.json(); return {messages:[]};
         }).then(d=>{
             const out=id('chat-search-out');
-            if(d.messages.length>0){ out.innerHTML = d.messages.map(m=> `<div style="padding:15px;border-bottom:1px solid var(--border);"><b style="color:var(--accent);">${htmlEsc(m.user_name)}</b> <span style="font-size:12px;color:var(--text-sub);margin-left:10px;">${new Date(m.timestamp).toLocaleDateString()}</span><div style="font-size:15px;margin-top:8px;line-height:1.4;">${htmlEsc(m.content)}</div></div>`).join(''); }
+            if(d.messages.length>0){ out.innerHTML = d.messages.map(m=> `<div style="padding:15px;border-bottom:1px solid var(--border);"><b style="color:var(--accent);">${m.user_name}</b> <span style="font-size:12px;color:var(--text-sub);margin-left:10px;">${new Date(m.timestamp).toLocaleDateString()}</span><div style="font-size:15px;margin-top:8px;line-height:1.4;">${m.content}</div></div>`).join(''); }
             else { out.innerHTML = '<p style="color:var(--text-sub);text-align:center;margin-top:20px;">見つかりませんでした</p>'; }
             show('modal-search-res');
         });
     }
 
     async function loadTimeline(){
-        const r=await apiPost('/api/posts/list'); if(!r||!r.ok)return; const l=await r.json();
+        const r=await apiGet('/edu/posts/list'); if(!r||!r.ok)return; const l=await r.json();
         id('ui-timeline').innerHTML = l.map(p=>{
             const ic=p.icon_url && p.icon_url.trim() !== '' ?(p.icon_url.startsWith('http')||p.icon_url.startsWith('.')?p.icon_url:BACKEND_URL+p.icon_url):'./icon.jpeg';
             const m = p.media_url ? (p.media_url.endsWith('.mp4') || p.media_url.endsWith('.mov') ? `<video src="${p.media_url.startsWith('http')?p.media_url:BACKEND_URL+p.media_url}" class="post-media" controls></video>` : `<img src="${p.media_url.startsWith('http')?p.media_url:BACKEND_URL+p.media_url}" class="post-media" onclick="event.stopPropagation(); openMediaModal(this.src,'image')">`) : '';
             const delBtn = p.user_id===myInfo.id ? `<span class="del-post-btn" onclick="event.stopPropagation(); actionPost('delete','${p.id}')"><i class="fa-solid fa-xmark"></i></span>` : '';
             const visBadge = p.visibility==='close' ? `<span style="color:var(--accent);font-size:12px;margin-left:8px;"><i class="fa-solid fa-lock"></i> 親しい友達</span>` : (p.visibility==='friends' ? `<span style="color:var(--accent);font-size:12px;margin-left:8px;"><i class="fa-solid fa-user-group"></i> フレンド</span>` : '');
-            const safeNick = jsHtmlEsc(p.nickname);
 
             return `<div class="post-card" onclick="openPostDetail('${p.id}')">
                 ${delBtn}
-                <div class="post-header"><img src="${ic}" onerror="this.src='./icon.jpeg'" onclick="event.stopPropagation(); openProfileModal('${p.user_id}','${p.username}','${safeNick}','${ic}','')"> <div><b style="font-size:16px;">${htmlEsc(p.nickname)}</b> <span style="color:var(--text-sub);font-size:14px;margin-left:5px;">@${p.username} · ${new Date(p.timestamp).toLocaleDateString()}</span>${visBadge}</div></div>
+                <div class="post-header"><img src="${ic}" onerror="this.src='./icon.jpeg'" onclick="event.stopPropagation(); openProfileModal('${p.user_id}','${p.username}','${p.nickname}','${ic}','')"> <div><b style="font-size:16px;">${p.nickname}</b> <span style="color:var(--text-sub);font-size:14px;margin-left:5px;">@${p.username} · ${new Date(p.timestamp).toLocaleDateString()}</span>${visBadge}</div></div>
                 <div class="post-content">${(p.content||'').replace(/</g,"&lt;")}</div>${m}
                 <div class="post-actions" onclick="event.stopPropagation()">
                     <div onclick="openPostDetail('${p.id}')"><i class="fa-regular fa-comment"></i> ${p.comment_count}</div>
@@ -1577,83 +1555,76 @@
             </div>`;
         }).join('');
     }
-    
     async function submitPost(){ 
         const txt=id('post-text').value.trim(); const file=id('post-file').files[0]; if(!txt&&!file)return; 
-        let media_url=null; if(file){ const fd=new FormData(); fd.append('file',file); const r=await apiPost('/api/upload',fd); if(r&&r.ok){const d=await r.json(); media_url=d.url;} } 
-        const res=await apiPost('/api/posts/create', {content:txt, media_url, visibility: id('post-vis').value}); 
+        let media_url=null; if(file){ const fd=new FormData(); fd.append('file',file); const r=await apiPost('/edu/upload',fd); if(r&&r.ok){const d=await r.json(); media_url=d.url;} } 
+        const res=await apiPost('/edu/posts/create', {content:txt, media_url, visibility: id('post-vis').value}); 
         if(res&&res.ok){ id('post-text').value=''; id('post-file').value=''; id('post-f-status').innerText=''; id('post-file-preview').style.display='none'; id('post-file-preview').src=''; const vid = id('post-file-preview-vid'); if(vid){ vid.style.display='none'; vid.src=''; } } 
         else if(res) { const e=await res.json(); showToast(e.error); } 
     }
     
     async function actionPost(action, pid){ 
         if(action==='delete'){ if(!(await showConfirm("削除しますか？"))) return; }
-        await apiPost(`/api/posts/${action}`, {post_id:pid}); 
+        await apiPost(`/edu/posts/${action}`, {post_id:pid}); 
     }
 
     async function openPostDetail(pid) {
         currentPostIdForComment = pid; show('modal-post-detail');
-        const r1 = await apiPost('/api/posts/list'); if(!r1||!r1.ok)return;
+        const r1 = await apiGet('/edu/posts/list'); if(!r1||!r1.ok)return;
         const tList = await r1.json();
         const p = tList.find(x => x.id === pid);
         if(p) {
             const ic=p.icon_url && p.icon_url.trim() !== '' ?(p.icon_url.startsWith('http')||p.icon_url.startsWith('.')?p.icon_url:BACKEND_URL+p.icon_url):'./icon.jpeg';
             const m = p.media_url ? (p.media_url.endsWith('.mp4') || p.media_url.endsWith('.mov') ? `<video src="${p.media_url.startsWith('http')?p.media_url:BACKEND_URL+p.media_url}" style="width:100%;border-radius:12px;margin-top:10px;" controls></video>` : `<img src="${p.media_url.startsWith('http')?p.media_url:BACKEND_URL+p.media_url}" style="width:100%;border-radius:12px;margin-top:10px;" onclick="openMediaModal(this.src,'image')">`) : '';
-            const safeNick = jsHtmlEsc(p.nickname);
-            id('pd-post-content').innerHTML = `<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;cursor:pointer;" onclick="openProfileModal('${p.user_id}','${p.username}','${safeNick}','${ic}','')"><img src="${ic}" onerror="this.src='./icon.jpeg'" style="width:40px;height:40px;border-radius:50%;object-fit:cover;"><div><b style="font-size:16px;">${htmlEsc(p.nickname)}</b><br><span style="color:var(--text-sub);font-size:12px;">@${p.username}</span></div></div><div style="font-size:16px;line-height:1.5;white-space:pre-wrap;">${(p.content||'').replace(/</g,"&lt;")}</div>${m}`;
+            id('pd-post-content').innerHTML = `<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;cursor:pointer;" onclick="openProfileModal('${p.user_id}','${p.username}','${p.nickname}','${ic}','')"><img src="${ic}" onerror="this.src='./icon.jpeg'" style="width:40px;height:40px;border-radius:50%;object-fit:cover;"><div><b style="font-size:16px;">${p.nickname}</b><br><span style="color:var(--text-sub);font-size:12px;">@${p.username}</span></div></div><div style="font-size:16px;line-height:1.5;white-space:pre-wrap;">${(p.content||'').replace(/</g,"&lt;")}</div>${m}`;
             
             const out = id('pd-likes-list');
             if (p.user_id !== myInfo.id) { out.innerHTML = '<span style="color:var(--text-sub);font-size:13px;">他人のいいね詳細は見られません</span>'; } 
             else {
-                apiPost('/api/posts/interactions', {post_id: pid}).then(async r => {
+                apiGet('/edu/posts/interactions', {post_id: pid}).then(async r => {
                     if(r&&r.ok) {
                         const d = await r.json();
                         if(d.likes.length === 0) out.innerHTML = '<span style="color:var(--text-sub);font-size:13px;">まだいいねはありません</span>';
                         else out.innerHTML = d.likes.map(u => {
                             const uic = u.icon_url && u.icon_url.trim() !== '' ? (u.icon_url.startsWith('http')||u.icon_url.startsWith('.')?u.icon_url:BACKEND_URL+u.icon_url) : './icon.jpeg';
-                            const safeUNick = jsHtmlEsc(u.nickname);
-                            return `<div style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:5px;" onclick="openProfileModal('${u.id}','${u.username}','${safeUNick}','${uic}','')"><img src="${uic}" onerror="this.src='./icon.jpeg'" style="width:30px;height:30px;border-radius:50%;object-fit:cover;"><span style="font-size:14px;">${htmlEsc(u.nickname)}</span></div>`;
+                            return `<div style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:5px;" onclick="openProfileModal('${u.id}','${u.username}','${u.nickname}','${uic}','')"><img src="${uic}" onerror="this.src='./icon.jpeg'" style="width:30px;height:30px;border-radius:50%;object-fit:cover;"><span style="font-size:14px;">${u.nickname}</span></div>`;
                         }).join('');
                     } else { out.innerHTML = '<span style="color:var(--text-sub);font-size:13px;">閲覧権限がありません</span>'; }
                 });
             }
         }
 
-        const cr = await apiPost('/api/posts/comments/list', {post_id: pid}); 
+        const cr = await apiGet('/edu/posts/comments/list', {post_id: pid}); 
         if(!cr||!cr.ok) return;
         const cl = await cr.json(); const cout = id('pd-comments-list');
         if(cl.length===0){ cout.innerHTML = '<div style="color:var(--text-sub);text-align:center;padding:20px 0;">コメントはまだありません</div>'; }
-        else { cout.innerHTML = cl.map(c=>{ const ic=c.icon_url && c.icon_url.trim() !== '' ?(c.icon_url.startsWith('http')||c.icon_url.startsWith('.')?c.icon_url:BACKEND_URL+c.icon_url):'./icon.jpeg'; const cim = c.image_url?(c.image_url.endsWith('.mp4') || c.image_url.endsWith('.mov') ? `<video src="${c.image_url.startsWith('http')?c.image_url:BACKEND_URL+c.image_url}" class="c-media" controls></video>`:`<img src="${c.image_url.startsWith('http')?c.image_url:BACKEND_URL+c.image_url}" class="c-media" onclick="openMediaModal(this.src,'image')">`):''; return `<div class="comment-item"><img src="${ic}" onerror="this.src='./icon.jpeg'" class="c-ic"><div><b>${htmlEsc(c.nickname)}</b><div style="margin-top:4px;line-height:1.4;">${htmlEsc(c.content)}</div>${cim}</div></div>`; }).join(''); }
+        else { cout.innerHTML = cl.map(c=>{ const ic=c.icon_url && c.icon_url.trim() !== '' ?(c.icon_url.startsWith('http')||c.icon_url.startsWith('.')?c.icon_url:BACKEND_URL+c.icon_url):'./icon.jpeg'; const cim = c.image_url?(c.image_url.endsWith('.mp4') || c.image_url.endsWith('.mov') ? `<video src="${c.image_url.startsWith('http')?c.image_url:BACKEND_URL+c.image_url}" class="c-media" controls></video>`:`<img src="${c.image_url.startsWith('http')?c.image_url:BACKEND_URL+c.image_url}" class="c-media" onclick="openMediaModal(this.src,'image')">`):''; return `<div class="comment-item"><img src="${ic}" onerror="this.src='./icon.jpeg'" class="c-ic"><div><b>${c.nickname}</b><div style="margin-top:4px;line-height:1.4;">${c.content}</div>${cim}</div></div>`; }).join(''); }
     }
 
     function submitComment(e) {
         if(e) e.preventDefault(); if(!currentPostIdForComment)return; const txt=id('pd-c-text').value.trim(); const file=id('pd-c-file').files[0]; if(!txt&&!file)return;
         let image_url=null; 
-        if(file){ const fd=new FormData(); fd.append('file',file); apiPost('/api/upload',fd).then(r=>{if(r&&r.ok) return r.json(); return {};}).then(d=> { image_url=d.url; sendComm(txt, image_url); }); } else { sendComm(txt, null); }
-        async function sendComm(t, img) { const res=await apiPost('/api/posts/comment', {post_id: currentPostIdForComment, content:t, image_url:img}); if(res&&res.ok){ id('pd-c-text').value=''; id('pd-c-file').value=''; id('pd-c-f-status').innerText=''; id('pd-c-file-preview').style.display='none'; id('pd-c-file-preview').src=''; const vid = id('pd-c-file-preview-vid'); if(vid){ vid.style.display='none'; vid.src=''; } openPostDetail(currentPostIdForComment); } }
+        if(file){ const fd=new FormData(); fd.append('file',file); apiPost('/edu/upload',fd).then(r=>{if(r&&r.ok) return r.json(); return {};}).then(d=> { image_url=d.url; sendComm(txt, image_url); }); } else { sendComm(txt, null); }
+        async function sendComm(t, img) { const res=await apiPost('/edu/posts/comment', {post_id: currentPostIdForComment, content:t, image_url:img}); if(res&&res.ok){ id('pd-c-text').value=''; id('pd-c-file').value=''; id('pd-c-f-status').innerText=''; id('pd-c-file-preview').style.display='none'; id('pd-c-file-preview').src=''; const vid = id('pd-c-file-preview-vid'); if(vid){ vid.style.display='none'; vid.src=''; } openPostDetail(currentPostIdForComment); } }
     }
     
     async function showInteractions(idStr, type, targetUserId){
         if (targetUserId && targetUserId !== myInfo.id) { await showConfirm('他人のいいね詳細は見られません'); return; }
-        const url = type === 'post' ? '/api/posts/interactions' : '/api/notes/interactions';
+        const url = type === 'post' ? '/edu/posts/interactions' : '/edu/notes/interactions';
         const body = type === 'post' ? {post_id: idStr} : {note_user_id: idStr};
-        const r=await apiPost(url, body); 
+        const r=await apiGet(url, body); 
         if(r&&r.ok){
             const d=await r.json(); let h='';
-            if(d.likes.length>0) h+=`<h4 style="margin:15px 0 10px 0;color:var(--danger);"><i class="fa-solid fa-heart"></i> いいね</h4>` + d.likes.map(u=>{ 
-                const uic = u.icon_url && u.icon_url.trim() !== '' ? (u.icon_url.startsWith('http')||u.icon_url.startsWith('.')?u.icon_url:BACKEND_URL+u.icon_url) : './icon.jpeg'; 
-                const safeUNick = jsHtmlEsc(u.nickname);
-                return `<div style="padding:8px 0;border-bottom:1px solid var(--bg-hover);display:flex;align-items:center;gap:10px;cursor:pointer;" onclick="hide('modal-interactions');openProfileModal('${u.id}','${u.username}','${safeUNick}','${uic}','')"><img src="${uic}" onerror="this.src='./icon.jpeg'" style="width:24px;height:24px;border-radius:50%;">@${u.username} (${htmlEsc(u.nickname)})</div>` 
-            }).join('');
+            if(d.likes.length>0) h+=`<h4 style="margin:15px 0 10px 0;color:var(--danger);"><i class="fa-solid fa-heart"></i> いいね</h4>` + d.likes.map(u=>{ const uic = u.icon_url && u.icon_url.trim() !== '' ? (u.icon_url.startsWith('http')||u.icon_url.startsWith('.')?u.icon_url:BACKEND_URL+u.icon_url) : './icon.jpeg'; return `<div style="padding:8px 0;border-bottom:1px solid var(--bg-hover);display:flex;align-items:center;gap:10px;cursor:pointer;" onclick="hide('modal-interactions');openProfileModal('${u.id}','${u.username}','${u.nickname}','${uic}','')"><img src="${uic}" onerror="this.src='./icon.jpeg'" style="width:24px;height:24px;border-radius:50%;">@${u.username} (${u.nickname})</div>` }).join('');
             id('interactions-list').innerHTML = h || '<p style="text-align:center;color:var(--text-sub);padding:20px 0;">まだありません</p>'; show('modal-interactions');
         } else { showToast('エラーが発生しました'); }
     }
 
     function execSearch(e) {
         if(e) e.preventDefault(); const q=id('s-query').value.trim(); if(!q)return; 
-        apiPost('/api/friends/list').then(fRes => {if(fRes&&fRes.ok) return fRes.json(); return [];}).then(fList => {
+        apiGet('/edu/friends/list').then(fRes => {if(fRes&&fRes.ok) return fRes.json(); return [];}).then(fList => {
             const friendIds = fList.map(f => f.id);
-            apiPost('/api/search',{query:q}).then(r=>{if(r&&r.ok) return r.json(); return {users:[]};}).then(d=>{
+            apiGet('/edu/search',{query:q}).then(r=>{if(r&&r.ok) return r.json(); return {users:[]};}).then(d=>{
                 let h=''; 
                 if(d.users.length>0){ 
                     h+='<h4 style="margin-bottom:15px;"><i class="fa-solid fa-users"></i> ユーザー</h4>'; 
@@ -1662,14 +1633,12 @@
                         const ic=u.icon_url && u.icon_url.trim() !== '' ?(u.icon_url.startsWith('http')||u.icon_url.startsWith('.')?u.icon_url:BACKEND_URL+u.icon_url):'./icon.jpeg'; 
                         const isFriend = friendIds.includes(u.id);
                         const statusBadge = onlineStatusCache[u.id] ? `<div class="online-badge" style="display:block;"></div>` : '';
-                        const safeNick = jsHtmlEsc(u.nickname);
-                        const safeStatus = jsHtmlEsc(u.status_message);
                         
                         const btnHtml = isFriend 
-                            ? `<button type="button" style="padding:10px 15px;border-radius:20px;background:var(--bg-hover);color:var(--text-main);border:1px solid var(--border);" onclick="openProfileModal('${u.id}','${u.username}','${safeNick}','${ic}','${safeStatus}')"><i class="fa-solid fa-user"></i> プロフ</button>` 
+                            ? `<button type="button" style="padding:10px 15px;border-radius:20px;background:var(--bg-hover);color:var(--text-main);border:1px solid var(--border);" onclick="openProfileModal('${u.id}','${u.username}','${u.nickname}','${ic}','${u.status_message}')"><i class="fa-solid fa-user"></i> プロフ</button>` 
                             : `<button type="button" id="req-btn-${u.id}" style="padding:10px 20px;border-radius:20px;" onclick="requestFriend('${u.username}', this)"><i class="fa-solid fa-user-plus"></i> 追加</button>`;
                         
-                        h+=`<div class="room-item" style="background:var(--bg-panel);border-radius:16px;margin-bottom:12px;border:1px solid var(--border);"><div style="position:relative;"><img src="${ic}" onerror="this.src='./icon.jpeg'" onclick="openProfileModal('${u.id}','${u.username}','${safeNick}','${ic}','${safeStatus}')">${statusBadge}</div><div style="flex:1;"><b style="font-size:16px;">${htmlEsc(u.nickname)}</b><div style="font-size:13px;color:var(--text-sub);margin-top:2px;">@${u.username}</div></div>${btnHtml}</div>`; 
+                        h+=`<div class="room-item" style="background:var(--bg-panel);border-radius:16px;margin-bottom:12px;border:1px solid var(--border);"><div style="position:relative;"><img src="${ic}" onerror="this.src='./icon.jpeg'" onclick="openProfileModal('${u.id}','${u.username}','${u.nickname}','${ic}','${u.status_message}')">${statusBadge}</div><div style="flex:1;"><b style="font-size:16px;">${u.nickname}</b><div style="font-size:13px;color:var(--text-sub);margin-top:2px;">@${u.username}</div></div>${btnHtml}</div>`; 
                     }); 
                 } 
                 id('ui-search-res').innerHTML=h||'<p style="color:var(--text-sub);text-align:center;">見つかりませんでした</p>'; 
@@ -1678,23 +1647,32 @@
     }
 
     async function requestFriend(username, btn) {
-        const r = await apiPost('/api/friends/request', {username});
+        const r = await apiPost('/edu/friends/request', {username});
         if(r&&r.ok) { btn.outerHTML = `<button type="button" style="padding:10px 20px;border-radius:20px;background:var(--bg-hover);color:var(--text-sub);" disabled><i class="fa-solid fa-check"></i> 申請済</button>`; showToast('申請しました'); } 
         else if(r) { const d = await r.json(); showToast(d.error); }
     }
 
     function openNotePostModal() { id('modal-note-input').value=''; show('modal-note-post'); }
-    function submitNotePostModal(e) { if(e) e.preventDefault(); apiPost('/api/notes/post',{content:id('modal-note-input').value, visibility:id('modal-note-vis').value}).then(r=>{if(r&&r.ok){ hide('modal-note-post'); }}); }
-    function submitNote(e) { if(e) e.preventDefault(); apiPost('/api/notes/post',{content:id('note-input').value, visibility:id('note-vis').value}).then(r=>{if(r&&r.ok) id('note-input').value='';}); }
+    function submitNotePostModal(e) { if(e) e.preventDefault(); apiPost('/edu/notes/post',{content:id('modal-note-input').value, visibility:id('modal-note-vis').value}).then(r=>{if(r&&r.ok){ hide('modal-note-post'); }}); }
+    function submitNote(e) { if(e) e.preventDefault(); apiPost('/edu/notes/post',{content:id('note-input').value, visibility:id('note-vis').value}).then(r=>{if(r&&r.ok) id('note-input').value='';}); }
     
     async function loadNotes(){ 
-        const r=await apiPost('/api/notes/list'); if(!r||!r.ok)return; const l=await r.json(); 
-        let myNote = l.find(n => n.user_id === myInfo.id);
-        let otherNotes = l.filter(n => n.user_id !== myInfo.id);
+        const r=await apiGet('/edu/notes/list'); if(!r||!r.ok)return; const l=await r.json(); 
+        const now = Date.now();
+        const EXPIRY_24H = 24 * 60 * 60 * 1000; // 24時間（ミリ秒）
+        
+        // 24時間以内のノートのみをフィルタリング
+        const validNotes = l.filter(n => {
+            const createdAt = n.created_at ? new Date(n.created_at).getTime() : 0;
+            return now - createdAt < EXPIRY_24H;
+        });
+        
+        let myNote = validNotes.find(n => n.user_id === myInfo.id);
+        let otherNotes = validNotes.filter(n => n.user_id !== myInfo.id);
         let html = '';
         if(myNote) {
             const ic = myNote.icon_url && myNote.icon_url.trim() !== '' ? (myNote.icon_url.startsWith('http')||myNote.icon_url.startsWith('.') ? myNote.icon_url : BACKEND_URL+myNote.icon_url) : './icon.jpeg';
-            html += `<div class="note-item my-note" onclick="openNoteView('${myNote.user_id}', '${jsHtmlEsc(myNote.nickname)}', '${ic}', '${jsHtmlEsc(myNote.content)}', ${myNote.is_liked}, ${myNote.like_count}, true)"><div class="note-img-wrap"><img src="${ic}" onerror="this.src='./icon.jpeg'"><div class="note-bubble">${htmlEsc(myNote.content)}</div></div><div class="note-name">自分</div></div>`;
+            html += `<div class="note-item my-note" onclick="openNoteView('${myNote.user_id}', '${myNote.nickname}', '${ic}', '${myNote.content.replace(/'/g,"\\'")}', ${myNote.is_liked}, ${myNote.like_count}, true)"><div class="note-img-wrap"><img src="${ic}" onerror="this.src='./icon.jpeg'"><div class="note-bubble">${myNote.content}</div></div><div class="note-name">自分</div></div>`;
         } else {
             const myIc = myInfo.icon_url && myInfo.icon_url.trim() !== '' ? (myInfo.icon_url.startsWith('http')||myInfo.icon_url.startsWith('.') ? myInfo.icon_url : BACKEND_URL+myInfo.icon_url) : './icon.jpeg';
             html += `<div class="note-item my-note" onclick="openNotePostModal()"><div class="note-img-wrap"><img src="${myIc}" onerror="this.src='./icon.jpeg'" style="opacity:0.6;"><div style="position:absolute; bottom:0; right:0; background:var(--accent); border-radius:50%; width:20px; height:20px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:14px; border:2px solid var(--bg-dark);">+</div></div><div class="note-name">ノート追加</div></div>`;
@@ -1703,7 +1681,7 @@
         html += otherNotes.map(n=>{ 
             const ic = n.icon_url && n.icon_url.trim() !== '' ? (n.icon_url.startsWith('http')||n.icon_url.startsWith('.') ? n.icon_url : BACKEND_URL+n.icon_url) : './icon.jpeg'; 
             const vis = n.visibility==='close'?'<span style="color:var(--accent);"><i class="fa-solid fa-lock"></i></span>':(n.visibility==='friends'?'<span style="color:var(--accent);"><i class="fa-solid fa-user-group"></i></span>':''); 
-            return `<div class="note-item" onclick="openNoteView('${n.user_id}', '${jsHtmlEsc(n.nickname)}', '${ic}', '${jsHtmlEsc(n.content)}', ${n.is_liked}, ${n.like_count}, false)"><div class="note-img-wrap"><img src="${ic}" onerror="this.src='./icon.jpeg'"><div class="note-bubble">${vis}${htmlEsc(n.content)}</div></div><div class="note-name">${htmlEsc(n.nickname)}</div></div>`;
+            return `<div class="note-item" onclick="openNoteView('${n.user_id}', '${n.nickname}', '${ic}', '${n.content.replace(/'/g,"\\'")}', ${n.is_liked}, ${n.like_count}, false)"><div class="note-img-wrap"><img src="${ic}" onerror="this.src='./icon.jpeg'"><div class="note-bubble">${vis}${n.content}</div></div><div class="note-name">${n.nickname}</div></div>`;
         }).join(''); 
         id('ui-notes').innerHTML = html;
     }
@@ -1713,14 +1691,14 @@
         const likeBtn = id('nv-like-btn'); likeBtn.innerText = isLiked ? '❤️' : '🤍';
         
         likeBtn.onclick = async () => { 
-            const r = await apiPost('/api/notes/like', {note_user_id: uid});
+            const r = await apiPost('/edu/notes/like', {note_user_id: uid});
             if(r&&r.ok) { const d = await r.json(); likeBtn.innerText = d.liked ? '❤️' : '🤍'; }
         };
 
         if(isMe) {
             hide('nv-reply-btn'); show('nv-like-list-btn'); show('nv-del-btn');
             id('nv-like-list-btn').onclick = async () => { await showInteractions(uid, 'note', uid); };
-            id('nv-del-btn').onclick = async () => { if(await showConfirm("ノートを削除しますか？")) { apiPost('/api/notes/post', {content: '', visibility: 'deleted'}).then(()=>{ hide('modal-note-view'); }); } }
+            id('nv-del-btn').onclick = async () => { if(await showConfirm("ノートを削除しますか？")) { apiPost('/edu/notes/post', {content: '', visibility: 'deleted'}).then(()=>{ hide('modal-note-view'); }); } }
         } else {
             show('nv-reply-btn'); hide('nv-like-list-btn'); hide('nv-del-btn');
             id('nv-reply-btn').onclick = () => { hide('modal-note-view'); replyToNote(uid, uname, content, icon); };
@@ -1729,7 +1707,7 @@
     }
     
     async function loadNotifs(){ 
-        const r=await apiPost('/api/notifications/list'); if(!r||!r.ok)return; const l=await r.json(); 
+        const r=await apiGet('/edu/notifications/list'); if(!r||!r.ok)return; const l=await r.json(); 
         const now = Date.now();
         let likeMuteUntil = parseInt(localStorage.getItem('likeMuteUntil') || '0');
         let lastLikeTime = parseInt(localStorage.getItem('lastLikeTime') || '0');
@@ -1764,49 +1742,30 @@
         id('ui-notifs').innerHTML=l.map(n=>{ 
             let a=''; if(n.type==='friend_request'&&n.req_status==='pending') a=`<div style="margin-top:15px;"><button type="button" class="success" style="padding:10px 20px;border-radius:20px;font-size:14px;" onclick="acceptRequest('${n.request_id}', this)">承認</button></div>`; 
             let icon = n.type==='system' ? '<i class="fa-solid fa-bullhorn" style="color:var(--accent);margin-right:8px;"></i>' : '';
-            return `<li style="padding:20px;border-bottom:1px solid var(--border);${n.is_read?'':'background:var(--bg-hover);border-radius:12px;'}"><div style="font-size:15px;line-height:1.5;white-space:pre-wrap;">${icon}${htmlEsc(n.content)}</div>${a}</li>`; 
+            return `<li style="padding:20px;border-bottom:1px solid var(--border);${n.is_read?'':'background:var(--bg-hover);border-radius:12px;'}"><div style="font-size:15px;line-height:1.5;white-space:pre-wrap;">${icon}${n.content}</div>${a}</li>`; 
         }).join(''); 
     }
 
     async function acceptRequest(reqId, btn) {
-        const r = await apiPost('/api/friends/accept', {request_id: reqId});
+        const r = await apiPost('/edu/friends/accept', {request_id: reqId});
         if(r&&r.ok) { btn.outerHTML = '<span style="color:var(--text-sub);"><i class="fa-solid fa-check"></i> 承認済</span>'; showToast('承認しました'); }
     }
     
-    async function pushBackup(){ if(!(await showConfirm("ブラウザ内の全履歴をサーバーに預けますか？新端末で引き出せます。")))return; const msgs=await idbGetAllMsgs(); const res=await apiPost('/api/backup/push',{data:JSON.stringify(msgs)}); if(res&&res.ok){ const d=await res.json(); id('transfer-code').innerText=d.code; showToast('コードを控えて新端末で入力してください'); } }
-    async function uploadIcon(inp){ const f=inp.files[0]; if(!f)return; const fd=new FormData(); fd.append('photo',f); const r=await apiPost('/api/user/update_icon',fd); if(r&&r.ok){const d=await r.json();myInfo.icon_url=d.url;localStorage.setItem('myInfo',JSON.stringify(myInfo)); id('my-icon-set').src=BACKEND_URL+d.url; id('home-my-icon').src=BACKEND_URL+d.url;} }
+    async function pushBackup(){ if(!(await showConfirm("ブラウザ内の全履歴をサーバーに預けますか？新端末で引き出せます。")))return; const msgs=await idbGetAllMsgs(); const res=await apiPost('/edu/backup/push',{data:JSON.stringify(msgs)}); if(res&&res.ok){ const d=await res.json(); id('transfer-code').innerText=d.code; showToast('コードを控えて新端末で入力してください'); } }
+    async function uploadIcon(inp){ const f=inp.files[0]; if(!f)return; const fd=new FormData(); fd.append('photo',f); const r=await apiPost('/edu/user/update_icon',fd); if(r&&r.ok){const d=await r.json();myInfo.icon_url=d.url;localStorage.setItem('myInfo',JSON.stringify(myInfo)); id('my-icon-set').src=BACKEND_URL+d.url; id('home-my-icon').src=BACKEND_URL+d.url;} }
     
-    async function updateProfile(key, val, btn){ 
+    async function updateProfile(key,val){ 
         if(key === 'username') { if(!/^[a-zA-Z0-9_\-\.\=]+$/.test(val)) { await showConfirm("ユーザーIDは半角英数字と一部記号 ( _ - . = ) のみ使用可能です。"); return; } }
-        
-        const origText = btn ? btn.innerText : '保存';
-        if(btn) { btn.innerText = "通信中..."; btn.disabled = true; }
-
-        const r = await apiPost(`/api/user/update_${key}`,{[key]:val}); 
-        
-        if(btn) btn.disabled = false;
-
-        if(!r||!r.ok){ 
-            if(btn) btn.innerText = origText;
-            if(r) {const d=await r.json(); showToast(d.error);} 
-            return; 
-        } 
+        const r = await apiPost(`/edu/user/update_${key}`,{[key]:val}); 
+        if(!r||!r.ok){ if(r) {const d=await r.json(); showToast(d.error);} return; } 
         myInfo[key]=val; localStorage.setItem('myInfo',JSON.stringify(myInfo)); 
-        
-        if(btn) {
-            btn.innerText = "✔ 保存済";
-            btn.classList.add("success");
-            setTimeout(() => {
-                btn.innerText = origText;
-                btn.classList.remove("success");
-            }, 2000);
-        }
-        
+        const sc=id('sc-'+(key==='username'?'id':key==='nickname'?'nick':'status')); 
+        if(sc){sc.classList.add('show');setTimeout(()=>sc.classList.remove('show'),2000);} 
         if(key==='username'){id('my-id-disp').innerText=val; QRCode.toCanvas(id('my-qr'),val,{width:200, margin:2});} 
     }
 
-    function requestPwChange(e) { if(e) e.preventDefault(); apiPost('/api/user/request_password_change',{new_password:id('set-new-pw').value}).then(r=>{if(r&&r.ok){showToast('管理者に申請しました');id('set-new-pw').value='';}}); }
-    function startQRScanner(){ show('reader'); if(!html5QrCode) html5QrCode = new Html5Qrcode("reader"); html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: {width: 250, height: 250} }, decodedText => { html5QrCode.stop(); hide('reader'); apiPost('/api/friends/request',{username:decodedText}).then(r=>{ if(r&&r.ok) showToast(decodedText+' に申請しました'); else showToast('ユーザーが見つかりません'); }); }).catch(err => { showToast("カメラ起動失敗"); hide('reader'); }); }
+    function requestPwChange(e) { if(e) e.preventDefault(); apiPost('/edu/user/request_password_change',{new_password:id('set-new-pw').value}).then(r=>{if(r&&r.ok){showToast('管理者に申請しました');id('set-new-pw').value='';}}); }
+    function startQRScanner(){ show('reader'); if(!html5QrCode) html5QrCode = new Html5Qrcode("reader"); html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: {width: 250, height: 250} }, decodedText => { html5QrCode.stop(); hide('reader'); apiPost('/edu/friends/request',{username:decodedText}).then(r=>{ if(r&&r.ok) showToast(decodedText+' に申請しました'); else showToast('ユーザーが見つかりません'); }); }).catch(err => { showToast("カメラ起動失敗"); hide('reader'); }); }
 
     function addLocalVideo() {
         let w = id('wrap-local');
@@ -1867,6 +1826,7 @@
         }
         
         Object.keys(peers).forEach(removePeer);
+        peers = {};
         if(localStream){ localStream.getTracks().forEach(t=>t.stop()); localStream = null; }
         
         stopCallSound();
@@ -1974,7 +1934,8 @@
             show('video-overlay');
             callSession = incomingData.session_id;
             
-            socket.emit('webrtc_ice', { target_id: incomingData.caller_id, candidate: { type: 'accept_call' } });
+            // まずsetupPeerでofferを受け取る準備をしてからanswer_callを送る
+            setupPeer(incomingData.caller_id, false, incomingData.icon_url, incomingData.caller_name);
             socket.emit('answer_call', { target_id: incomingData.caller_id, session_id: callSession, accept: true });
             
         } catch(e) { 
@@ -2018,6 +1979,7 @@
         pc.onicecandidate = e => { 
             if(e.candidate) {
                 const payload = { target_id: peerId, candidate: e.candidate, session_id: callSession };
+                if(isGroupCall) payload.room_id = currentRoom;
                 socket.emit('webrtc_ice', payload); 
             }
         };
@@ -2034,6 +1996,7 @@
               .then(o => pc.setLocalDescription(o).then(() => o))
               .then(o => {
                   const payload = { target_id: peerId, offer: o, session_id: callSession };
+                  if(isGroupCall) payload.room_id = currentRoom;
                   socket.emit('webrtc_offer', payload);
               })
               .catch(err => console.error("Offer error:", err));

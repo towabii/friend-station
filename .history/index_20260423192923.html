@@ -1,0 +1,2041 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"><title>Friend Station</title>
+    <link rel="icon" href="./tag.jpg" type="image/jpeg">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <style>
+        :root { 
+            --bg-dark: #000000; --bg-panel: #16181c; --bg-hover: #202327; 
+            --text-main: #e7e9ea; --text-sub: #71767b; --border: #2f3336; 
+            --accent: #2ecc71; --accent-glow: rgba(46, 204, 113, 0.2);
+            --danger: #e74c3c; --success: #2ecc71; 
+        }
+        *{margin:0;padding:0;box-sizing:border-box; -webkit-tap-highlight-color: transparent;} 
+        body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg-dark);color:var(--text-main);height:100vh;overflow:hidden;display:flex;}
+        
+        .hidden{display:none!important} 
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-thumb { background: #3f4347; border-radius: 3px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+
+        input,select,textarea { width:100%; padding:14px 16px; margin-bottom:10px; border:1px solid var(--border); border-radius:12px; background:var(--bg-panel); color:var(--text-main); outline:none; font-size:15px; transition:all 0.3s ease; } 
+        input:focus,textarea:focus { border-color:var(--accent); box-shadow: 0 0 0 2px var(--accent-glow); }
+        button { padding:12px 20px; border:none; border-radius:12px; background:var(--accent); color:#fff; cursor:pointer; font-weight:600; font-size:15px; transition:all 0.3s ease; } 
+        button:hover { transform: translateY(-2px); box-shadow: 0 4px 12px var(--accent-glow); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+        button.danger { background:var(--danger); } button.danger:hover { box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3); }
+        button.success { background:var(--success); }
+        button[style*="background:transparent"], .emoji-btn, .msg-react-btn, .msg-opt-btn { box-shadow: none !important; }
+        button[style*="background:transparent"]:hover, .emoji-btn:hover { transform: scale(1.1); }
+
+        .switch { position: relative; display: inline-block; width: 46px; height: 24px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--bg-hover); transition: .4s; border-radius: 24px; border: 1px solid var(--border); }
+        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: var(--text-main); transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--accent); border-color: var(--accent); }
+        input:checked + .slider:before { transform: translateX(22px); background-color: #fff; }
+
+        i.fa-solid, i.fa-regular { font-size: 1.1em; } .nav-btn i { width: 26px; text-align: center; }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        .toast { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); background: var(--text-main); color: var(--bg-dark); padding: 12px 24px; border-radius: 30px; box-shadow: 0 5px 15px rgba(0,0,0,0.5); z-index: 10000; font-weight: bold; font-size: 14px; opacity: 0; transition: all 0.3s ease; pointer-events: none; }
+        .toast.show { opacity: 1; top: 30px; }
+        #custom-confirm .modal { max-width: 320px; text-align: center; padding: 30px 25px; }
+
+        #scr-auth, #scr-pending {width:100%;max-width:420px;margin:auto;background:var(--bg-panel);padding:40px 30px;border-radius:24px;border:1px solid var(--border);box-shadow:0 15px 50px rgba(0,0,0,0.8); animation: slideUp 0.4s ease-out;}
+        #scr-auth h2{text-align:center;margin-bottom:25px;font-family:cursive;font-size:2.2em;color:var(--accent);}
+        .auth-link{background:none;color:var(--accent);text-decoration:none;font-size:14px;padding:10px 0;width:100%;text-align:center;display:block;} .auth-link:hover{text-decoration:underline; transform:none;}
+        .loader { margin:20px auto; border:4px solid var(--border); border-top:4px solid var(--accent); border-radius:50%; width:40px; height:40px; animation:spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .reg-step h3 { font-size: 1.1em; margin-bottom: 20px; color: var(--accent); text-align: center; } .reg-step button { margin-top: 15px; width: 100%; }
+
+        #scr-main{display:flex;width:100%;height:100%;position:relative; animation: fadeIn 0.4s ease;}
+        .sidebar{width:240px;background:var(--bg-dark);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:20px;gap:10px;z-index:10;}
+        .brand{font-size:22px;font-weight:bold;color:var(--accent);margin-bottom:25px;font-family:cursive;padding-left:10px; display:flex; align-items:center;}
+        .nav-btn{display:flex;align-items:center;gap:15px;background:transparent;color:var(--text-main);font-size:18px;padding:14px 15px;justify-content:flex-start;border-radius:25px;position:relative;}
+        .nav-btn:hover{background:var(--bg-hover); transform:none;} .nav-btn.active{font-weight:bold;color:var(--accent);} 
+        .badge{position:absolute;top:5px;right:15px;background:var(--danger);font-size:11px;padding:2px 6px;border-radius:10px;color:#fff;}
+        @media(max-width: 768px){ .sidebar{width:70px;padding:20px 10px;align-items:center;} .brand{display:none;} .nav-btn span{display:none;} .nav-btn{padding:12px;} .badge{right:5px;} }
+        
+        #slide-menu{position:absolute;top:0;left:240px;width:280px;height:100%;background:var(--bg-panel);border-right:1px solid var(--border);transform:translateX(-100%);transition:transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);z-index:9;padding:25px 20px;display:flex;flex-direction:column;gap:12px; box-shadow: 10px 0 30px rgba(0,0,0,0.5);}
+        @media(max-width: 768px){ #slide-menu{left:70px;} } #slide-menu.open{transform:translateX(0);}
+        #chat-menu{position:fixed!important;top:70px!important;right:20px!important;z-index:2147483647!important;left:auto!important;transform:none!important;}
+        #chat-menu, #chat-menu * { z-index:2147483647!important; }
+        .chat-box, .msg-wrap, .msg, .sys-call-msg { z-index:1; }
+        .sys-call-msg { position:relative; z-index:1; }
+        .menu-item{padding:14px;border-radius:12px;cursor:pointer;font-weight:bold;display:flex;align-items:center;gap:15px; transition:all 0.2s;} .menu-item:hover{background:var(--bg-hover);color:var(--accent);}
+        .menu-item i { width: 20px; text-align:center; }
+
+        .list-panel{width:350px;background:var(--bg-dark);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:5;transition:width 0.3s;}
+        .panel-header{padding:20px;font-size:1.4em;font-weight:bold;border-bottom:1px solid var(--border);background:rgba(0,0,0,0.8);backdrop-filter:blur(10px);position:sticky;top:0;z-index:2;}
+        .scroll-area{flex:1;overflow-y:auto;}
+        
+        .notes-area{padding:20px 20px 15px 20px; border-bottom:1px solid var(--border); min-height: 140px;}
+        .notes-list{display:flex;gap:15px;overflow-x:auto;padding-top:25px;padding-bottom:10px;scrollbar-width:none;} .notes-list::-webkit-scrollbar{display:none;}
+        .note-item{display:flex;flex-direction:column;align-items:center;width:72px;flex-shrink:0;position:relative;cursor:pointer;gap:6px;}
+        .note-img-wrap{width:68px;height:68px;border-radius:50%;background:linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);padding:3px;display:flex;align-items:center;justify-content:center;position:relative;}
+        .note-item.viewed .note-img-wrap { background: var(--border); }
+        .note-item.my-note .note-img-wrap { background: transparent; border: 2px solid var(--border); padding: 2px; }
+        .note-item img{width:100%;height:100%;border-radius:50%;object-fit:cover;border:2px solid var(--bg-dark);}
+        .note-name { font-size: 11px; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; text-align: center; }
+        .note-bubble{position:absolute;top:-15px;right:-15px;background:var(--bg-panel);border:1px solid var(--border);border-radius:15px;padding:4px 8px;font-size:11px;white-space:nowrap;max-width:80px;overflow:hidden;text-overflow:ellipsis;z-index:2;color:var(--text-main); box-shadow:0 2px 5px rgba(0,0,0,0.5);}
+        .note-reply-btn{position:absolute;top:-25px;right:-5px;background:var(--accent);color:#fff;border-radius:50%;width:24px;height:24px;display:none;align-items:center;justify-content:center;font-size:10px;z-index:3;cursor:pointer;}
+        .note-item:hover .note-reply-btn{display:flex;}
+        
+        .room-item{padding:15px 20px;display:flex;align-items:center;gap:15px;cursor:pointer; transition:background 0.2s; position:relative;} .room-item:hover{background:var(--bg-hover);} 
+        .room-item img{width:52px;height:52px;border-radius:50%;object-fit:cover;}
+        
+        .online-badge{position:absolute;bottom:0;right:0;width:14px;height:14px;background:#2ecc71;border:2px solid var(--bg-dark);border-radius:50%;display:none;z-index:2;}
+        .is-online .online-badge{display:block;}
+        .room-unread-badge { background: var(--danger); color: #fff; border-radius: 10px; padding: 2px 8px; font-size: 12px; font-weight: bold; margin-left: auto; }
+
+        .main-panel-container{flex:1;position:relative;background:var(--bg-dark);display:flex;flex-direction:column;}
+        .main-screen{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;background:var(--bg-dark);z-index:1;}
+        .main-screen.active{z-index:2; animation: fadeIn 0.3s ease-out;}
+        @media(max-width: 768px){ .list-panel{width:100%; position:absolute; left:70px; height:100%;} .main-panel-container{position:absolute; left:70px; width:calc(100% - 70px); height:100%; z-index:6; transform:translateX(100%); transition:transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);} .main-panel-container.active{transform:translateX(0);} }
+
+        .chat-header{padding:12px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,0.8);backdrop-filter:blur(10px);z-index:2;}
+        .chat-box{flex:1;padding:20px;overflow-y:auto;display:flex;flex-direction:column;gap:20px;}
+        .msg-wrap{display:flex;flex-direction:column;max-width:75%;position:relative;} .my-msg{align-self:flex-end;} .other-msg{align-self:flex-start;}
+        
+        .reply-banner{font-size:12px;color:var(--text-sub);background:var(--bg-hover);padding:6px 10px;border-radius:12px;margin-bottom:4px;z-index:1;display:inline-flex; align-items:center; gap:5px; align-self:flex-start;}
+        .msg{padding:12px 16px;border-radius:20px;word-wrap:break-word;position:relative;z-index:2;user-select:none; font-size:15px; line-height:1.4; display:flex; flex-direction:column;} 
+        
+        .my-msg .msg{background:var(--accent);color:#fff;border-bottom-right-radius:4px;} .other-msg .msg{background:var(--bg-panel);border:1px solid var(--border);border-bottom-left-radius:4px;}
+        .msg img, .msg video{max-width:100%;border-radius:12px;margin-top:8px;cursor:pointer;}
+        .msg-info{font-size:0.75em;color:var(--text-sub);margin-top:6px; display:flex; gap:5px; align-items:center;} .is-read{color:var(--accent);}
+        .reactions-badge{position:absolute;bottom:-12px;right:10px;background:var(--bg-panel);border:1px solid var(--border);border-radius:12px;padding:3px 8px;font-size:12px;display:flex;gap:4px;z-index:3; box-shadow:0 2px 5px rgba(0,0,0,0.5);}
+        .msg-react-btn { background:transparent; border:none; font-size:18px; cursor:pointer; opacity:0.5; transition:0.2s; padding:0 5px; } .msg-react-btn:hover { opacity:1; transform:scale(1.2); }
+        .msg-opt-btn { background:transparent; border:none; font-size:14px; cursor:pointer; opacity:0.5; padding:5px; color:var(--text-main); } .msg-opt-btn:hover { opacity:1; }
+        
+        .chat-input-area{padding:15px 20px;background:var(--bg-dark);border-top:1px solid var(--border);display:flex;flex-direction:column;gap:8px;}
+        #reply-preview, #edit-preview {background:var(--bg-hover);padding:10px 15px;border-radius:12px;font-size:13px;display:flex;justify-content:space-between;align-items:center;color:var(--text-sub);}
+        .chat-input-row{display:flex;align-items:center;gap:12px;} .chat-input-row input{margin:0;flex:1;border-radius:24px;background:var(--bg-panel);padding:12px 18px;}
+        .file-status{font-size:12px;color:var(--accent);white-space:nowrap;}
+
+        .post-card{border-bottom:1px solid var(--border);padding:20px;transition:background 0.2s;position:relative;cursor:pointer;} .post-card:hover{background:rgba(255,255,255,0.02);}
+        .post-header{display:flex;align-items:center;gap:12px;margin-bottom:10px;} .post-header img{width:44px;height:44px;border-radius:50%;object-fit:cover;cursor:pointer;}
+        .post-content{font-size:16px;line-height:1.5;margin-bottom:12px;white-space:pre-wrap;word-break:break-word;}
+        .post-media{width:100%;max-width:500px;border-radius:16px;margin-bottom:12px;border:1px solid var(--border);cursor:pointer;}
+        .post-actions{display:flex;justify-content:space-between;max-width:250px;color:var(--text-sub);font-size:15px;margin-top:12px;} 
+        .post-actions div{cursor:pointer;display:flex;align-items:center;gap:8px; transition:color 0.2s;} .post-actions div:hover{color:var(--accent);} .liked{color:var(--danger) !important;}
+        .del-post-btn{position:absolute;top:20px;right:20px;color:var(--text-sub);cursor:pointer;font-size:18px; transition:color 0.2s;} .del-post-btn:hover{color:var(--danger);}
+
+        .modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:2000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(5px);}
+        .modal-overlay:not(.hidden) .modal { animation: slideUp 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); }
+        .modal{background:var(--bg-panel);padding:25px;border-radius:24px;border:1px solid var(--border);width:95%;max-width:420px;max-height:85vh;display:flex;flex-direction:column;position:relative; box-shadow:0 15px 50px rgba(0,0,0,0.8);}
+        .close-btn{position:absolute;top:15px;right:20px;font-size:24px;cursor:pointer;color:var(--text-sub); transition:color 0.2s;} .close-btn:hover{color:var(--text-main);}
+        .modal img.prof-lg{width:100px;height:100px;border-radius:50%;object-fit:cover;margin:0 auto 15px;display:block;border:3px solid var(--accent);}
+        
+        #comments-list{flex:1;overflow-y:auto;margin:15px 0;display:flex;flex-direction:column;gap:15px;}
+        .comment-item{display:flex;gap:12px;font-size:15px;} .comment-item img.c-ic{width:36px;height:36px;border-radius:50%;}
+        .comment-item img.c-media{max-width:200px;border-radius:12px;margin-top:8px;border:1px solid var(--border);}
+        
+        #context-menu{position:fixed;background:var(--bg-panel);border:1px solid var(--border);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,0.8);z-index:2500;padding:8px;display:flex;flex-direction:column;gap:4px;}
+        .ctx-item{padding:12px 16px;cursor:pointer;border-radius:8px;display:flex;align-items:center;gap:12px; font-size:15px; transition:background 0.2s;} .ctx-item:hover{background:var(--bg-hover);}
+        .emoji-btn{background:none;border:none;font-size:26px;cursor:pointer;}
+        .saved-check{color:var(--accent);font-size:13px;margin-left:12px;opacity:0;transition:opacity 0.3s;} .saved-check.show{opacity:1;}
+        
+        #video-overlay {position:fixed;top:0;left:0;width:100%;height:100%;background:#000;z-index:3000;display:flex;flex-direction:column;}
+        #video-grid { flex:1; display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:15px; padding:20px; padding-bottom:100px; overflow-y:auto; }
+        .video-wrap { position:relative; width:100%; max-width:400px; aspect-ratio:4/3; background:#111; border-radius:16px; overflow:hidden; display:flex; align-items:center; justify-content:center; box-shadow:0 10px 30px rgba(0,0,0,0.5); border:1px solid #333; }
+        .video-wrap video { width:100%; height:100%; object-fit:cover; transition: opacity 0.3s ease; }
+        .video-wrap .no-video-icon { position:absolute; width:120px; height:120px; border-radius:50%; object-fit:cover; display:none; border:3px solid var(--border); box-shadow:0 4px 15px rgba(0,0,0,0.8); z-index:1; }
+        .video-wrap .name-badge { position:absolute; bottom:10px; left:10px; background:rgba(0,0,0,0.6); color:#fff; padding:6px 12px; border-radius:12px; font-size:13px; backdrop-filter:blur(5px); font-weight:bold; z-index:2; }
+        .video-wrap .mic-off-badge { position:absolute; top:10px; right:10px; color:var(--danger); font-size:18px; display:none; background:rgba(0,0,0,0.6); padding:8px; border-radius:50%; backdrop-filter:blur(5px); z-index:2; }
+        .call-controls{position:absolute;bottom:40px;left:50%;transform:translateX(-50%);display:flex;gap:15px;background:rgba(0,0,0,0.7);backdrop-filter:blur(10px);padding:15px 25px;border-radius:40px;box-shadow:0 10px 30px rgba(0,0,0,0.5);}
+
+        #text-call-overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:var(--bg-dark);z-index:100;display:flex;flex-direction:column;padding:25px;}
+        .tc-box{flex:1;background:var(--bg-panel);padding:25px;border-radius:20px;overflow-y:auto;border:1px solid var(--border);font-size:32px; line-height:1.4; display:flex; flex-direction:column;}
+        #tc-remote-text{flex:1; white-space:pre-wrap;}
+        #tc-local-input{flex:1;font-size:32px;padding:25px;border-radius:20px;border:2px solid var(--accent);background:var(--bg-dark);resize:none;color:var(--text-main); line-height:1.4;}
+        
+        .sys-call-msg { text-align:center; padding:15px; margin:10px 0; background:rgba(46,204,113,0.1); border:1px solid var(--accent); border-radius:12px; color:var(--accent); }
+    </style>
+</head>
+<body>
+
+<div id="toast" class="toast">メッセージ</div>
+
+<div id="custom-confirm" class="modal-overlay hidden" style="z-index: 9999;">
+    <div class="modal" style="max-width: 320px; text-align: center; padding: 30px 25px;">
+        <i class="fa-solid fa-circle-exclamation" style="font-size:40px; color:var(--accent); margin-bottom:20px;"></i>
+        <h3 id="cc-msg" style="margin-bottom: 25px; font-size:16px; line-height:1.5;">確認メッセージ</h3>
+        <div style="display:flex; gap:10px;">
+            <button type="button" id="cc-btn-no" style="flex:1; background:var(--bg-hover); color:var(--text-main);">キャンセル</button>
+            <button type="button" id="cc-btn-yes" class="danger" style="flex:1;">OK</button>
+        </div>
+    </div>
+</div>
+
+<div id="scr-auth">
+    <h2 id="auth-title">Friend Station</h2>
+    <div id="auth-msg" style="color:var(--danger); margin-bottom:10px; text-align:center; font-weight:bold; font-size:14px; background:rgba(231,76,60,0.1); padding:8px; border-radius:8px; display:none;"></div>
+    
+    <form onsubmit="submitLogin(event); return false;" id="form-login">
+        <input type="text" id="l-user" placeholder="ユーザーID" required>
+        <input type="password" id="l-pass" placeholder="パスワード" required>
+        <button type="submit" id="btn-submit-login" style="width:100%;">ログイン</button>
+        <div style="margin-top:20px;text-align:center;">
+            <button type="button" class="auth-link" onclick="toggleAuth('reg')">アカウント作成</button>
+            <button type="button" class="auth-link" onclick="toggleAuth('trans')">データ引き出し(移行)</button>
+            <button type="button" class="auth-link" onclick="showTermsModal()" style="margin-top:15px;">利用規約・プライバシーポリシー</button>
+        </div>
+    </form>
+    <form onsubmit="return false;" id="form-reg" class="hidden">
+        <div id="step1" class="reg-step">
+            <h3><i class="fa-solid fa-id-card"></i> まずは本人確認をします</h3>
+            <div style="display:flex;gap:10px;">
+                <input type="text" id="r-fn" placeholder="姓" required>
+                <input type="text" id="r-ln" placeholder="名" required>
+            </div>
+            <button type="button" onclick="nextStep(2)">次へ</button>
+            <button type="button" class="auth-link" onclick="toggleAuth('login')">戻る</button>
+        </div>
+        <div id="step2" class="reg-step hidden">
+            <h3><i class="fa-solid fa-school"></i> 学校情報を入力してください</h3>
+            <input type="text" id="r-school" placeholder="学校名" required>
+            <div style="display:flex;gap:10px;">
+                <input type="text" id="r-grade" placeholder="学年" required>
+                <input type="text" id="r-class" placeholder="組" required>
+                <input type="text" id="r-att" placeholder="出席番号" required>
+            </div>
+            <button type="button" onclick="nextStep(3)">次へ</button>
+            <button type="button" class="auth-link" onclick="nextStep(1)">戻る</button>
+        </div>
+        <div id="step3" class="reg-step hidden">
+            <h3><i class="fa-solid fa-user-gear"></i> ユーザー設定をします</h3>
+            <input type="text" id="r-user" placeholder="ユーザーID (半角英数字)" required>
+            <input type="text" id="r-nick" placeholder="ニックネーム" required>
+            <button type="button" onclick="nextStep(4)">次へ</button>
+            <button type="button" class="auth-link" onclick="nextStep(2)">戻る</button>
+        </div>
+        <div id="step4" class="reg-step hidden">
+            <h3><i class="fa-solid fa-lock"></i> パスワードと生年月日</h3>
+            <input type="password" id="r-pass" placeholder="パスワード" required>
+            <label style="font-size:0.8em;color:var(--text-sub);margin-bottom:5px;display:block;">生年月日</label>
+            <input type="date" id="r-birth" required>
+            
+            <div class="terms-scroll" style="height:120px; overflow-y:auto; border:1px solid var(--border); padding:12px; font-size:12px; color:var(--text-sub); margin:10px 0; border-radius:8px; background:var(--bg-dark); line-height:1.6;">
+                <h4 style="color:var(--text-main); margin-bottom:5px;">Friend Station 利用規約</h4>
+                <p>本規約は、本サービスを利用する全てのユーザーに適用されます。本サービスを利用した時点で、以下の全条項に同意したものとみなされます。</p>
+                <h4 style="color:var(--text-main); margin-top:10px; margin-bottom:5px;">第1条（運営者の広範な裁量権）</h4>
+                <p>運営者は、本サービスの仕様変更、停止、またはアカウントの削除を、理由を問わず、事前の予告なくいつでも行うことができます。</p>
+                <p>運営者は、ユーザーが作成したコンテンツ（投稿、チャット、ノート等）の監視・削除・改変を、独自の裁量で制限なく行う権利を有します。</p>
+                <h4 style="color:var(--text-main); margin-top:10px; margin-bottom:5px;">第2条（完全免責）</h4>
+                <p>運営者は、本サービスの利用によりユーザーに生じた損害（データ消失、通信障害、システムダウン、端末の故障、プライバシー漏洩、ユーザー間トラブル、精神的苦痛を含むがこれらに限定されない）について、故意または重過失がない限り、一切の賠償責任を負いません。</p>
+                <p>運営者に賠償責任が生じる場合であっても、賠償額は、ユーザーが過去1ヶ月間に本サービスに対して支払った利用料金の合計額を上限とします（利用料金が無料の場合は、賠償額は0円とします）。</p>
+                <h4 style="color:var(--text-main); margin-top:10px; margin-bottom:5px;">第3条（管轄裁判所）</h4>
+                <p>本規約に関連する全ての紛争は、運営者の所在地を管轄する地方裁判所を第一審の専属的合意管轄裁判所とします。</p>
+                <h4 style="color:var(--text-main); margin-top:10px; margin-bottom:5px;">プライバシーポリシー（運営権限最大化型）</h4>
+                <p>1. 取得情報の範囲と目的<br>当サービスは、ユーザーが入力した氏名、学校情報、位置情報、IPアドレス、端末情報、全送受信メッセージ、投稿履歴、いいね履歴、通話履歴等の全情報を取得・保存します。これらはサービスの提供、セキュリティ維持、および運営者が適切と判断する目的で利用されます。</p>
+                <p>2. 管理者による全データ閲覧の承諾<br>ユーザーは、運営者がデータベースに直接アクセスし、ユーザー間の「全てのプライベートな通信（個別チャット・通話内容等）」を閲覧、記録、分析することに明確に同意します。本サービスにおいて「プライバシー」とは、第三者に対する秘密を指すものであり、運営者に対する秘密を指すものではありません。</p>
+                <p>3. 法令順守と情報開示<br>捜査機関や裁判所等の公的機関から適法な手順による開示請求があった場合、運営者はユーザーの同意を得ることなく、保有する全ての情報を開示します。</p>
+            </div>
+            
+            <button type="button" class="auth-link" onclick="showTermsModal()" style="margin-bottom:15px; font-size:12px;">利用規約の詳細を読む</button>
+            <label style="font-size:12px;color:var(--text-main);display:flex;align-items:center;gap:8px;margin-bottom:15px;"><input type="checkbox" id="r-agree" required style="width:auto;margin:0;accent-color:var(--accent);">利用規約およびプライバシーポリシーに同意する</label>
+            
+            <button type="submit" style="width:100%;" onclick="submitRegistration()">登録</button>
+            <button type="button" class="auth-link" onclick="nextStep(3)">戻る</button>
+        </div>
+    </form>
+    <form onsubmit="submitTrans(event); return false;" id="form-trans" class="hidden">
+        <input type="text" id="t-user" placeholder="ユーザーID" required>
+        <input type="text" id="t-code" placeholder="引継ぎコード" required>
+        <button type="submit" style="width:100%;">復元ログイン</button>
+        <button type="button" class="auth-link" onclick="toggleAuth('login')" style="width:100%;margin-top:15px;">戻る</button>
+    </form>
+</div>
+
+<div id="scr-pending" class="hidden">
+    <h2 style="color:var(--accent);margin-bottom:15px;font-size:2em;text-align:center;">承認待ち</h2>
+    <div class="loader"></div>
+    <p style="color:var(--text-main);margin-bottom:10px;text-align:center;font-weight:bold;">管理者の承認を待っています...</p>
+    <p style="font-size:13px;color:var(--text-sub);margin-bottom:25px;text-align:center;line-height:1.5;">この画面のままお待ちください。<br>承認されると自動的にログインします。</p>
+    <button type="button" onclick="logout()" class="danger" style="width:100%;">キャンセルして戻る</button>
+</div>
+
+<div id="scr-main" class="hidden">
+    <div class="sidebar">
+        <div class="brand"><img src="./tag.jpg" onerror="this.src='./icon.jpeg'" style="width:28px;height:28px;border-radius:6px;margin-right:10px;">Friend Station</div>
+        <button type="button" class="nav-btn" id="nav-home" onclick="switchNav('home')"><i class="fa-solid fa-house"></i> <span>ホーム</span></button>
+        <button type="button" class="nav-btn" id="nav-chat" onclick="switchNav('chat')"><i class="fa-solid fa-message"></i> <span>メッセージ</span><div id="notif-badge" class="badge hidden">0</div></button>
+        <button type="button" class="nav-btn" id="nav-search" onclick="switchNav('search')"><i class="fa-solid fa-magnifying-glass"></i> <span>検索</span></button>
+        <button type="button" class="nav-btn" id="nav-notif" onclick="switchNav('notif')"><i class="fa-solid fa-bell"></i> <span>通知</span><div id="notif-bell-badge" class="badge hidden">0</div></button>
+        <button type="button" class="nav-btn" onclick="toggleMenu()" style="margin-top:auto;"><i class="fa-solid fa-bars"></i> <span>その他</span></button>
+    </div>
+
+    <div id="slide-menu">
+        <h3 style="margin-bottom:15px;border-bottom:1px solid var(--border);padding-bottom:15px;">メニュー</h3>
+        <div class="menu-item" onclick="openProfileModal(myInfo.id, myInfo.username, myInfo.nickname, myInfo.icon_url, myInfo.status_message)"><i class="fa-solid fa-user"></i> プロフィール</div>
+        <div class="menu-item" onclick="switchMainPanel('settings')"><i class="fa-solid fa-gear"></i> 設定・移行</div>
+        <div class="menu-item" onclick="switchMainPanel('notif-settings')"><i class="fa-solid fa-bell"></i> 通知・着信</div>
+        <div class="menu-item" onclick="switchMainPanel('qr')"><i class="fa-solid fa-mobile-screen"></i> My QR</div>
+        <div class="menu-item" onclick="openSelectFriendsModal('group')"><i class="fa-solid fa-user-group"></i> グループ作成</div>
+        <div class="menu-item" onclick="openSelectFriendsModal('close')"><i class="fa-solid fa-lock"></i> 親しい友達リスト設定</div>
+        <div class="menu-item" onclick="openBlockListModal()"><i class="fa-solid fa-ban"></i> ブロック一覧</div>
+        <div class="menu-item" onclick="showTermsModal()"><i class="fa-solid fa-file-contract"></i> 利用規約・プライバシー</div>
+        <div class="menu-item danger" onclick="logout()" style="margin-top:auto;color:#fff;"><i class="fa-solid fa-right-from-bracket"></i> ログアウト</div>
+        <div style="margin-top:20px;padding-top:15px;border-top:1px solid var(--border);font-size:13px;color:var(--text-sub);line-height:1.6;">
+            <div>©Friend Station 2026</div>
+            <div>クレジット: OtoLogic</div>
+        </div>
+    </div>
+
+    <div class="list-panel" id="list-panel">
+        <div id="panel-chat" class="scroll-area">
+            <div class="panel-header">メッセージ</div>
+            <div class="notes-area">
+                <form onsubmit="submitNote(event); return false;" id="form-note" style="display:flex;gap:8px;margin-bottom:10px;">
+                    <select id="note-vis" style="border-radius:20px;padding:8px 12px;width:auto;background:var(--bg-panel);color:var(--text-main);border:1px solid var(--border);">
+                        <option value="public">全体</option>
+                        <option value="friends">👥 フレンド</option>
+                        <option value="close">🔒 親しい</option>
+                    </select>
+                    <input type="text" id="note-input" placeholder="いまの気分を投稿..." maxlength="60" style="padding:10px 15px;margin:0;border-radius:20px;flex:1;" required>
+                    <button type="submit" style="padding:10px 16px;border-radius:20px;"><i class="fa-solid fa-plus"></i></button>
+                </form>
+                <div class="notes-list" id="ui-notes"></div>
+            </div>
+            <div class="room-list" id="ui-rooms"></div>
+            <div class="room-list" id="ui-groups" style="border-top:1px solid var(--border);"></div>
+        </div>
+        <div id="panel-search" class="hidden scroll-area">
+            <div class="panel-header">ユーザー検索</div>
+            <div style="padding:20px;"><form onsubmit="execSearch(event); return false;" id="form-search" style="display:flex;gap:8px;"><input type="text" id="s-query" placeholder="キーワード..." style="margin:0;border-radius:20px;" required><button type="submit" style="border-radius:20px;">検索</button></form><div id="ui-search-res" style="margin-top:25px;"></div></div>
+        </div>
+        <div id="panel-notif" class="hidden scroll-area">
+            <div class="panel-header">通知</div>
+            <ul id="ui-notifs" style="list-style:none;padding:0;"></ul>
+        </div>
+    </div>
+
+    <div class="main-panel-container" id="main-container">
+        <div id="main-chat" class="main-screen active">
+            <button type="button" id="btn-back-chat" class="hidden" onclick="closeChatMobile()" style="position:absolute;top:15px;left:15px;z-index:10;background:rgba(0,0,0,0.6);backdrop-filter:blur(5px);border-radius:50%;width:44px;height:44px;padding:0;"><i class="fa-solid fa-arrow-left"></i></button>
+            <div id="chat-empty" style="flex:1; background:var(--bg-dark);"></div>
+            <div id="chat-active" class="hidden" style="display:flex;flex-direction:column;height:100%;">
+                <div class="chat-header">
+                    <div style="display:flex;align-items:center;gap:15px;cursor:pointer;margin-left:45px;" onclick="showCurrentProfile()">
+                        <div style="position:relative;">
+                            <img id="chat-target-icon" src="" onerror="this.src='./icon.jpeg'" style="width:44px;height:44px;border-radius:50%;object-fit:cover;">
+                            <div class="online-badge" id="chat-target-online"></div>
+                        </div>
+                        <div><h3 id="chat-title" style="font-size:18px;">相手</h3></div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:12px;position:relative;">
+                        <form onsubmit="execChatSearch(event); return false;" id="form-chat-search" class="chat-search-bar hidden"><input type="text" id="chat-s-query" placeholder="履歴検索" required><span onclick="hide('form-chat-search');show('btn-chat-search')" style="cursor:pointer;padding:0 5px;"><i class="fa-solid fa-xmark"></i></span></form>
+                        <button type="button" id="btn-chat-search" onclick="show('form-chat-search');hide('btn-chat-search')" style="background:transparent;font-size:18px;padding:5px;"><i class="fa-solid fa-magnifying-glass"></i></button>
+                        <button type="button" onclick="startTextCall()" style="background:transparent;font-size:20px;padding:5px;"><i class="fa-solid fa-message"></i></button>
+                        <button type="button" onclick="startRtcCall('voice')" style="background:transparent;font-size:20px;padding:5px;"><i class="fa-solid fa-phone"></i></button> 
+                        <button type="button" onclick="startRtcCall('video')" style="background:transparent;font-size:20px;padding:5px;"><i class="fa-solid fa-video"></i></button>
+                        <button type="button" onclick="toggleChatMenu(event)" style="background:transparent;font-size:20px;padding:5px;"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+                        <div id="chat-menu" class="hidden" style="position:fixed; top:70px; right:20px; background:var(--bg-panel); border:1px solid var(--border); border-radius:12px; z-index:2147483647; box-shadow:0 5px 15px rgba(0,0,0,0.5); white-space:nowrap;">
+                            <div class="ctx-item" id="chat-menu-add-member" onclick="openSelectFriendsModal('add_group_member')"><i class="fa-solid fa-user-plus"></i> メンバーを追加</div>
+                            <div class="ctx-item danger" onclick="execChatMenuAction()"><i class="fa-solid fa-ban"></i> <span id="chat-menu-action-text">ブロック</span></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="chat-box" id="ui-msgs" onscroll="saveScroll('chat', this)"></div>
+                <div class="chat-input-area">
+                    <div id="reply-preview" class="hidden"><span>返信先: <strong id="rp-name" style="color:var(--accent);"></strong> <span id="rp-text"></span></span><span style="cursor:pointer;font-size:18px;padding:0 8px;" onclick="cancelReply()"><i class="fa-solid fa-xmark"></i></span></div>
+                    <div id="edit-preview" class="hidden"><span>編集中: <span id="ed-text" style="color:var(--accent);"></span></span><span style="cursor:pointer;font-size:18px;padding:0 8px;" onclick="cancelEdit()"><i class="fa-solid fa-xmark"></i></span></div>
+                    <div id="typing-indicator" style="font-size:12px;color:var(--accent);height:14px;margin-bottom:4px;"></div>
+                    <div class="chat-input-row">
+                        <label style="cursor:pointer;font-size:22px;margin-bottom:0;color:var(--accent);"><i class="fa-solid fa-image"></i><input type="file" id="chat-file" accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/quicktime" class="hidden" onchange="previewMedia(this, 'chat-file-preview', 'chat-file-preview-vid', 'chat-f-status')"></label>
+                        <img id="chat-file-preview" src="" style="width:40px;height:40px;object-fit:cover;border-radius:8px;display:none;border:1px solid var(--border);">
+                        <span id="chat-f-status" class="file-status"></span>
+                        <input type="text" id="msg-input" placeholder="メッセージを入力..." autocomplete="off">
+                        <button type="button" id="btn-send-msg" style="border-radius:24px;padding:12px 24px;">送信</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="main-home" class="main-screen hidden scroll-area" onscroll="saveScroll('home', this)">
+            <div style="padding:20px 25px;font-size:1.6em;font-weight:bold;border-bottom:1px solid var(--border);position:sticky;top:0;background:rgba(0,0,0,0.8);backdrop-filter:blur(10px);z-index:2;">ホーム</div>
+            <div style="padding:20px 25px;border-bottom:1px solid var(--border);">
+                <div style="display:flex;gap:15px;">
+                    <img id="home-my-icon" src="" onerror="this.src='./icon.jpeg'" style="width:50px;height:50px;border-radius:50%;object-fit:cover;">
+                    <div style="flex:1;">
+                        <textarea id="post-text" placeholder="いまどうしてる？ (1日5回まで)" rows="2" style="border:none;background:transparent;resize:none;font-size:18px;padding:5px 0;"></textarea>
+                        <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--border);padding-top:15px;margin-top:5px;">
+                            <div style="display:flex;align-items:center;gap:15px;">
+                                <label style="cursor:pointer;color:var(--accent);font-size:22px;"><i class="fa-solid fa-image"></i><input type="file" id="post-file" accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/quicktime" class="hidden" onchange="previewMedia(this, 'post-file-preview', 'post-file-preview-vid', 'post-f-status')"></label>
+                                <img id="post-file-preview" src="" style="width:50px;height:50px;object-fit:cover;border-radius:10px;display:none;border:1px solid var(--border);">
+                                <select id="post-vis" style="border-radius:20px;padding:8px 12px;width:auto;background:var(--bg-panel);color:var(--text-main);border:1px solid var(--border);">
+                                    <option value="public">全体</option>
+                                    <option value="friends">👥 フレンド限定</option>
+                                    <option value="close">🔒 親しい友達</option>
+                                </select>
+                                <span id="post-f-status" class="file-status"></span>
+                            </div>
+                            <button type="button" onclick="submitPost();" style="border-radius:24px;padding:10px 20px;">ポストする</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="ui-timeline"></div>
+        </div>
+
+        <div id="main-settings" class="main-screen hidden scroll-area" style="padding:40px;">
+            <h2 style="margin-bottom:25px;border-bottom:1px solid var(--border);padding-bottom:15px;">設定・プロフィール</h2>
+            <div style="margin-bottom:30px;display:flex;align-items:center;gap:20px;">
+                <img id="my-icon-set" src="" onerror="this.src='./icon.jpeg'" style="width:90px;height:90px;border-radius:50%;object-fit:cover;border:3px solid var(--accent);">
+                <label style="cursor:pointer;color:var(--accent);font-weight:bold;padding:12px 20px;border:1px solid var(--accent);border-radius:24px;transition:all 0.3s;">アイコン変更<input type="file" accept="image/*" class="hidden" onchange="uploadIcon(this)"></label>
+            </div>
+            <label style="font-size:13px;color:var(--text-sub);">ユーザーID (変更は30日に1回のみ)</label>
+            <div style="display:flex;gap:12px;align-items:center;margin-bottom:15px;"><input type="text" id="set-id" style="margin:0;"><button type="button" onclick="updateProfile('username', id('set-id').value)">保存</button><span class="saved-check" id="sc-id">✔ 保存済</span></div>
+            <label style="font-size:13px;color:var(--text-sub);">ニックネーム</label>
+            <div style="display:flex;gap:12px;align-items:center;margin-bottom:15px;"><input type="text" id="set-nick" style="margin:0;"><button type="button" onclick="updateProfile('nickname', id('set-nick').value)">保存</button><span class="saved-check" id="sc-nick">✔ 保存済</span></div>
+            <label style="font-size:13px;color:var(--text-sub);">自己紹介</label>
+            <div style="display:flex;gap:12px;align-items:flex-start;"><textarea id="set-status" rows="3" style="margin:0;"></textarea><button type="button" onclick="updateProfile('status_message', id('set-status').value)">保存</button><span class="saved-check" id="sc-status">✔ 保存済</span></div>
+            
+            <h3 style="margin-top:40px;margin-bottom:15px;border-bottom:1px solid var(--border);padding-bottom:10px;">セキュリティ</h3>
+            <form onsubmit="requestPwChange(event); return false;" id="form-pw-req" style="display:flex;gap:12px;margin-top:15px;"><input type="password" id="set-new-pw" placeholder="新しいパスワード" required style="margin:0;"><button type="submit">変更申請</button></form>
+
+            <h3 style="margin-top:40px;margin-bottom:15px;border-bottom:1px solid var(--border);padding-bottom:10px;">データ移行 (預け入れ)</h3>
+            <p style="font-size:14px;color:var(--text-sub);margin-bottom:15px;line-height:1.5;">ブラウザ内の全チャット履歴をサーバーに一時預かりします。新端末で引き出すと自動で削除されます。</p>
+            <button type="button" onclick="pushBackup()" style="width:100%;border-radius:16px;padding:16px;font-size:16px;"><i class="fa-solid fa-box-archive"></i> IndexedDBデータをサーバーに預ける</button>
+            <div id="transfer-code" style="text-align:center;font-size:1.8em;color:var(--accent);font-weight:bold;margin:25px;letter-spacing:2px;"></div>
+        </div>
+
+        <div id="main-notif-settings" class="main-screen hidden scroll-area" style="padding:40px;">
+            <h2 style="margin-bottom:25px;border-bottom:1px solid var(--border);padding-bottom:15px;">通知・着信設定</h2>
+            
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; font-size:15px;">
+                <span>ブラウザ通知を許可</span>
+                <label class="switch"><input type="checkbox" id="set-notif" onchange="toggleSetting('notif', this.checked)"><span class="slider"></span></label>
+            </div>
+
+            <h3 style="margin-top:30px;margin-bottom:15px;border-bottom:1px solid var(--border);padding-bottom:10px;">通知音</h3>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; font-size:15px;">
+                <span>通知音を鳴らす</span>
+                <label class="switch"><input type="checkbox" id="set-sound" onchange="toggleSetting('sound', this.checked)"><span class="slider"></span></label>
+            </div>
+            <div style="margin-bottom:15px;">
+                <select id="set-notif-sound" onchange="toggleSetting('notif-sound', this.value); playSample(this.value);" style="margin:0;">
+                    <option value="tuuti1.mp3">通知音 1</option>
+                    <option value="tuuti2.mp3">通知音 2</option>
+                    <option value="tuuti3.mp3">通知音 3</option>
+                </select>
+            </div>
+
+            <h3 style="margin-top:30px;margin-bottom:15px;border-bottom:1px solid var(--border);padding-bottom:10px;">着信音</h3>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; font-size:15px;">
+                <span>着信音を鳴らす</span>
+                <label class="switch"><input type="checkbox" id="set-call-sound" onchange="toggleSetting('call-sound', this.checked)"><span class="slider"></span></label>
+            </div>
+            <div style="margin-bottom:15px;">
+                <select id="set-call-sound-file" onchange="toggleSetting('call-sound-file', this.value); playSample(this.value);" style="margin:0;">
+                    <option value="call1.mp3">着信音 1</option>
+                    <option value="call2.mp3">着信音 2</option>
+                    <option value="call3.mp3">着信音 3</option>
+                </select>
+            </div>
+            <div style="margin-top:20px;padding-top:15px;border-top:1px solid var(--border);font-size:13px;color:var(--text-sub);">
+                提供：OtoLogic / 音源：OtoLogic
+            </div>
+        </div>
+
+        <div id="main-qr" class="main-screen hidden scroll-area" style="padding:40px;text-align:center;">
+            <h2 style="margin-bottom:25px;">My QRコード</h2><p style="color:var(--text-sub);margin-bottom:30px;font-size:16px;">ID: <strong id="my-id-disp" style="color:var(--text-main);"></strong></p>
+            <div style="background:#fff;padding:20px;border-radius:20px;display:inline-block;margin-bottom:40px;box-shadow:0 10px 30px rgba(0,0,0,0.5);"><canvas id="my-qr"></canvas></div>
+            <div style="border-top:1px solid var(--border);padding-top:30px;">
+                <button type="button" onclick="startQRScanner()" style="border-radius:24px;width:100%;max-width:300px;padding:15px;font-size:16px;"><i class="fa-solid fa-camera"></i> QRを読み込む</button>
+                <div id="reader" class="hidden" style="margin-top:20px;border-radius:16px;overflow:hidden;border:1px solid var(--border);"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="modal-block-list" class="modal-overlay hidden" onclick="if(event.target===this)hide('modal-block-list')">
+    <div class="modal" style="max-height:60vh;">
+        <span class="close-btn" onclick="hide('modal-block-list')"><i class="fa-solid fa-xmark"></i></span>
+        <h3 style="margin-bottom:15px;border-bottom:1px solid var(--border);padding-bottom:15px;">ブロック一覧</h3>
+        <div id="block-list-content" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;"></div>
+    </div>
+</div>
+
+<div id="modal-note-post" class="modal-overlay hidden" onclick="if(event.target===this)hide('modal-note-post')">
+    <div class="modal">
+        <span class="close-btn" onclick="hide('modal-note-post')"><i class="fa-solid fa-xmark"></i></span>
+        <h3 style="margin-bottom:20px; text-align:center;"><i class="fa-solid fa-pen-nib"></i> いまの気分</h3>
+        <form onsubmit="submitNotePostModal(event); return false;" style="display:flex; flex-direction:column; gap:15px;">
+            <textarea id="modal-note-input" placeholder="いま何してる？ (60文字以内)" maxlength="60" rows="3" required></textarea>
+            <select id="modal-note-vis">
+                <option value="public">🌐 全体公開</option>
+                <option value="friends">👥 フレンド限定</option>
+                <option value="close">🔒 親しい友達のみ</option>
+            </select>
+            <button type="submit" style="width:100%; padding:14px;"><i class="fa-solid fa-paper-plane"></i> 投稿する</button>
+        </form>
+    </div>
+</div>
+
+<div id="modal-note-view" class="modal-overlay hidden" onclick="if(event.target===this)hide('modal-note-view')">
+    <div class="modal" style="background:var(--bg-dark); max-width:380px; height:85vh; border-radius:20px; display:flex; flex-direction:column; padding:0; overflow:hidden;">
+        <div style="padding:15px 20px; display:flex; align-items:center; gap:12px; border-bottom:1px solid var(--border); background:var(--bg-panel);">
+            <img id="nv-icon" src="" onerror="this.src='./icon.jpeg'" style="width:44px; height:44px; border-radius:50%; object-fit:cover; border:2px solid var(--accent);">
+            <div style="flex:1; font-weight:bold; font-size:16px;" id="nv-name"></div>
+            <button type="button" id="nv-del-btn" class="hidden" style="background:transparent; color:var(--danger); border:none; font-size:18px; padding:5px;"><i class="fa-solid fa-trash"></i></button>
+            <span class="close-btn" style="position:static;" onclick="hide('modal-note-view')"><i class="fa-solid fa-xmark"></i></span>
+        </div>
+        <div style="flex:1; display:flex; align-items:center; justify-content:center; padding:30px; text-align:center; font-size:26px; font-weight:bold; word-break:break-word; background:linear-gradient(135deg, #1a1c20 0%, #0d0e12 100%);" id="nv-content"></div>
+        <div style="padding:20px; display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border); background:var(--bg-panel); gap:15px;" id="nv-footer">
+            <div id="nv-reply-btn" style="flex:1; background:var(--bg-hover); padding:14px; border-radius:24px; text-align:center; cursor:pointer; font-weight:bold; transition:0.2s;"><i class="fa-solid fa-message"></i> メッセージを送信</div>
+            <div id="nv-like-btn" style="font-size:28px; cursor:pointer; width:50px; text-align:center; transition:transform 0.2s;">🤍</div>
+            <div id="nv-like-list-btn" class="hidden" style="flex:1; background:var(--bg-hover); padding:14px; border-radius:24px; text-align:center; cursor:pointer; font-weight:bold; transition:0.2s;"><i class="fa-solid fa-heart"></i> いいね一覧</div>
+        </div>
+    </div>
+</div>
+
+<div id="context-menu" class="hidden">
+    <div class="ctx-item" id="ctx-reply"><i class="fa-solid fa-reply"></i> リプライ</div>
+    <div class="ctx-item" id="ctx-edit" class="hidden"><i class="fa-solid fa-pen"></i> 編集</div>
+    <div class="ctx-item" id="ctx-delete" class="hidden" style="color:var(--danger);"><i class="fa-solid fa-trash"></i> 取消</div>
+</div>
+
+<div id="reaction-menu" class="hidden" style="position:fixed;background:var(--bg-panel);border:1px solid var(--border);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,0.8);z-index:2500;padding:8px;display:flex;gap:8px;">
+    <button type="button" class="emoji-btn" onclick="sendReaction('❤️')">❤️</button>
+    <button type="button" class="emoji-btn" onclick="sendReaction('😂')">😂</button>
+    <button type="button" class="emoji-btn" onclick="sendReaction('😮')">😮</button>
+    <button type="button" class="emoji-btn" onclick="sendReaction('😢')">😢</button>
+    <button type="button" class="emoji-btn" onclick="sendReaction('👍')">👍</button>
+</div>
+
+<div id="modal-prof" class="modal-overlay hidden" onclick="if(event.target===this)hide('modal-prof')">
+    <div class="modal">
+        <span class="close-btn" onclick="hide('modal-prof')"><i class="fa-solid fa-xmark"></i></span>
+        <img id="mp-icon" class="prof-lg" src="" onerror="this.src='./icon.jpeg'">
+        <h2 id="mp-name" style="margin-bottom:8px;text-align:center;"></h2><p style="color:var(--text-sub);margin-bottom:20px;font-size:15px;text-align:center;">@<span id="mp-id"></span></p>
+        <p id="mp-status" style="font-size:16px;word-break:break-word;margin-bottom:20px;line-height:1.5;text-align:center;padding:0 15px;"></p>
+        <div id="mp-action-area" style="text-align:center; margin-bottom:10px; display:none; justify-content:center; gap:10px;"></div>
+    </div>
+</div>
+
+<div id="modal-select-friends" class="modal-overlay hidden" onclick="if(event.target===this)hide('modal-select-friends')">
+    <div class="modal">
+        <span class="close-btn" onclick="hide('modal-select-friends')"><i class="fa-solid fa-xmark"></i></span>
+        <h3 id="msf-title" style="margin-bottom:15px;"></h3>
+        <div id="msf-extra-input"></div>
+        <div id="msf-list" style="max-height:40vh;overflow-y:auto;margin:20px 0;display:flex;flex-direction:column;gap:10px;"></div>
+        <button type="button" id="msf-submit" style="width:100%;border-radius:12px;padding:14px;font-size:16px;">決定</button>
+    </div>
+</div>
+
+<div id="modal-comments" class="modal-overlay hidden" onclick="if(event.target===this)hide('modal-comments')">
+    <div class="modal" style="height:85vh;max-width:500px;">
+        <span class="close-btn" onclick="hide('modal-comments')"><i class="fa-solid fa-xmark"></i></span>
+        <h3 style="margin-bottom:15px;border-bottom:1px solid var(--border);padding-bottom:15px;">コメント</h3>
+        <div id="comments-list"></div>
+        <div style="display:flex;align-items:center;gap:12px;border-top:1px solid var(--border);padding-top:15px;">
+            <form onsubmit="submitComment(event); return false;" id="form-comment" style="display:flex;width:100%;align-items:center;gap:12px;">
+                <label style="cursor:pointer;font-size:24px;margin:0;color:var(--accent);"><i class="fa-solid fa-camera"></i><input type="file" id="c-file" accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/quicktime" class="hidden" onchange="previewMedia(this, 'c-file-preview', 'c-file-preview-vid', 'c-f-status')"></label>
+                <img id="c-file-preview" src="" style="width:44px;height:44px;object-fit:cover;border-radius:8px;display:none;border:1px solid var(--border);">
+                <span id="c-f-status" class="file-status"></span>
+                <input type="text" id="c-text" placeholder="コメントを追加..." style="margin:0;border-radius:24px;flex:1;padding:12px 18px;">
+                <button type="submit" style="border-radius:24px;padding:12px 20px;">送信</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div id="modal-post-detail" class="modal-overlay hidden" onclick="if(event.target===this)hide('modal-post-detail')">
+    <div class="modal" style="height:85vh;max-width:600px; padding:0; display:flex; flex-direction:column;">
+        <div style="padding:15px 20px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; background:var(--bg-panel); z-index:10;">
+            <h3 style="margin:0; font-size:1.2em;">ポスト詳細</h3>
+            <span class="close-btn" style="position:static;" onclick="hide('modal-post-detail')"><i class="fa-solid fa-xmark"></i></span>
+        </div>
+        <div style="flex:1; overflow-y:auto; padding:20px;">
+            <div id="pd-post-content" style="border-bottom:1px solid var(--border); padding-bottom:20px; margin-bottom:20px;"></div>
+            <h4 style="margin-bottom:15px; color:var(--text-sub); font-size:14px;"><i class="fa-solid fa-heart"></i> いいねしたユーザー</h4>
+            <div id="pd-likes-list" style="display:flex; flex-direction:column; gap:10px; padding-bottom:20px; border-bottom:1px solid var(--border); margin-bottom:20px; max-height: 150px; overflow-y:auto;"></div>
+            <h4 style="margin-bottom:15px; color:var(--text-sub); font-size:14px;"><i class="fa-solid fa-comments"></i> コメント</h4>
+            <div id="pd-comments-list" style="display:flex; flex-direction:column; gap:15px;"></div>
+        </div>
+        <div style="padding:15px 20px; border-top:1px solid var(--border); background:var(--bg-panel);">
+            <form onsubmit="submitComment(event); return false;" id="form-pd-comment" style="display:flex; width:100%; align-items:center; gap:12px;">
+                <label style="cursor:pointer;font-size:24px;margin:0;color:var(--accent);"><i class="fa-solid fa-camera"></i><input type="file" id="pd-c-file" accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/quicktime" class="hidden" onchange="previewMedia(this, 'pd-c-file-preview', 'pd-c-file-preview-vid', 'pd-c-f-status')"></label>
+                <img id="pd-c-file-preview" src="" style="width:40px;height:40px;object-fit:cover;border-radius:8px;display:none;border:1px solid var(--border);">
+                <span id="pd-c-f-status" class="file-status hidden"></span>
+                <input type="text" id="pd-c-text" placeholder="返信をポスト..." style="margin:0;border-radius:24px;flex:1;padding:12px 18px;">
+                <button type="submit" style="border-radius:24px;padding:10px 20px;">送信</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div id="modal-media-view" class="modal-overlay hidden" onclick="if(event.target===this)closeMediaModal()">
+    <div class="modal" style="max-width:90%;max-height:90%;padding:0;background:transparent;border:none;box-shadow:none;position:relative;overflow:hidden;">
+        <span class="close-btn" style="position:absolute;top:15px;right:20px;z-index:10;" onclick="event.stopPropagation(); closeMediaModal();"><i class="fa-solid fa-xmark"></i></span>
+        <img id="mv-img" src="" style="max-width:100%;max-height:100%;display:block;margin:auto;border-radius:20px;">
+        <video id="mv-video" controls style="max-width:100%;max-height:100%;display:none;margin:auto;border-radius:20px;"></video>
+    </div>
+</div>
+
+<div id="modal-interactions" class="modal-overlay hidden" onclick="if(event.target===this)hide('modal-interactions')">
+    <div class="modal" style="max-height:60vh;">
+        <span class="close-btn" onclick="hide('modal-interactions')"><i class="fa-solid fa-xmark"></i></span>
+        <h3 style="margin-bottom:15px;border-bottom:1px solid var(--border);padding-bottom:15px;">アクション</h3>
+        <div id="interactions-list" style="flex:1;overflow-y:auto;text-align:left;font-size:15px;line-height:1.6;"></div>
+    </div>
+</div>
+
+<div id="modal-search-res" class="modal-overlay hidden" onclick="if(event.target===this)hide('modal-search-res')">
+    <div class="modal" style="max-height:80vh;overflow-y:auto;text-align:left;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;"><h3 style="font-size:1.4em;">検索結果</h3><span class="close-btn" style="position:static;" onclick="hide('modal-search-res')"><i class="fa-solid fa-xmark"></i></span></div>
+        <div id="chat-search-out"></div>
+    </div>
+</div>
+
+<div id="modal-calling" class="modal-overlay hidden">
+    <div class="modal" style="text-align:center;padding:40px 20px;">
+        <h3 id="calling-name" style="margin-bottom:15px;font-size:28px;"></h3>
+        <p style="color:var(--accent);margin-bottom:35px;font-weight:bold;font-size:18px;letter-spacing:1px;"><i class="fa-solid fa-phone-volume fa-shake"></i> 発信中...</p>
+        <button type="button" class="danger" onclick="cancelCall()" style="border-radius:24px;padding:14px 40px;font-size:16px;">キャンセル</button>
+    </div>
+</div>
+
+<div id="modal-incoming" class="modal-overlay hidden">
+    <div class="modal" style="text-align:center;padding:40px 20px;">
+        <h3 id="caller-name" style="margin-bottom:15px;font-size:28px;"></h3><p id="call-type-txt" style="color:var(--accent);margin-bottom:35px;font-weight:bold;font-size:18px;"></p>
+        <div style="display:flex;gap:20px;justify-content:center;">
+            <button type="button" class="danger" onclick="answerCallSession(false)" style="flex:1;max-width:150px;border-radius:24px;padding:14px;font-size:16px;">拒否</button>
+            <button type="button" class="success" onclick="answerCallSession(true)" style="flex:1;max-width:150px;border-radius:24px;padding:14px;font-size:16px;">応答</button>
+        </div>
+    </div>
+</div>
+
+<div id="modal-terms" class="modal-overlay hidden" onclick="if(event.target===this)hide('modal-terms')">
+    <div class="modal" style="max-height:85vh; overflow-y:auto; text-align:left; max-width:600px; padding:30px;">
+        <span class="close-btn" onclick="hide('modal-terms')"><i class="fa-solid fa-xmark"></i></span>
+        <h2 style="margin-bottom:20px; border-bottom:1px solid var(--border); padding-bottom:15px; text-align:center;">利用規約・プライバシーポリシー</h2>
+        <div style="font-size:14px; line-height:1.7; color:var(--text-sub);">
+            <h3 style="color:var(--text-main); margin-top:15px; font-size:16px;">Friend Station 利用規約</h3>
+            <p>本規約は、本サービスを利用する全てのユーザーに適用されます。本サービスを利用した時点で、以下の全条項に同意したものとみなされます。</p>
+            <h4 style="color:var(--text-main); margin-top:20px;">第1条（運営者の広範な裁量権）</h4>
+            <p>運営者は、本サービスの仕様変更、停止、またはアカウントの削除を、理由を問わず、事前の予告なくいつでも行うことができます。</p>
+            <p>運営者は、ユーザーが作成したコンテンツ（投稿、チャット、ノート等）の監視・削除・改変を、独自の裁量で制限なく行う権利を有します。</p>
+            <h4 style="color:var(--text-main); margin-top:20px;">第2条（完全免責）</h4>
+            <p>運営者は、本サービスの利用によりユーザーに生じた損害（データ消失、通信障害、システムダウン、端末の故障、プライバシー漏洩、ユーザー間トラブル、精神的苦痛を含むがこれらに限定されない）について、故意または重過失がない限り、一切の賠償責任を負いません。</p>
+            <p>運営者に賠償責任が生じる場合であっても、賠償額は、ユーザーが過去1ヶ月間に本サービスに対して支払った利用料金の合計額を上限とします（利用料金が無料の場合は、賠償額は0円とします）。</p>
+            <h4 style="color:var(--text-main); margin-top:20px;">第3条（管轄裁判所）</h4>
+            <p>本規約に関連する全ての紛争は、運営者の所在地を管轄する地方裁判所を第一審の専属的合意管轄裁判所とします。</p>
+            <h3 style="color:var(--text-main); margin-top:25px; font-size:16px;">プライバシーポリシー（運営権限最大化型）</h3>
+            <h4 style="color:var(--text-main); margin-top:20px;">1. 取得情報の範囲と目的</h4>
+            <p>当サービスは、ユーザーが入力した氏名、学校情報、位置情報、IPアドレス、端末情報、全送受信メッセージ、投稿履歴、いいね履歴、通話履歴等の全情報を取得・保存します。これらはサービスの提供、セキュリティ維持、および運営者が適切と判断する目的で利用されます。</p>
+            <h4 style="color:var(--text-main); margin-top:20px;">2. 管理者による全データ閲覧の承諾</h4>
+            <p>ユーザーは、運営者がデータベースに直接アクセスし、ユーザー間の「全てのプライベートな通信（個別チャット・通話内容等）」を閲覧、記録、分析することに明確に同意します。本サービスにおいて「プライバシー」とは、第三者に対する秘密を指すものであり、運営者に対する秘密を指すものではありません。</p>
+            <h4 style="color:var(--text-main); margin-top:20px;">3. 法令順守と情報開示</h4>
+            <p>捜査機関や裁判所等の公的機関から適法な手順による開示請求があった場合、運営者はユーザーの同意を得ることなく、保有する全ての情報を開示します。</p>
+        </div>
+    </div>
+</div>
+
+<div id="video-overlay" class="hidden">
+    <div id="video-grid"></div>
+    <div class="call-controls">
+        <button type="button" id="btn-mic" class="success" onclick="toggleMic()"><i class="fa-solid fa-microphone"></i> ON</button>
+        <button type="button" id="btn-cam" class="success" onclick="toggleCam()"><i class="fa-solid fa-video"></i> ON</button>
+        <button type="button" id="btn-spk" class="success" onclick="toggleSpk()"><i class="fa-solid fa-volume-high"></i> ON</button>
+        <button type="button" class="call-btn danger" onclick="cancelCall()"><i class="fa-solid fa-phone-slash" style="color: white;"></i></button>
+    </div>
+</div>
+
+<div id="text-call-overlay" class="hidden">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:25px;">
+        <h2><span id="tc-target-name">相手</span> <span style="color:var(--accent);font-size:15px;margin-left:10px;">● 通話中</span></h2>
+        <button type="button" class="danger" onclick="endTextCall()" style="border-radius:20px;padding:10px 25px;">終了</button>
+    </div>
+    <div style="flex:1;display:flex;flex-direction:column;gap:20px;">
+        <div class="tc-box"><div style="font-size:14px;color:var(--text-sub);margin-bottom:10px;">相手の入力...</div><div id="tc-remote-text"></div></div>
+        <div style="font-size:14px;color:var(--text-sub);margin-bottom:-10px;">自分</div>
+        <textarea id="tc-local-input" placeholder="ここに入力するとリアルタイムに伝わります..."></textarea>
+    </div>
+</div>
+
+<script>
+    const SERVER_URLS = [
+        "https://api.sys-auth.com",
+        "https://study.sys-auth.com",
+        "https://auth.toway.space",
+        "https://towabii.github.io"
+    ];
+
+    let BACKEND_URL = localStorage.getItem("working_url") || SERVER_URLS[0];
+    const API_BASE = "/edu-backend"; // ★API基本パス
+
+    async function fetchWithTimeout(url, options, timeout = 3000) {
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), timeout);
+        const response = await fetch(url, { ...options, signal: controller.signal });
+        clearTimeout(id);
+        return response;
+    }
+
+    async function findWorkingServer() {
+        for (let url of SERVER_URLS) {
+            try {
+                const res = await fetchWithTimeout(url + API_BASE + "/edu/ping", { method: "GET", mode: "cors", cache: "no-store", headers: {"Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true"} }, 2500);
+                if (res.ok) {
+                    console.log("接続成功:", url);
+                    BACKEND_URL = url;
+                    localStorage.setItem("working_url", url);
+                    return true;
+                }
+            } catch (e) {
+                console.warn("ブロック(SSL/CORS等):", url);
+            }
+        }
+        return false; 
+    }
+
+    let token = localStorage.getItem('token'), myInfo = JSON.parse(localStorage.getItem('myInfo'))||{};
+    let socket, currentRoom = '', currentTarget = '', db = null;
+    let replyTarget = null, editTargetMsgId = null, ctxTargetMsgId = null, ctxTargetIsMe = false, ctxTargetTimestamp = null;
+    let typingTimers = {}; let typingTimeout;
+    
+    let localStream, callSession = null, incomingData = null, textCallSession = null;
+    let rtcType = 'none'; 
+    let isGroupCall = false;
+    let peers = {}; let streamFlags = { video: true, audio: true };
+    let textCallData = {};
+    
+    let html5QrCode = null, currentPostIdForComment = null, currentModalType = '';
+    let currentNav = localStorage.getItem('activeNav') || 'chat';
+    let currentMain = localStorage.getItem('activeMain') || 'chat';
+    let onlineStatusCache = {}; 
+    let titleBlinkInterval = null;
+    let originalTitle = "Friend Station";
+    let prevNotifIds = new Set();
+    let isFirstLoadNotifs = true;
+    let pendingRead = false;
+    let currentCallAudio = null;
+
+    const id = el => document.getElementById(el), show = el => el && el.classList ? el.classList.remove('hidden') : id(el)?.classList.remove('hidden'), hide = el => el && el.classList ? el.classList.add('hidden') : id(el)?.classList.add('hidden');
+
+    function previewMedia(inp, prevImgId, prevVidId, statusId) {
+        const f = inp.files[0]; const stat = id(statusId);
+        let prevImg = id(prevImgId); let prevVid = id(prevVidId);
+        if (!prevVid) {
+            prevVid = document.createElement('video'); prevVid.id = prevVidId;
+            prevVid.style.width = prevImg.style.width || '40px'; prevVid.style.height = prevImg.style.height || '40px';
+            prevVid.style.objectFit = 'cover'; prevVid.style.borderRadius = prevImg.style.borderRadius || '8px';
+            prevVid.style.border = prevImg.style.border || '1px solid var(--border)'; prevVid.style.display = 'none';
+            prevImg.parentNode.insertBefore(prevVid, prevImg.nextSibling);
+        }
+        if (f) {
+            const allowedImg = ['image/jpeg','image/png','image/gif','image/webp'];
+            const allowedVid = ['video/mp4','video/quicktime'];
+            if (allowedImg.includes(f.type)) {
+                stat.innerText = '添付済'; const r = new FileReader();
+                r.onload = e => { prevImg.src = e.target.result; prevImg.style.display = 'block'; prevVid.style.display = 'none'; prevVid.src = ''; };
+                r.readAsDataURL(f);
+            } else if (allowedVid.includes(f.type)) {
+                stat.innerText = '添付済(動画)'; const r = new FileReader();
+                r.onload = e => { prevVid.src = e.target.result; prevVid.style.display = 'block'; prevImg.style.display = 'none'; prevImg.src = ''; };
+                r.readAsDataURL(f);
+            } else {
+                stat.innerText = ''; prevImg.style.display = 'none'; prevVid.style.display = 'none';
+                showToast('JPG, PNG, GIF, MP4, MOVのみ対応しています'); inp.value = '';
+            }
+        } else {
+            stat.innerText = ''; prevImg.style.display = 'none'; prevImg.src = ''; prevVid.style.display = 'none'; prevVid.src = '';
+        }
+    }
+
+    function showToast(msg) {
+        const t = id('toast'); t.innerText = msg; t.classList.add('show');
+        setTimeout(() => t.classList.remove('show'), 3000);
+    }
+
+    function showConfirm(msg) {
+        return new Promise(resolve => {
+            id('cc-msg').innerText = msg; show('custom-confirm');
+            id('cc-btn-yes').onclick = () => { hide('custom-confirm'); resolve(true); };
+            id('cc-btn-no').onclick = () => { hide('custom-confirm'); resolve(false); };
+        });
+    }
+
+    function nextStep(n) {
+        const currentStep = document.querySelector('.reg-step:not(.hidden)');
+        if (currentStep) {
+            const currentN = parseInt(currentStep.id.replace('step', ''));
+            if (n > currentN) {
+                const inputs = currentStep.querySelectorAll('input[required]');
+                for(let inp of inputs) { if(!inp.checkValidity()) { inp.reportValidity(); return; } }
+            }
+        }
+        document.querySelectorAll('.reg-step').forEach(el => el.classList.add('hidden'));
+        id('step' + n).classList.remove('hidden');
+    }
+
+    function toggleAuth(t){ 
+        hide('form-login');hide('form-reg');hide('form-trans'); show(`form-${t==='reg'?'reg':t==='trans'?'trans':'login'}`); 
+        if(t === 'reg') { document.querySelectorAll('.reg-step').forEach(el => el.classList.add('hidden')); id('step1').classList.remove('hidden'); }
+    }
+
+    function initDB(){ return new Promise((res)=>{ const req=indexedDB.open("FriendStationDB",1); req.onupgradeneeded=e=>{ const db=e.target.result; if(!db.objectStoreNames.contains('messages')){ const s=db.createObjectStore('messages',{keyPath:'msg_id'}); s.createIndex('room_id','room_id',{unique:false}); s.createIndex('timestamp','timestamp',{unique:false}); } }; req.onsuccess=e=>{ db=e.target.result; res(); }; }); }
+    function idbPutMsg(m){ return new Promise(r=>{ const tx=db.transaction('messages','readwrite'); tx.objectStore('messages').put(m); tx.oncomplete=r; }); }
+    function idbGetRoomMsgs(r_id){ return new Promise(res=>{ const req=db.transaction('messages','readonly').objectStore('messages').index('room_id').getAll(r_id); req.onsuccess=()=>res(req.result.sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp))); }); }
+    function idbGetAllMsgs(){ return new Promise(res=>{ const req=db.transaction('messages','readonly').objectStore('messages').getAll(); req.onsuccess=()=>res(req.result); }); }
+    function idbClearMsgs(){ return new Promise(r=>{ const tx=db.transaction('messages','readwrite'); tx.objectStore('messages').clear(); tx.oncomplete=r; }); }
+    function idbUpdateReaction(msgId, reactions) { if (!db) return; const tx = db.transaction('messages', 'readwrite'); const store = tx.objectStore('messages'); const req = store.get(msgId); req.onsuccess = () => { const m = req.result; if (m) { m.reactions = JSON.stringify(reactions); store.put(m); } }; }
+    function idbUpdateMsgStatus(msgId, content, isDeleted, history) { if(!db) return; const tx = db.transaction('messages', 'readwrite'); const store = tx.objectStore('messages'); const req = store.get(msgId); req.onsuccess = () => { const m = req.result; if(m) { m.content = content; m.is_deleted = isDeleted; m.edit_history = history; store.put(m); } }; }
+
+    async function apiPost(path, body={}){ 
+        if(!token) { logout(); return { ok: false, json: async () => ({}) }; }
+        const h={"Authorization":`Bearer ${token}`, "Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true"}; 
+        if(!(body instanceof FormData)){ h["Content-Type"]="application/json"; body=JSON.stringify(body); } 
+        try {
+            const r = await fetch(BACKEND_URL + API_BASE + path, { method:"POST", mode:"cors", headers:h, body:body }); 
+            if(r.status===401) { logout(); return { ok: false, json: async () => ({}) }; }
+            return r; 
+        } catch(e) {
+            console.error("API Post Error:", e);
+            return { ok: false, json: async () => ({}) };
+        }
+    }
+    
+    function logout(){ 
+        localStorage.clear(); token = null; myInfo = {}; currentRoom = ''; currentTarget = ''; html5QrCode = null;
+        if(socket) { socket.disconnect(); socket = null; }
+        id('l-user').value = ''; id('l-pass').value = ''; id('auth-msg').innerText = ''; id('auth-msg').style.display='none';
+        id('ui-msgs').innerHTML = ''; id('ui-rooms').innerHTML = ''; id('ui-groups').innerHTML = ''; id('ui-notes').innerHTML = ''; id('ui-timeline').innerHTML = '';
+        hide('scr-main'); hide('scr-pending'); show('scr-auth'); toggleAuth('login'); id('slide-menu').classList.remove('open');
+    }
+
+    function startPending(pendingToken) {
+        hide('scr-auth'); show('scr-pending');
+        if(socket) { socket.disconnect(); socket = null; }
+        socket = io(BACKEND_URL, { 
+            path: API_BASE + '/edu-sync', 
+            auth: {token: pendingToken}, 
+            transports: ['polling', 'websocket'], 
+            upgrade: true 
+        });
+        socket.on('registration_approved', d => {
+            if(Notification.permission==="granted" && localStorage.getItem('set-notif')!=='false') new Notification('承認されました',{body:'Friend Stationにログインします'});
+            token = d.token; myInfo = d.user; localStorage.setItem('token', token); localStorage.setItem('myInfo', JSON.stringify(myInfo));
+            socket.disconnect(); hide('scr-pending'); initApp(); 
+        });
+    }
+
+    async function submitLogin(e) {
+        if(e) e.preventDefault(); 
+        const msgDiv = id('auth-msg');
+        msgDiv.style.display = 'block'; msgDiv.innerText = "接続中...";
+        try {
+            const r = await fetch(BACKEND_URL + API_BASE + '/edu/login',{
+                method:'POST', mode: 'cors',
+                headers:{'Content-Type':'application/json', "Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true"},
+                body:JSON.stringify({username:id('l-user').value,password:id('l-pass').value})
+            }); 
+            if(!r.ok && r.status !== 401 && r.status !== 403 && r.status !== 400 && r.status !== 404 && r.status !== 409) {
+                msgDiv.innerText = `通信エラー (${r.status}): CloudflareのBot設定またはTunnelが停止しています。`;
+                return;
+            }
+            const d=await r.json(); 
+            if(r.ok){ 
+                msgDiv.style.display = 'none';
+                token=d.token;myInfo=d.user;localStorage.setItem('token',token);localStorage.setItem('myInfo',JSON.stringify(myInfo));initApp(); 
+            }
+            else if(r.status===403 && d.pendingToken) { msgDiv.style.display = 'none'; startPending(d.pendingToken); }
+            else { msgDiv.innerText=d.error; }
+        } catch (err) {
+            msgDiv.innerText = "アクセスブロック(SSL/CORS等)検知。別ルート探索中...";
+            const found = await findWorkingServer();
+            if(found) {
+                msgDiv.innerText = "別ルートに接続しました。ログインを再試行します...";
+                setTimeout(() => id('btn-submit-login').click(), 1000);
+            } else {
+                msgDiv.innerText = "【致命的エラー】すべてのサーバーがブロックされています。";
+            }
+        }
+    }
+
+    async function submitTrans(e) {
+        if(e) e.preventDefault(); 
+        try {
+            const r=await fetch(BACKEND_URL + API_BASE + '/edu/backup/pull',{
+                method:'POST', mode:'cors',
+                headers:{'Content-Type':'application/json', "Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true"},
+                body:JSON.stringify({username:id('t-user').value,transfer_code:id('t-code').value})
+            }); 
+            const d=await r.json(); 
+            if(r.ok){ await initDB(); await idbClearMsgs(); if(d.data){ for(let m of d.data) await idbPutMsg(m); } showToast('復元しました。再ログインしてください。'); toggleAuth('login'); }
+            else { id('auth-msg').style.display='block'; id('auth-msg').innerText=d.error; }
+        } catch (err) { id('auth-msg').style.display='block'; id('auth-msg').innerText="通信エラー(SSL/CORS等)"; }
+    }
+
+    async function submitRegistration() {
+        const step4Inputs = id('step4').querySelectorAll('input[required]');
+        for(let inp of step4Inputs) { if(!inp.checkValidity()) { inp.reportValidity(); return; } }
+        if(!id('r-agree').checked) return showToast('利用規約に同意してください');
+        
+        const uidVal = id('r-user').value;
+        if(!/^[a-zA-Z0-9_\-\.\=]+$/.test(uidVal)) { await showConfirm("ユーザーIDは半角英数字と一部記号 ( _ - . = ) のみ使用可能です。"); return; }
+        
+        const b={username:uidVal,nickname:id('r-nick').value,first_name:id('r-fn').value,last_name:id('r-ln').value,password:id('r-pass').value,school_name:id('r-school').value,grade:id('r-grade').value,class_num:id('r-class').value,attendance_num:id('r-att').value,birthdate:id('r-birth').value}; 
+        try {
+            const r=await fetch(BACKEND_URL + API_BASE + '/edu/register',{ method:'POST', mode:'cors', headers:{'Content-Type':'application/json', "Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true"}, body:JSON.stringify(b) }); 
+            const d=await r.json();
+            if(r.ok && d.pendingToken){ startPending(d.pendingToken); } 
+            else if(!r.ok){ id('auth-msg').style.display='block'; id('auth-msg').innerText=d.error; }
+        } catch (err) { id('auth-msg').style.display='block'; id('auth-msg').innerText="通信エラー(SSL/CORS等)"; }
+    }
+
+    function playSample(file) {
+        if (currentCallAudio && file.startsWith('call')) {
+            stopCallSound();
+            currentCallAudio = new Audio('./' + file);
+            currentCallAudio.loop = true;
+            currentCallAudio.play().catch(e=>{});
+            return;
+        }
+        const a = new Audio('./' + file);
+        a.play().catch(e=>{});
+    }
+
+    function playNotifSound() {
+        if(localStorage.getItem('set-sound') !== 'false') {
+            const file = localStorage.getItem('set-notif-sound') || 'tuuti1.mp3';
+            const a = new Audio('./' + file);
+            a.play().catch(e=>{});
+        }
+    }
+
+    function playCallSound() {
+        if(localStorage.getItem('set-call-sound') !== 'false') {
+            const file = localStorage.getItem('set-call-sound-file') || 'call1.mp3';
+            if(!currentCallAudio) {
+                currentCallAudio = new Audio('./' + file);
+                currentCallAudio.loop = true;
+            }
+            currentCallAudio.play().catch(e=>{});
+        }
+    }
+
+    function stopCallSound() {
+        if(currentCallAudio) {
+            currentCallAudio.pause();
+            currentCallAudio.currentTime = 0;
+            currentCallAudio = null;
+        }
+    }
+
+    function showBrowserNotif(title, body) {
+        playNotifSound();
+        if (localStorage.getItem('set-notif') !== 'false' && Notification.permission === "granted") {
+            new Notification(title, { body });
+        }
+    }
+
+    function openMediaModal(url, type = 'image') {
+        const modal = id('modal-media-view');
+        const img = id('mv-img');
+        const vid = id('mv-video');
+        if (type === 'video') {
+            img.style.display = 'none';
+            vid.style.display = 'block';
+            vid.src = url;
+            vid.load();
+        } else {
+            vid.pause();
+            vid.style.display = 'none';
+            vid.src = '';
+            img.style.display = 'block';
+            img.src = url;
+        }
+        show('modal-media-view');
+    }
+
+    function closeMediaModal() {
+        const vid = id('mv-video');
+        if (vid) {
+            vid.pause();
+            vid.src = '';
+        }
+        hide('modal-media-view');
+    }
+
+    function startTitleBlink(type = 'メッセージ') {
+        if(!document.hidden) return;
+        if(titleBlinkInterval) clearInterval(titleBlinkInterval);
+        let showMsg = true;
+        const label = type === '通知' ? '新着通知' : '新着メッセージ';
+        titleBlinkInterval = setInterval(() => {
+            document.title = showMsg ? `(!) 【${label}】` : originalTitle;
+            showMsg = !showMsg;
+        }, 1000);
+    }
+
+    function markReadSafely() {
+        if(!currentRoom || document.hidden) return;
+        if(pendingRead) return;
+        pendingRead = true;
+        setTimeout(() => {
+            if(socket) socket.emit('mark_read', currentRoom);
+            pendingRead = false;
+        }, 1000);
+    }
+
+    document.addEventListener("visibilitychange", () => {
+        if(!document.hidden) {
+            if(titleBlinkInterval) { clearInterval(titleBlinkInterval); titleBlinkInterval = null; }
+            document.title = originalTitle;
+            updateUnreadBadge();
+            if(currentRoom && currentMain === 'chat') markReadSafely();
+        }
+    });
+
+    window.toggleSetting = (key, val) => { localStorage.setItem('set-' + key, val); };
+
+    function toggleChatMenu(e) {
+        e.stopPropagation();
+        const menu = id('chat-menu');
+        id('chat-menu-action-text').innerText = isGroupCall ? 'グループを退会' : 'ブロック（フレンド解除）';
+        id('chat-menu-add-member').style.display = isGroupCall ? 'flex' : 'none';
+        menu.classList.toggle('hidden');
+    }
+
+    document.addEventListener('click', (e)=> { 
+        if(!e.target.closest('.msg') && !e.target.closest('.msg-opt-btn')) hide('context-menu'); 
+        if(!e.target.closest('.msg-react-btn') && !e.target.closest('#reaction-menu')) hide('reaction-menu'); 
+        if(!e.target.closest('#chat-menu') && !e.target.closest('button[onclick="toggleChatMenu(event)"]')) hide('chat-menu');
+    });
+
+    async function execChatMenuAction() {
+        hide('chat-menu');
+        if (isGroupCall) {
+            if(await showConfirm('このグループから退会しますか？')) {
+                const res = await apiPost('/edu/groups/leave', { group_id: currentRoom });
+                if(res && res.ok) { showToast('退会しました'); currentRoom = ''; currentTarget = ''; switchNav('chat'); loadGroups(); }
+            }
+        } else {
+            if(await showConfirm('このユーザーをブロック（フレンド解除）しますか？')) {
+                const res = await apiPost('/edu/friends/block', { target_id: currentTarget });
+                if(res && res.ok) { showToast('ブロックしました'); currentRoom = ''; currentTarget = ''; switchNav('chat'); loadFriends(); }
+            }
+        }
+    }
+
+    async function openBlockListModal() {
+        const r = await apiPost('/edu/friends/block_list');
+        if(r && r.ok) {
+            const list = await r.json();
+            const out = id('block-list-content');
+            if(list.length === 0) out.innerHTML = '<p style="text-align:center; color:var(--text-sub); padding:20px;">ブロックしているユーザーはいません</p>';
+            else out.innerHTML = list.map(u => {
+                const ic = u.icon_url && u.icon_url.trim() !== '' ? (u.icon_url.startsWith('http')||u.icon_url.startsWith('.')?u.icon_url:BACKEND_URL+u.icon_url) : './icon.jpeg';
+                return `<div style="display:flex; align-items:center; gap:10px; padding:10px; border-bottom:1px solid var(--border);">
+                    <img src="${ic}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;">
+                    <div style="flex:1;"><b>${u.nickname}</b><br><span style="font-size:12px;color:var(--text-sub);">@${u.username}</span></div>
+                    <button type="button" class="success" style="padding:6px 12px; font-size:12px;" onclick="unblockUser('${u.id}')">解除</button>
+                </div>`;
+            }).join('');
+            show('modal-block-list'); toggleMenu();
+        }
+    }
+
+    async function unblockUser(uid) {
+        if(await showConfirm('ブロックを解除しますか？')) {
+            const r = await apiPost('/edu/friends/unblock', {target_id: uid});
+            if(r && r.ok) { showToast('解除しました'); openBlockListModal(); loadFriends(); }
+        }
+    }
+
+    async function initApp(){
+        if (!token) { logout(); return; }
+        
+        hide('scr-auth'); hide('scr-pending'); show('scr-main'); await initDB();
+        id('set-nick').value=myInfo.nickname; id('set-id').value=myInfo.username; id('set-status').value=myInfo.status_message||''; id('my-id-disp').innerText=myInfo.username; 
+        
+        id('set-sound').checked = localStorage.getItem('set-sound') !== 'false';
+        id('set-notif').checked = localStorage.getItem('set-notif') !== 'false';
+        id('set-notif-sound').value = localStorage.getItem('set-notif-sound') || 'tuuti1.mp3';
+        id('set-call-sound-file').value = localStorage.getItem('set-call-sound-file') || 'call1.mp3';
+        id('set-call-sound').checked = localStorage.getItem('set-call-sound') !== 'false';
+
+        if(myInfo.icon_url){ const ic = myInfo.icon_url.startsWith('http')||myInfo.icon_url.startsWith('.')?myInfo.icon_url:BACKEND_URL+myInfo.icon_url; id('my-icon-set').src=ic; id('home-my-icon').src=ic; }
+        QRCode.toCanvas(id('my-qr'),myInfo.username,{width:200, margin:2});
+        if(Notification.permission!=="denied" && localStorage.getItem('set-notif') !== 'false') Notification.requestPermission();
+        
+        switchNav(currentNav); if(currentMain !== 'chat') switchMainPanel(currentMain);
+        
+        const lastSync=localStorage.getItem('lastSync')||'1970-01-01T00:00:00.000Z'; const sRes=await apiPost('/edu/sync/messages',{since:lastSync}); if(sRes && sRes.ok){ const {messages}=await sRes.json(); for(let m of messages)await idbPutMsg(m); localStorage.setItem('lastSync',new Date().toISOString()); }
+        updateUnreadBadge();
+        
+        if(socket) { socket.disconnect(); socket = null; }
+        socket=io(BACKEND_URL,{
+            path: API_BASE + '/edu-sync',
+            auth:{token}, transports: ['polling', 'websocket'], upgrade: true
+        });
+        
+        socket.on("connect_error", (err) => { if (err.message === "NoToken" || err.message === "InvToken") { logout(); } });
+        
+        socket.on('friend_update', ()=>{ loadFriends(); loadGroups(); });
+        socket.on('receive_message',async m=>{ 
+            await idbPutMsg(m); 
+            if(m.room_id===currentRoom && id('main-chat').classList.contains('active')){
+                renderMsg(m, true); scrollToBottom('chat'); 
+                if(!document.hidden) markReadSafely(); else { startTitleBlink(); playNotifSound(); }
+            } else { 
+                updateUnreadBadge(); 
+                if(m.user_id!==myInfo.id) { startTitleBlink(); if(localStorage.getItem('set-notif')!=='false' && Notification.permission==="granted"){ playNotifSound(); new Notification(m.user_name, {body: m.type==='text'?m.content:'メディア'}); } }
+            }
+        });
+        
+        socket.on('message_updated', d => { idbUpdateMsgStatus(d.msg_id, d.content, d.is_deleted, d.edit_history); if(currentRoom) { openRoom(currentRoom, localStorage.getItem('currentTargetName'), currentTarget, localStorage.getItem('currentTargetIcon'), id('ui-msgs').scrollTop); } });
+        socket.on('message_reaction_update', d => { const el = id('react-' + d.msg_id); if(el){ const eArr = []; Object.entries(d.reactions).forEach(([emoji,uids]) => { if(uids.length>0) eArr.push(`${emoji}${uids.length>1?uids.length:''}`); }); el.innerHTML = eArr.join(' '); el.style.display = eArr.length > 0 ? 'flex' : 'none'; } idbUpdateReaction(d.msg_id, d.reactions); });
+        socket.on('messages_read_bulk', ({roomId, updates}) => { if(roomId === currentRoom) { updates.forEach(u => { const rdEl = id(`rd-${u.msg_id}`); if(rdEl) { if(roomId.startsWith('g_')) { rdEl.innerText = `既読 ${u.read_count}`; rdEl.style.display = 'inline'; } else { rdEl.innerText = `既読`; rdEl.style.display = 'inline'; } } }); } });
+        socket.on('messages_read', ({roomId}) => { if(roomId === currentRoom && !roomId.startsWith('g_')) { document.querySelectorAll('.msg-info .is-read').forEach(el => { el.innerText = '既読'; el.style.display = 'inline'; }); } });
+
+        socket.on('new_notification',()=>{loadNotifs(); updateUnreadBadge(); if(document.hidden) startTitleBlink('通知');});
+        socket.on('unread_update', updateUnreadBadge);
+        socket.on('new_post_timeline',()=>{if(currentMain==='home')loadTimeline();});
+        socket.on('notes_update', loadNotes);
+
+        socket.on('user_status', d => { onlineStatusCache[d.userId] = d.online; updateOnlineBadges(); });
+        socket.on('online_status', d => { onlineStatusCache = {...onlineStatusCache, ...d}; updateOnlineBadges(); });
+
+        setInterval(() => { const now = Date.now(); let updated = false; for(let uid in typingTimers) { if(now - typingTimers[uid].time > 3000) { delete typingTimers[uid]; updated = true; } } if(updated) updateTypingUI(); }, 1000);
+        socket.on('typing', d=>{ if(d.room_id === currentRoom && d.user_id !== myInfo.id) { if(d.is_typing) { typingTimers[d.user_id] = { name: d.nickname, time: Date.now() }; } else { delete typingTimers[d.user_id]; } updateTypingUI(); } });
+
+        // Call Handlers
+        socket.on('call_error', d => {
+            showToast(d.message);
+            hide('modal-calling');
+            hide('modal-incoming');
+            hangUp(false);
+        });
+
+        const showIncomingCallUI = d => {
+            console.log('showIncomingCallUI called with:', d);
+            incomingData = d;
+            rtcType = d.video ? 'video' : 'voice';
+            id('caller-name').innerText = d.caller_name || '着信';
+            id('call-type-txt').innerHTML = d.video ? '<i class="fa-solid fa-video"></i> ビデオ通話' : '<i class="fa-solid fa-phone"></i> 音声通話';
+            hide('video-overlay');
+            hide('text-call-overlay');
+            show('modal-incoming');
+            playCallSound();
+        };
+        socket.on('incoming_call', showIncomingCallUI);
+        socket.on('call_received', showIncomingCallUI); // ★ 新規イベント？
+
+        const showActiveCallUI = d => {
+            console.log('showActiveCallUI called with:', d);
+            hide('modal-calling');
+            hide('modal-incoming');
+            callSession = d.session_id;
+            show('video-overlay');
+            setupPeer(d.answerer_id, true, d.icon_url, d.nickname);
+        };
+        socket.on('call_answered', showActiveCallUI);
+        socket.on('call_started', showActiveCallUI); // ★ 新規イベント？
+
+        socket.on('call_rejected', d => {
+            hide('modal-calling');
+            hide('modal-incoming');
+            showToast('通話が拒否されました');
+            hangUp(false);
+        });
+
+        socket.on('user_joined_call', d => { if(d.user_id !== myInfo.id) setupPeer(d.user_id, true, d.icon_url, d.nickname); });
+        socket.on('user_left_call', d => { removePeer(d.user_id); if (!isGroupCall && Object.keys(peers).length === 0) hangUp(false); });
+        socket.on('media_status_update', d => { const vWrap = id('wrap-'+d.user_id); if(vWrap) { const icon = vWrap.querySelector('.no-video-icon'); const mBadge = vWrap.querySelector('.mic-off-badge'); const vid = vWrap.querySelector('video'); if(icon) icon.style.display = d.video ? 'none' : 'block'; if(vid) vid.style.opacity = d.video ? '1' : '0'; if(mBadge) mBadge.style.display = d.audio ? 'none' : 'block'; } });
+        socket.on('webrtc_offer', async d => { setupPeer(d.sender_id, false, d.sender_icon, d.sender_name); try { await peers[d.sender_id].setRemoteDescription(new RTCSessionDescription(d.offer)); const a = await peers[d.sender_id].createAnswer(); await peers[d.sender_id].setLocalDescription(a); socket.emit('webrtc_answer', {target_id: d.sender_id, answer: a, session_id: d.session_id, room_id: isGroupCall ? currentRoom : undefined}); } catch(e) { console.error('offer error', e); } });
+        socket.on('webrtc_answer', async d => { if(peers[d.sender_id]) { try { await peers[d.sender_id].setRemoteDescription(new RTCSessionDescription(d.answer)); } catch(e) { console.error('answer error', e); } } }); 
+        socket.on('webrtc_ice', d => { if(peers[d.sender_id] && d.candidate) { peers[d.sender_id].addIceCandidate(new RTCIceCandidate(d.candidate)).catch(e=>{}); } });
+        socket.on('hang_up', d => { hangUp(false); });
+
+        // Text Call Handlers
+        const showIncomingTextCallUI = d => {
+            console.log('showIncomingTextCallUI called with:', d);
+            incomingData={...d, type:'text'};
+            rtcType='text';
+            id('caller-name').innerText=`${d.caller_name}`;
+            id('call-type-txt').innerHTML='<i class="fa-solid fa-message"></i> テキスト通話着信';
+            hide('video-overlay');
+            hide('text-call-overlay');
+            show('modal-incoming');
+            playCallSound();
+        };
+        socket.on('incoming_text_call', showIncomingTextCallUI);
+        socket.on('text_call_received', showIncomingTextCallUI); // ★ 新規イベント？
+
+        socket.on('text_call_started', d => {
+            console.log('text_call_started called with:', d);
+            hide('modal-calling');
+            hide('modal-incoming');
+            textCallSession = d.session_id;
+            localStorage.setItem('tcSession', textCallSession);
+            localStorage.setItem('tcTargetName', d.target_name);
+            socket.emit('join_text_call',{session_id:d.session_id});
+            id('tc-target-name').innerText=`${d.target_name}`;
+            textCallData={};
+            id('tc-remote-text').innerText='';
+            id('tc-local-input').value='';
+            show('text-call-overlay');
+        });
+        socket.on('text_call_rejected', ()=>{ hide('modal-calling'); hide('modal-incoming'); showToast('通話が拒否されました'); rtcType='none'; });
+        socket.on('text_call_sync_receive', d=>{ if (rtcType === 'text') { if (isGroupCall) { textCallData[d.user_id] = `[${d.user_name}] ${d.text}`; id('tc-remote-text').innerText = Object.values(textCallData).join('\n\n'); } else { id('tc-remote-text').innerText=d.text; } } });
+        socket.on('text_call_ended', d => { if(isGroupCall && d && d.user_id) { delete textCallData[d.user_id]; id('tc-remote-text').innerText = Object.values(textCallData).join('\n\n'); } else { cleanupTextCall(); } });
+        
+        id('msg-input').addEventListener('keydown', e=>{ if(e.key==='Enter' && !e.isComposing) { e.preventDefault(); id('btn-send-msg').click(); } });
+        id('msg-input').addEventListener('input', () => { if(currentRoom) { socket.emit('typing', {room_id: currentRoom, is_typing: true}); if(typingTimeout) clearTimeout(typingTimeout); typingTimeout = setTimeout(() => { socket.emit('typing', {room_id: currentRoom, is_typing: false}); }, 2000); } });
+        id('tc-local-input').addEventListener('input', function() { if(rtcType === 'text' && textCallSession) { socket.emit('text_call_sync', { session_id: textCallSession, room_id: isGroupCall ? currentRoom : undefined, target_id: !isGroupCall ? currentTarget : undefined, text: this.value }); } });
+
+        loadFriends(); loadGroups(); loadNotifs(); loadNotes(); if(currentMain==='home')loadTimeline();
+        
+        const savedRoom = localStorage.getItem('activeRoom'), savedTarget = localStorage.getItem('currentTarget'), savedTargetName = localStorage.getItem('currentTargetName'), savedIcon = localStorage.getItem('currentTargetIcon');
+        if(savedRoom && currentMain === 'chat') openRoom(savedRoom, savedTargetName, savedTarget, savedIcon, localStorage.getItem('chatScrollTop')||0);
+        if(currentMain==='home') setTimeout(()=> id('main-home').scrollTop=localStorage.getItem('homeScrollTop')||0, 300);
+        if (localStorage.getItem('tcSession')) { textCallSession = localStorage.getItem('tcSession'); id('tc-target-name').innerText = localStorage.getItem('tcTargetName'); socket.emit('join_text_call', {session_id: textCallSession}); show('text-call-overlay'); }
+    }
+
+    function updateOnlineBadges() {
+        document.querySelectorAll('.room-item').forEach(el => {
+            const uid = el.dataset.uid;
+            if(uid) { if(onlineStatusCache[uid]) el.classList.add('is-online'); else el.classList.remove('is-online'); }
+        });
+        if(currentTarget && onlineStatusCache[currentTarget]) id('chat-target-online').style.display = 'block';
+        else id('chat-target-online').style.display = 'none';
+    }
+
+    function updateTypingUI() {
+        const names = Object.values(typingTimers).map(t => t.name);
+        if(names.length === 0) id('typing-indicator').innerText = '';
+        else if(names.length === 1) id('typing-indicator').innerText = names[0] + 'さんが入力中...';
+        else id('typing-indicator').innerText = names.join('、') + 'が入力中...';
+    }
+
+    async function updateUnreadBadge() {
+        const r1 = await apiPost('/edu/messages/unread_count');
+        if(r1 && r1.ok){ 
+            const d=await r1.json();
+            
+            const msgTotal = d.unread || 0;
+            const b=id('notif-badge'); 
+            if(msgTotal>0){ b.innerText=msgTotal; show('notif-badge'); } else{ hide('notif-badge'); } 
+            
+            const notifTotal = d.notif_unread || 0;
+            const nb=id('notif-bell-badge');
+            if(notifTotal>0){ nb.innerText=notifTotal; show('notif-bell-badge'); } else{ hide('notif-bell-badge'); }
+            
+            document.querySelectorAll('.room-unread-badge').forEach(el => el.classList.add('hidden'));
+            if(d.room_unread) {
+                for(const [rid, count] of Object.entries(d.room_unread)) {
+                    const el = id('unread-badge-'+rid);
+                    if(el && count > 0) { el.innerText = count; el.classList.remove('hidden'); }
+                }
+            }
+        }
+    }
+
+    function toggleMenu(){ id('slide-menu').classList.toggle('open'); }
+    
+    function switchNav(t){
+        const prevNav = currentNav;
+        if(t === 'chat' && (prevNav === 'home' || prevNav === 'search' || prevNav === 'notif')) {
+            localStorage.setItem('activeNav', t); location.reload(); return;
+        }
+        currentNav = t; localStorage.setItem('activeNav', t); id('slide-menu').classList.remove('open');
+        ['chat','search','notif'].forEach(x=>{ id('nav-'+x)?.classList.toggle('active',x===t); if(id('panel-'+x)) id('panel-'+x).classList.toggle('hidden',x!==t); });
+        id('nav-home').classList.toggle('active', t==='home');
+        if(t==='home') { id('list-panel').style.display='none'; switchMainPanel('home'); } else { id('list-panel').style.display='flex'; switchMainPanel('chat'); }
+        if(t==='notif') apiPost('/edu/notifications/read').then(r=>{ if(r&&r.ok) loadNotifs(); });
+    }
+    
+    function switchMainPanel(p){
+        currentMain = p; localStorage.setItem('activeMain', p); id('slide-menu').classList.remove('open');
+        ['chat','home','settings','qr','notif-settings'].forEach(x=> { 
+            const el = id('main-'+x);
+            if(el) { el.classList.remove('active'); hide('main-'+x); }
+        });
+        const target = id('main-'+p);
+        if(target) { show(target); target.classList.add('active'); }
+        if(p==='chat'){ if(currentRoom){show('chat-active');hide('chat-empty');}else{hide('chat-active');show('chat-empty');} }
+        if(p==='home') loadTimeline();
+        if(html5QrCode && p!=='qr') { html5QrCode.stop().catch(()=>{}); html5QrCode=null; hide('reader'); }
+    }
+    
+    function saveScroll(type, el){ localStorage.setItem(type+'ScrollTop', el.scrollTop); }
+    function scrollToBottom(type){ const el = type==='chat'?id('ui-msgs'):null; if(el) el.scrollTop = el.scrollHeight; }
+    function closeChatMobile(){ id('main-container').classList.remove('active'); }
+    function showTermsModal() { toggleMenu(); show('modal-terms'); }
+
+    async function openProfileModal(uid, username, nickname, icon, status){
+        id('mp-icon').src = icon && icon.trim() !== '' ? (icon.startsWith('http')||icon.startsWith('.')?icon:BACKEND_URL+icon) : './icon.jpeg';
+        id('mp-name').innerText = nickname; id('mp-id').innerText = username; id('mp-status').innerText = status||'自己紹介はありません'; 
+        
+        const actArea = id('mp-action-area'); actArea.style.display = 'none'; actArea.innerHTML = '';
+        
+        if(uid && uid !== myInfo.id) {
+            const r = await apiPost('/edu/user/profile_status', {target_id: uid});
+            if(r && r.ok) {
+                actArea.style.display = 'flex'; const d = await r.json();
+                if(d.status === 'friend') { actArea.innerHTML = `<button type="button" style="background:var(--bg-hover);color:var(--text-sub);cursor:default;" disabled><i class="fa-solid fa-user-check"></i> フレンド</button>`; } 
+                else if(d.status === 'requesting') { actArea.innerHTML = `<button type="button" style="background:var(--bg-hover);color:var(--text-sub);cursor:default;" disabled><i class="fa-solid fa-clock"></i> 申請中</button>`; } 
+                else if(d.status === 'pending_received') { actArea.innerHTML = `<button type="button" class="success" onclick="acceptRequestFromProfile('${d.request_id}', '${uid}')"><i class="fa-solid fa-check"></i> 承認する</button>`; } 
+                else { actArea.innerHTML = `<button type="button" onclick="requestFriendFromProfile('${username}', '${uid}')"><i class="fa-solid fa-user-plus"></i> フレンド申請</button>`; }
+            }
+        }
+        show('modal-prof');
+    }
+    
+    async function requestFriendFromProfile(username, uid) {
+        const r = await apiPost('/edu/friends/request', {username});
+        if(r && r.ok) { showToast('申請しました'); const actArea = id('mp-action-area'); actArea.innerHTML = `<button type="button" style="background:var(--bg-hover);color:var(--text-sub);cursor:default;" disabled><i class="fa-solid fa-clock"></i> 申請中</button>`; } else { const d = await r.json(); showToast(d.error); }
+    }
+
+    async function acceptRequestFromProfile(reqId, uid) {
+        const r = await apiPost('/edu/friends/accept', {request_id: reqId});
+        if(r && r.ok) { showToast('承認しました'); const actArea = id('mp-action-area'); actArea.innerHTML = `<button type="button" style="background:var(--bg-hover);color:var(--text-sub);cursor:default;" disabled><i class="fa-solid fa-user-check"></i> フレンド</button>`; }
+    }
+
+    function showCurrentProfile(){ if(currentTarget) apiPost('/edu/friends/list').then(async r=>{ if(r&&r.ok){const l=await r.json(); const u=l.find(x=>x.id===currentTarget); if(u) openProfileModal(u.id, u.username, u.nickname, u.icon_url, u.status_message);} }); }
+
+    async function openSelectFriendsModal(type) {
+        currentModalType = type; const r = await apiPost('/edu/friends/list'); if(!r||!r.ok)return; 
+        const friends = await r.json(); const listDiv = id('msf-list');
+        if (type === 'group') { 
+            id('msf-title').innerText = 'グループ作成'; 
+            id('msf-extra-input').innerHTML = '<input type="text" id="msf-group-name" placeholder="グループ名" required style="margin:0;">'; 
+        } else if (type === 'close') { 
+            id('msf-title').innerText = '親しい友達リスト設定'; 
+            id('msf-extra-input').innerHTML = '<p style="font-size:13px;color:var(--text-sub);">親しい友達に設定する人を選択してください</p>'; 
+        } else if (type === 'add_group_member') {
+            id('msf-title').innerText = 'メンバーを追加'; 
+            id('msf-extra-input').innerHTML = '<p style="font-size:13px;color:var(--text-sub);">グループに追加するフレンドを選択してください</p>';
+        }
+        
+        listDiv.innerHTML = friends.map(f => {
+            const isChecked = (type === 'close' && f.is_close_friend === 1) ? 'checked' : '';
+            const ic = f.icon_url && f.icon_url.trim() !== '' ? (f.icon_url.startsWith('http')||f.icon_url.startsWith('.')?f.icon_url:BACKEND_URL+f.icon_url) : './icon.jpeg';
+            return `<label style="display:flex;align-items:center;gap:15px;padding:12px;background:var(--bg-panel);border-radius:12px;cursor:pointer;border:1px solid var(--border);transition:all 0.2s;"><input type="checkbox" value="${f.id}" class="msf-checkbox" ${isChecked} style="width:auto;margin:0;"><img src="${ic}" onerror="this.src='./icon.jpeg'" style="width:36px;height:36px;border-radius:50%;"> <span style="font-size:16px;">${f.nickname}</span></label>`;
+        }).join('');
+        show('modal-select-friends'); toggleMenu(); hide('chat-menu');
+    }
+
+    id('msf-submit').onclick = async (e) => {
+        e.preventDefault(); const checkboxes = document.querySelectorAll('.msf-checkbox:checked'); const selectedIds = Array.from(checkboxes).map(cb => cb.value);
+        if (currentModalType === 'group') {
+            const name = id('msf-group-name').value.trim(); if(!name) return showToast('グループ名を入力してください');
+            const r = await apiPost('/edu/groups/create', {name, members: selectedIds}); if(r&&r.ok) { showToast('グループを作成しました'); hide('modal-select-friends'); }
+        } else if(currentModalType === 'close') {
+            const r = await apiPost('/edu/friends/set_close_bulk', {friend_ids: selectedIds}); if(r&&r.ok) { showToast('リストを更新しました'); hide('modal-select-friends'); }
+        } else if(currentModalType === 'add_group_member') {
+            if(selectedIds.length === 0) return showToast('メンバーを選択してください');
+            const r = await apiPost('/edu/groups/add_members', {group_id: currentRoom, members: selectedIds}); 
+            if(r&&r.ok) { showToast('メンバーを追加しました'); hide('modal-select-friends'); }
+        }
+    };
+
+    async function loadFriends(){
+        const r=await apiPost('/edu/friends/list'); if(!r||!r.ok)return; const l=await r.json(); 
+        const uids = l.map(f=>f.id); socket.emit('check_online', uids);
+        id('ui-rooms').innerHTML = l.map(f=>{ 
+            const ic = f.icon_url && f.icon_url.trim() !== '' ? (f.icon_url.startsWith('http')||f.icon_url.startsWith('.')?f.icon_url:BACKEND_URL+f.icon_url) : './icon.jpeg'; 
+            const clFlag=f.is_close_friend===1?'<span style="font-size:12px;color:var(--accent);margin-left:5px;"><i class="fa-solid fa-lock"></i></span>':''; 
+            const rid = [myInfo.id, f.id].sort().join('_');
+            return `<div class="room-item" data-uid="${f.id}" onclick="openRoom('${rid}','${f.nickname}','${f.id}','${ic}')"><div style="position:relative;"><img src="${ic}" onerror="this.src='./icon.jpeg'" onclick="event.stopPropagation(); openProfileModal('${f.id}','${f.username}','${f.nickname}','${ic}','${f.status_message}')"><div class="online-badge"></div></div><div style="flex:1;display:flex;align-items:center;"><b style="font-size:16px;">${f.nickname} ${clFlag}</b><div class="room-unread-badge hidden" id="unread-badge-${rid}"></div></div></div>`; 
+        }).join('');
+    }
+    async function loadGroups(){
+        const r=await apiPost('/edu/groups/list'); if(!r||!r.ok)return; const l=await r.json(); 
+        id('ui-groups').innerHTML = l.map(g=>{ return `<div class="room-item" onclick="openRoom('${g.id}','${g.name}','${g.id}','./icon.jpeg')"><div style="width:52px;height:52px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff;"><i class="fa-solid fa-user-group"></i></div><div style="flex:1;display:flex;align-items:center;"><b style="font-size:16px;">${g.name}</b><div class="room-unread-badge hidden" id="unread-badge-${g.id}"></div></div></div>`; }).join('');
+    }
+    
+    async function openRoom(rid, name, tid, icon, scrollPos=0){ 
+        currentRoom=rid; currentTarget=tid; isGroupCall = rid.startsWith('g_'); switchMainPanel('chat');
+        localStorage.setItem('activeRoom', rid); localStorage.setItem('currentTarget', tid); localStorage.setItem('currentTargetName', name); localStorage.setItem('currentTargetIcon', icon);
+        id('chat-title').innerText=name; id('chat-target-icon').src=icon && icon.trim() !== '' ? icon : './icon.jpeg'; show('chat-active'); hide('chat-empty'); id('typing-indicator').innerText='';
+        if(window.innerWidth <= 768) { id('main-container').classList.add('active'); show('btn-back-chat'); }
+        updateOnlineBadges();
+        socket.emit('join_room',rid); 
+        const msgs=await idbGetRoomMsgs(rid); id('ui-msgs').innerHTML=''; msgs.forEach(m => renderMsg(m, false));
+        if(scrollPos) id('ui-msgs').scrollTop = scrollPos; else scrollToBottom('chat');
+        
+        if(!document.hidden) { markReadSafely(); updateUnreadBadge(); }
+    }
+    
+    function renderMsg(m, append = true){
+        const b=id('ui-msgs'), isMe=m.user_id===myInfo.id, cls=isMe?'my-msg':'other-msg', t=new Date(m.timestamp).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+        let rep=''; if(m.reply_to){ try{const r=JSON.parse(m.reply_to); rep=`<div class="reply-banner"><i class="fa-solid fa-reply"></i> ${r.name}: ${r.text.substring(0,15)}...</div>`;}catch(e){} }
+        
+        let c=''; 
+        if(m.is_deleted === 1) {
+            c = `<span style="color:var(--text-sub); font-style:italic;"><i class="fa-solid fa-ban"></i> 送信を取り消しました</span>`;
+        } else {
+            if(m.type==='image') c=`<img src="${m.content.startsWith('http')?m.content:BACKEND_URL+m.content}" onclick="openMediaModal(this.src,'image')">`; 
+            else if(m.type==='video') c=`<video src="${m.content.startsWith('http')?m.content:BACKEND_URL+m.content}" controls></video>`; 
+            else if(m.type==='system_call') {
+                const parts = m.content.split(':');
+                const msgTxt = parts[0]; const sId = parts[1]; const cType = parts.length > 2 ? parts[2] : 'voice';
+                
+                if (cType === 'text') {
+                    c = `<div class="sys-call-msg"><i class="fa-solid fa-message"></i> ${msgTxt} <button type="button" class="success" style="margin-left:10px;padding:6px 12px;font-size:13px;" onclick="joinTextCall('${sId}')"><i class="fa-solid fa-right-to-bracket"></i> 参加</button></div>`;
+                } else {
+                    const iconCls = cType === 'video' ? 'fa-video' : 'fa-phone';
+                    c = `<div class="sys-call-msg"><i class="fa-solid ${iconCls}"></i> ${msgTxt} <button type="button" class="success" style="margin-left:10px;padding:6px 12px;font-size:13px;" onclick="joinGroupCall('${sId}', '${cType}')"><i class="fa-solid fa-right-to-bracket"></i> 参加</button></div>`;
+                }
+            }
+            else c=m.content.replace(/</g,"&lt;").replace(/>/g,"&gt;");
+            
+            let hist = []; try{ hist = JSON.parse(m.edit_history || '[]'); }catch(e){}
+            if(hist.length > 0 && m.type!=='system_call') c += `<span style="font-size:10px; color:var(--text-sub); margin-left:8px; display:block; text-align:right;">(編集済)</span>`;
+        }
+
+        let readCount = 0; try { readCount = JSON.parse(m.read_by || '[]').length; } catch(e){}
+        let rd='';
+        if(isMe){
+            if(m.room_id.startsWith('g_')) {
+                if(readCount > 0) rd = `<span class="is-read" id="rd-${m.msg_id}">既読 ${readCount}</span>`;
+                else rd = `<span class="is-read" id="rd-${m.msg_id}" style="display:none;"></span>`;
+            } else {
+                if(m.is_read) rd = `<span class="is-read" id="rd-${m.msg_id}">既読</span>`;
+                else rd = `<span class="is-read" id="rd-${m.msg_id}" style="display:none;"></span>`;
+            }
+        }
+
+        let reBadge=''; try{const r=JSON.parse(m.reactions||'{}'); const eArr=[]; Object.entries(r).forEach(([emoji,uids])=>{if(uids.length>0)eArr.push(`${emoji}${uids.length>1?uids.length:''}`)}); if(eArr.length>0) reBadge=`<div class="reactions-badge" id="react-${m.msg_id}">${eArr.join(' ')}</div>`; else reBadge=`<div class="reactions-badge" id="react-${m.msg_id}" style="display:none;"></div>`;}catch(e){}
+        
+        let senderNameHtml = '';
+        if (!isMe && m.room_id.startsWith('g_')) { senderNameHtml = `<div style="font-size:11px; color:var(--text-sub); margin-bottom:2px; margin-left:10px;">${m.user_name}</div>`; }
+
+        const reactBtn = m.type!=='system_call' ? `<button type="button" class="msg-react-btn" onclick="showReactionMenu(event, '${m.msg_id}')">😊</button>` : '';
+        const optBtn = m.type!=='system_call' ? `<button type="button" class="msg-opt-btn" onclick="openMsgOpt(event, '${m.msg_id}', ${isMe}, '${m.timestamp}')"><i class="fa-solid fa-ellipsis-vertical"></i></button>` : '';
+        
+        const row = isMe 
+            ? `<div style="display:flex;align-items:center;gap:5px;justify-content:flex-end;position:relative;z-index:2;">${optBtn}${reactBtn}<div class="msg" id="msg-${m.msg_id}">${c}${reBadge}</div></div>`
+            : `${senderNameHtml}<div style="display:flex;align-items:center;gap:5px;justify-content:flex-start;position:relative;z-index:2;"><div class="msg" id="msg-${m.msg_id}">${c}${reBadge}</div>${reactBtn}${optBtn}</div>`;
+        
+        const el = document.createElement('div'); el.className = `msg-wrap ${cls}`; el.id = `wrap-${m.msg_id}`;
+        el.innerHTML = `${rep}${row}<span class="msg-info">${rd}${t}</span>`;
+        
+        if(append) b.appendChild(el); else b.appendChild(el);
+        if(m.type!=='system_call') setupContextMenu(el.querySelector('.msg'), m.msg_id, m.content ? m.content.replace(/'/g,"\\'").substring(0,20) : '', m.user_name, isMe, m.timestamp, m.is_deleted);
+    }
+
+    function setupContextMenu(node, msgId, textPreview, userName, isMe, timestamp, isDeleted) {
+        let pressTimer;
+        node.addEventListener('contextmenu', e => { e.preventDefault(); if(!isDeleted) showContextMenu(e.pageX, e.pageY, msgId, textPreview, userName, isMe, timestamp); });
+        node.addEventListener('touchstart', e => { pressTimer = setTimeout(() => { const t = e.touches[0]; if(!isDeleted) showContextMenu(t.pageX, t.pageY, msgId, textPreview, userName, isMe, timestamp); }, 600); });
+        node.addEventListener('touchend', () => clearTimeout(pressTimer)); node.addEventListener('touchmove', () => clearTimeout(pressTimer));
+    }
+    
+    function openMsgOpt(e, msgId, isMe, timestamp) {
+        const dbReq = db.transaction('messages', 'readonly').objectStore('messages').get(msgId);
+        dbReq.onsuccess = () => { const m = dbReq.result; if(!m || m.is_deleted) return; showContextMenu(e.pageX, e.pageY, msgId, m.content.substring(0,20), m.user_name, isMe, timestamp); }
+    }
+
+    function showContextMenu(x, y, msgId, textPreview, userName, isMe, timestamp){
+        ctxTargetMsgId = msgId; ctxTargetIsMe = isMe; ctxTargetTimestamp = timestamp;
+        const menu = id('context-menu'); menu.style.left = x + 'px'; menu.style.top = y + 'px'; show('context-menu');
+        
+        id('ctx-reply').onclick = () => { replyTarget = {id: msgId, text: textPreview, name: userName}; id('rp-name').innerText=userName; id('rp-text').innerText=textPreview; show('reply-preview'); hide('context-menu'); id('msg-input').focus(); };
+        
+        const editBtn = id('ctx-edit'); const delBtn = id('ctx-delete');
+        if(isMe) {
+            show(delBtn);
+            const diff = Date.now() - new Date(timestamp).getTime();
+            if(diff <= 60 * 60 * 1000) show(editBtn); else hide(editBtn);
+            
+            editBtn.onclick = () => { editTargetMsgId = msgId; id('ed-text').innerText = textPreview; show('edit-preview'); hide('context-menu'); id('msg-input').focus(); };
+            delBtn.onclick = async () => { hide('context-menu'); if(await showConfirm('送信を取り消しますか？')) await apiPost('/edu/messages/delete_msg', {msg_id: msgId}); };
+        } else { hide(editBtn); hide(delBtn); }
+    }
+
+    function showReactionMenu(e, msgId) { e.preventDefault(); e.stopPropagation(); ctxTargetMsgId = msgId; const menu = id('reaction-menu'); menu.style.left = e.pageX + 'px'; menu.style.top = e.pageY + 'px'; show('reaction-menu'); }
+    
+    function sendReaction(emoji){ if(ctxTargetMsgId && currentRoom){ socket.emit('add_reaction', {msg_id: ctxTargetMsgId, room_id: currentRoom, emoji}); hide('reaction-menu'); hide('context-menu'); } }
+    function cancelReply(){ replyTarget=null; hide('reply-preview'); }
+    function cancelEdit(){ editTargetMsgId=null; hide('edit-preview'); id('msg-input').value=''; }
+
+    function replyToNote(uid, uname, content, icon) {
+        const rid = [myInfo.id, uid].sort().join('_');
+        openRoom(rid, uname, uid, icon);
+        replyTarget = {id: 'note_'+uid, text: content, name: uname}; 
+        id('rp-name').innerText=uname; id('rp-text').innerText=content.substring(0,20)+'...'; 
+        show('reply-preview'); id('msg-input').focus();
+    }
+
+    id('btn-send-msg').onclick=async ()=>{ 
+        const v=id('msg-input').value.trim(); const f=id('chat-file').files[0];
+        if(!v && !f) return; 
+        
+        if(editTargetMsgId && !f) {
+            const res = await apiPost('/edu/messages/edit_msg', {msg_id: editTargetMsgId, content: v});
+            if(res && res.ok) { cancelEdit(); } else { const d = await res.json(); showToast(d.error); }
+        } else if(f) {
+            uploadMedia(v);
+        } else {
+            socket.emit('send_message', {room_id:currentRoom, type:'text', content:v, reply_to: replyTarget?JSON.stringify(replyTarget):null}); 
+            id('msg-input').value=''; cancelReply(); 
+        }
+    };
+    
+    async function uploadMedia(textMsg){ 
+        const f=id('chat-file').files[0]; if(!f)return; 
+        const fd=new FormData(); fd.append('file',f); 
+        const r=await apiPost('/edu/upload',fd); 
+        if(r && r.ok){ 
+            const d=await r.json(); 
+            socket.emit('send_message',{room_id:currentRoom,type:f.type.startsWith('video')?'video':'image',content:d.url, reply_to:replyTarget?JSON.stringify(replyTarget):null}); 
+            if (textMsg) socket.emit('send_message', {room_id:currentRoom, type:'text', content:textMsg}); 
+        } 
+        id('chat-file').value=''; id('chat-f-status').innerText=''; id('chat-file-preview').style.display='none'; id('chat-file-preview').src='';
+        const vid = id('chat-file-preview-vid'); if(vid){ vid.style.display='none'; vid.src=''; }
+        id('msg-input').value=''; cancelReply(); 
+    }
+
+    function execChatSearch(e) {
+        if(e) e.preventDefault(); const q=id('chat-s-query').value.trim(); if(!q)return;
+        apiPost('/edu/search/messages', {query:q}).then(r=>{
+            if(r&&r.ok) return r.json(); return {messages:[]};
+        }).then(d=>{
+            const out=id('chat-search-out');
+            if(d.messages.length>0){ out.innerHTML = d.messages.map(m=> `<div style="padding:15px;border-bottom:1px solid var(--border);"><b style="color:var(--accent);">${m.user_name}</b> <span style="font-size:12px;color:var(--text-sub);margin-left:10px;">${new Date(m.timestamp).toLocaleDateString()}</span><div style="font-size:15px;margin-top:8px;line-height:1.4;">${m.content}</div></div>`).join(''); }
+            else { out.innerHTML = '<p style="color:var(--text-sub);text-align:center;margin-top:20px;">見つかりませんでした</p>'; }
+            show('modal-search-res');
+        });
+    }
+
+    async function loadTimeline(){
+        const r=await apiPost('/edu/posts/list'); if(!r||!r.ok)return; const l=await r.json();
+        id('ui-timeline').innerHTML = l.map(p=>{
+            const ic=p.icon_url && p.icon_url.trim() !== '' ?(p.icon_url.startsWith('http')||p.icon_url.startsWith('.')?p.icon_url:BACKEND_URL+p.icon_url):'./icon.jpeg';
+            const m = p.media_url ? (p.media_url.endsWith('.mp4') || p.media_url.endsWith('.mov') ? `<video src="${p.media_url.startsWith('http')?p.media_url:BACKEND_URL+p.media_url}" class="post-media" controls></video>` : `<img src="${p.media_url.startsWith('http')?p.media_url:BACKEND_URL+p.media_url}" class="post-media" onclick="event.stopPropagation(); openMediaModal(this.src,'image')">`) : '';
+            const delBtn = p.user_id===myInfo.id ? `<span class="del-post-btn" onclick="event.stopPropagation(); actionPost('delete','${p.id}')"><i class="fa-solid fa-xmark"></i></span>` : '';
+            const visBadge = p.visibility==='close' ? `<span style="color:var(--accent);font-size:12px;margin-left:8px;"><i class="fa-solid fa-lock"></i> 親しい友達</span>` : (p.visibility==='friends' ? `<span style="color:var(--accent);font-size:12px;margin-left:8px;"><i class="fa-solid fa-user-group"></i> フレンド</span>` : '');
+
+            return `<div class="post-card" onclick="openPostDetail('${p.id}')">
+                ${delBtn}
+                <div class="post-header"><img src="${ic}" onerror="this.src='./icon.jpeg'" onclick="event.stopPropagation(); openProfileModal('${p.user_id}','${p.username}','${p.nickname}','${ic}','')"> <div><b style="font-size:16px;">${p.nickname}</b> <span style="color:var(--text-sub);font-size:14px;margin-left:5px;">@${p.username} · ${new Date(p.timestamp).toLocaleDateString()}</span>${visBadge}</div></div>
+                <div class="post-content">${(p.content||'').replace(/</g,"&lt;")}</div>${m}
+                <div class="post-actions" onclick="event.stopPropagation()">
+                    <div onclick="openPostDetail('${p.id}')"><i class="fa-regular fa-comment"></i> ${p.comment_count}</div>
+                    <div class="${p.is_liked?'liked':''}" onclick="actionPost('like','${p.id}')" oncontextmenu="event.preventDefault(); showInteractions('${p.id}', 'post', '${p.user_id}')">❤️ ${p.like_count}</div>
+                </div>
+            </div>`;
+        }).join('');
+    }
+    async function submitPost(){ 
+        const txt=id('post-text').value.trim(); const file=id('post-file').files[0]; if(!txt&&!file)return; 
+        let media_url=null; if(file){ const fd=new FormData(); fd.append('file',file); const r=await apiPost('/edu/upload',fd); if(r&&r.ok){const d=await r.json(); media_url=d.url;} } 
+        const res=await apiPost('/edu/posts/create', {content:txt, media_url, visibility: id('post-vis').value}); 
+        if(res&&res.ok){ id('post-text').value=''; id('post-file').value=''; id('post-f-status').innerText=''; id('post-file-preview').style.display='none'; id('post-file-preview').src=''; const vid = id('post-file-preview-vid'); if(vid){ vid.style.display='none'; vid.src=''; } } 
+        else if(res) { const e=await res.json(); showToast(e.error); } 
+    }
+    
+    async function actionPost(action, pid){ 
+        if(action==='delete'){ if(!(await showConfirm("削除しますか？"))) return; }
+        await apiPost(`/edu/posts/${action}`, {post_id:pid}); 
+    }
+
+    async function openPostDetail(pid) {
+        currentPostIdForComment = pid; show('modal-post-detail');
+        const r1 = await apiPost('/edu/posts/list'); if(!r1||!r1.ok)return;
+        const tList = await r1.json();
+        const p = tList.find(x => x.id === pid);
+        if(p) {
+            const ic=p.icon_url && p.icon_url.trim() !== '' ?(p.icon_url.startsWith('http')||p.icon_url.startsWith('.')?p.icon_url:BACKEND_URL+p.icon_url):'./icon.jpeg';
+            const m = p.media_url ? (p.media_url.endsWith('.mp4') || p.media_url.endsWith('.mov') ? `<video src="${p.media_url.startsWith('http')?p.media_url:BACKEND_URL+p.media_url}" style="width:100%;border-radius:12px;margin-top:10px;" controls></video>` : `<img src="${p.media_url.startsWith('http')?p.media_url:BACKEND_URL+p.media_url}" style="width:100%;border-radius:12px;margin-top:10px;" onclick="openMediaModal(this.src,'image')">`) : '';
+            id('pd-post-content').innerHTML = `<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;cursor:pointer;" onclick="openProfileModal('${p.user_id}','${p.username}','${p.nickname}','${ic}','')"><img src="${ic}" onerror="this.src='./icon.jpeg'" style="width:40px;height:40px;border-radius:50%;object-fit:cover;"><div><b style="font-size:16px;">${p.nickname}</b><br><span style="color:var(--text-sub);font-size:12px;">@${p.username}</span></div></div><div style="font-size:16px;line-height:1.5;white-space:pre-wrap;">${(p.content||'').replace(/</g,"&lt;")}</div>${m}`;
+            
+            const out = id('pd-likes-list');
+            if (p.user_id !== myInfo.id) { out.innerHTML = '<span style="color:var(--text-sub);font-size:13px;">他人のいいね詳細は見られません</span>'; } 
+            else {
+                apiPost('/edu/posts/interactions', {post_id: pid}).then(async r => {
+                    if(r&&r.ok) {
+                        const d = await r.json();
+                        if(d.likes.length === 0) out.innerHTML = '<span style="color:var(--text-sub);font-size:13px;">まだいいねはありません</span>';
+                        else out.innerHTML = d.likes.map(u => {
+                            const uic = u.icon_url && u.icon_url.trim() !== '' ? (u.icon_url.startsWith('http')||u.icon_url.startsWith('.')?u.icon_url:BACKEND_URL+u.icon_url) : './icon.jpeg';
+                            return `<div style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:5px;" onclick="openProfileModal('${u.id}','${u.username}','${u.nickname}','${uic}','')"><img src="${uic}" onerror="this.src='./icon.jpeg'" style="width:30px;height:30px;border-radius:50%;object-fit:cover;"><span style="font-size:14px;">${u.nickname}</span></div>`;
+                        }).join('');
+                    } else { out.innerHTML = '<span style="color:var(--text-sub);font-size:13px;">閲覧権限がありません</span>'; }
+                });
+            }
+        }
+
+        const cr = await apiPost('/edu/posts/comments/list', {post_id: pid}); 
+        if(!cr||!cr.ok) return;
+        const cl = await cr.json(); const cout = id('pd-comments-list');
+        if(cl.length===0){ cout.innerHTML = '<div style="color:var(--text-sub);text-align:center;padding:20px 0;">コメントはまだありません</div>'; }
+        else { cout.innerHTML = cl.map(c=>{ const ic=c.icon_url && c.icon_url.trim() !== '' ?(c.icon_url.startsWith('http')||c.icon_url.startsWith('.')?c.icon_url:BACKEND_URL+c.icon_url):'./icon.jpeg'; const cim = c.image_url?(c.image_url.endsWith('.mp4') || c.image_url.endsWith('.mov') ? `<video src="${c.image_url.startsWith('http')?c.image_url:BACKEND_URL+c.image_url}" class="c-media" controls></video>`:`<img src="${c.image_url.startsWith('http')?c.image_url:BACKEND_URL+c.image_url}" class="c-media" onclick="openMediaModal(this.src,'image')">`):''; return `<div class="comment-item"><img src="${ic}" onerror="this.src='./icon.jpeg'" class="c-ic"><div><b>${c.nickname}</b><div style="margin-top:4px;line-height:1.4;">${c.content}</div>${cim}</div></div>`; }).join(''); }
+    }
+
+    function submitComment(e) {
+        if(e) e.preventDefault(); if(!currentPostIdForComment)return; const txt=id('pd-c-text').value.trim(); const file=id('pd-c-file').files[0]; if(!txt&&!file)return;
+        let image_url=null; 
+        if(file){ const fd=new FormData(); fd.append('file',file); apiPost('/edu/upload',fd).then(r=>{if(r&&r.ok) return r.json(); return {};}).then(d=> { image_url=d.url; sendComm(txt, image_url); }); } else { sendComm(txt, null); }
+        async function sendComm(t, img) { const res=await apiPost('/edu/posts/comment', {post_id: currentPostIdForComment, content:t, image_url:img}); if(res&&res.ok){ id('pd-c-text').value=''; id('pd-c-file').value=''; id('pd-c-f-status').innerText=''; id('pd-c-file-preview').style.display='none'; id('pd-c-file-preview').src=''; const vid = id('pd-c-file-preview-vid'); if(vid){ vid.style.display='none'; vid.src=''; } openPostDetail(currentPostIdForComment); } }
+    }
+    
+    async function showInteractions(idStr, type, targetUserId){
+        if (targetUserId && targetUserId !== myInfo.id) { await showConfirm('他人のいいね詳細は見られません'); return; }
+        const url = type === 'post' ? '/edu/posts/interactions' : '/edu/notes/interactions';
+        const body = type === 'post' ? {post_id: idStr} : {note_user_id: idStr};
+        const r=await apiPost(url, body); 
+        if(r&&r.ok){
+            const d=await r.json(); let h='';
+            if(d.likes.length>0) h+=`<h4 style="margin:15px 0 10px 0;color:var(--danger);"><i class="fa-solid fa-heart"></i> いいね</h4>` + d.likes.map(u=>{ const uic = u.icon_url && u.icon_url.trim() !== '' ? (u.icon_url.startsWith('http')||u.icon_url.startsWith('.')?u.icon_url:BACKEND_URL+u.icon_url) : './icon.jpeg'; return `<div style="padding:8px 0;border-bottom:1px solid var(--bg-hover);display:flex;align-items:center;gap:10px;cursor:pointer;" onclick="hide('modal-interactions');openProfileModal('${u.id}','${u.username}','${u.nickname}','${uic}','')"><img src="${uic}" onerror="this.src='./icon.jpeg'" style="width:24px;height:24px;border-radius:50%;">@${u.username} (${u.nickname})</div>` }).join('');
+            id('interactions-list').innerHTML = h || '<p style="text-align:center;color:var(--text-sub);padding:20px 0;">まだありません</p>'; show('modal-interactions');
+        } else { showToast('エラーが発生しました'); }
+    }
+
+    function execSearch(e) {
+        if(e) e.preventDefault(); const q=id('s-query').value.trim(); if(!q)return; 
+        apiPost('/edu/friends/list').then(fRes => {if(fRes&&fRes.ok) return fRes.json(); return [];}).then(fList => {
+            const friendIds = fList.map(f => f.id);
+            apiPost('/edu/search',{query:q}).then(r=>{if(r&&r.ok) return r.json(); return {users:[]};}).then(d=>{
+                let h=''; 
+                if(d.users.length>0){ 
+                    h+='<h4 style="margin-bottom:15px;"><i class="fa-solid fa-users"></i> ユーザー</h4>'; 
+                    d.users.forEach(u=>{ 
+                        if(u.id === myInfo.id) return; 
+                        const ic=u.icon_url && u.icon_url.trim() !== '' ?(u.icon_url.startsWith('http')||u.icon_url.startsWith('.')?u.icon_url:BACKEND_URL+u.icon_url):'./icon.jpeg'; 
+                        const isFriend = friendIds.includes(u.id);
+                        const statusBadge = onlineStatusCache[u.id] ? `<div class="online-badge" style="display:block;"></div>` : '';
+                        
+                        const btnHtml = isFriend 
+                            ? `<button type="button" style="padding:10px 15px;border-radius:20px;background:var(--bg-hover);color:var(--text-main);border:1px solid var(--border);" onclick="openProfileModal('${u.id}','${u.username}','${u.nickname}','${ic}','${u.status_message}')"><i class="fa-solid fa-user"></i> プロフ</button>` 
+                            : `<button type="button" id="req-btn-${u.id}" style="padding:10px 20px;border-radius:20px;" onclick="requestFriend('${u.username}', this)"><i class="fa-solid fa-user-plus"></i> 追加</button>`;
+                        
+                        h+=`<div class="room-item" style="background:var(--bg-panel);border-radius:16px;margin-bottom:12px;border:1px solid var(--border);"><div style="position:relative;"><img src="${ic}" onerror="this.src='./icon.jpeg'" onclick="openProfileModal('${u.id}','${u.username}','${u.nickname}','${ic}','${u.status_message}')">${statusBadge}</div><div style="flex:1;"><b style="font-size:16px;">${u.nickname}</b><div style="font-size:13px;color:var(--text-sub);margin-top:2px;">@${u.username}</div></div>${btnHtml}</div>`; 
+                    }); 
+                } 
+                id('ui-search-res').innerHTML=h||'<p style="color:var(--text-sub);text-align:center;">見つかりませんでした</p>'; 
+            });
+        });
+    }
+
+    async function requestFriend(username, btn) {
+        const r = await apiPost('/edu/friends/request', {username});
+        if(r&&r.ok) { btn.outerHTML = `<button type="button" style="padding:10px 20px;border-radius:20px;background:var(--bg-hover);color:var(--text-sub);" disabled><i class="fa-solid fa-check"></i> 申請済</button>`; showToast('申請しました'); } 
+        else if(r) { const d = await r.json(); showToast(d.error); }
+    }
+
+    function openNotePostModal() { id('modal-note-input').value=''; show('modal-note-post'); }
+    function submitNotePostModal(e) { if(e) e.preventDefault(); apiPost('/edu/notes/post',{content:id('modal-note-input').value, visibility:id('modal-note-vis').value}).then(r=>{if(r&&r.ok){ hide('modal-note-post'); }}); }
+    function submitNote(e) { if(e) e.preventDefault(); apiPost('/edu/notes/post',{content:id('note-input').value, visibility:id('note-vis').value}).then(r=>{if(r&&r.ok) id('note-input').value='';}); }
+    
+    async function loadNotes(){ 
+        const r=await apiPost('/edu/notes/list'); if(!r||!r.ok)return; const l=await r.json(); 
+        const now = Date.now();
+        const EXPIRY_24H = 24 * 60 * 60 * 1000; // 24時間（ミリ秒）
+        
+        // 24時間以内のノートのみをフィルタリング
+        const validNotes = l.filter(n => {
+            const createdAt = n.created_at ? new Date(n.created_at).getTime() : 0;
+            return now - createdAt < EXPIRY_24H;
+        });
+        
+        let myNote = validNotes.find(n => n.user_id === myInfo.id);
+        let otherNotes = validNotes.filter(n => n.user_id !== myInfo.id);
+        let html = '';
+        if(myNote) {
+            const ic = myNote.icon_url && myNote.icon_url.trim() !== '' ? (myNote.icon_url.startsWith('http')||myNote.icon_url.startsWith('.') ? myNote.icon_url : BACKEND_URL+myNote.icon_url) : './icon.jpeg';
+            html += `<div class="note-item my-note" onclick="openNoteView('${myNote.user_id}', '${myNote.nickname}', '${ic}', '${myNote.content.replace(/'/g,"\\'")}', ${myNote.is_liked}, ${myNote.like_count}, true)"><div class="note-img-wrap"><img src="${ic}" onerror="this.src='./icon.jpeg'"><div class="note-bubble">${myNote.content}</div></div><div class="note-name">自分</div></div>`;
+        } else {
+            const myIc = myInfo.icon_url && myInfo.icon_url.trim() !== '' ? (myInfo.icon_url.startsWith('http')||myInfo.icon_url.startsWith('.') ? myInfo.icon_url : BACKEND_URL+myInfo.icon_url) : './icon.jpeg';
+            html += `<div class="note-item my-note" onclick="openNotePostModal()"><div class="note-img-wrap"><img src="${myIc}" onerror="this.src='./icon.jpeg'" style="opacity:0.6;"><div style="position:absolute; bottom:0; right:0; background:var(--accent); border-radius:50%; width:20px; height:20px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:14px; border:2px solid var(--bg-dark);">+</div></div><div class="note-name">ノート追加</div></div>`;
+        }
+
+        html += otherNotes.map(n=>{ 
+            const ic = n.icon_url && n.icon_url.trim() !== '' ? (n.icon_url.startsWith('http')||n.icon_url.startsWith('.') ? n.icon_url : BACKEND_URL+n.icon_url) : './icon.jpeg'; 
+            const vis = n.visibility==='close'?'<span style="color:var(--accent);"><i class="fa-solid fa-lock"></i></span>':(n.visibility==='friends'?'<span style="color:var(--accent);"><i class="fa-solid fa-user-group"></i></span>':''); 
+            return `<div class="note-item" onclick="openNoteView('${n.user_id}', '${n.nickname}', '${ic}', '${n.content.replace(/'/g,"\\'")}', ${n.is_liked}, ${n.like_count}, false)"><div class="note-img-wrap"><img src="${ic}" onerror="this.src='./icon.jpeg'"><div class="note-bubble">${vis}${n.content}</div></div><div class="note-name">${n.nickname}</div></div>`;
+        }).join(''); 
+        id('ui-notes').innerHTML = html;
+    }
+
+    function openNoteView(uid, uname, icon, content, isLiked, likeCount, isMe) {
+        id('nv-icon').src = icon; id('nv-name').innerText = uname; id('nv-content').innerText = content;
+        const likeBtn = id('nv-like-btn'); likeBtn.innerText = isLiked ? '❤️' : '🤍';
+        
+        likeBtn.onclick = async () => { 
+            const r = await apiPost('/edu/notes/like', {note_user_id: uid});
+            if(r&&r.ok) { const d = await r.json(); likeBtn.innerText = d.liked ? '❤️' : '🤍'; }
+        };
+
+        if(isMe) {
+            hide('nv-reply-btn'); show('nv-like-list-btn'); show('nv-del-btn');
+            id('nv-like-list-btn').onclick = async () => { await showInteractions(uid, 'note', uid); };
+            id('nv-del-btn').onclick = async () => { if(await showConfirm("ノートを削除しますか？")) { apiPost('/edu/notes/post', {content: '', visibility: 'deleted'}).then(()=>{ hide('modal-note-view'); }); } }
+        } else {
+            show('nv-reply-btn'); hide('nv-like-list-btn'); hide('nv-del-btn');
+            id('nv-reply-btn').onclick = () => { hide('modal-note-view'); replyToNote(uid, uname, content, icon); };
+        }
+        show('modal-note-view');
+    }
+    
+    async function loadNotifs(){ 
+        const r=await apiPost('/edu/notifications/list'); if(!r||!r.ok)return; const l=await r.json(); 
+        const now = Date.now();
+        let likeMuteUntil = parseInt(localStorage.getItem('likeMuteUntil') || '0');
+        let lastLikeTime = parseInt(localStorage.getItem('lastLikeTime') || '0');
+        let pendingLikes = parseInt(localStorage.getItem('pendingLikes') || '0');
+
+        const newNotifs = l.filter(n => !prevNotifIds.has(n.id) && !n.is_read);
+
+        if(!isFirstLoadNotifs) {
+            newNotifs.forEach(n => {
+                if (n.type === 'like' || n.content.includes('いいね')) {
+                    if (now < likeMuteUntil) {
+                        pendingLikes++; localStorage.setItem('pendingLikes', pendingLikes);
+                    } else {
+                        if (now - lastLikeTime <= 10 * 60 * 1000) {
+                            showBrowserNotif('いいね', n.content);
+                            lastLikeTime = now; localStorage.setItem('lastLikeTime', lastLikeTime);
+                        } else {
+                            likeMuteUntil = now + 30 * 60 * 1000; localStorage.setItem('likeMuteUntil', likeMuteUntil);
+                            pendingLikes++; localStorage.setItem('pendingLikes', pendingLikes);
+                            setTimeout(() => {
+                                const pl = parseInt(localStorage.getItem('pendingLikes') || '0');
+                                if(pl > 0) { showBrowserNotif('いいねまとめ', `${pl}件の新しいいいねがあります`); localStorage.setItem('pendingLikes', '0'); }
+                            }, 30 * 60 * 1000);
+                        }
+                    }
+                } else if (n.type === 'comment' || n.content.includes('コメント')) { showBrowserNotif('コメント', n.content); } 
+                else { showBrowserNotif('通知', n.content); }
+            });
+        }
+        isFirstLoadNotifs = false; l.forEach(n => prevNotifIds.add(n.id));
+
+        id('ui-notifs').innerHTML=l.map(n=>{ 
+            let a=''; if(n.type==='friend_request'&&n.req_status==='pending') a=`<div style="margin-top:15px;"><button type="button" class="success" style="padding:10px 20px;border-radius:20px;font-size:14px;" onclick="acceptRequest('${n.request_id}', this)">承認</button></div>`; 
+            let icon = n.type==='system' ? '<i class="fa-solid fa-bullhorn" style="color:var(--accent);margin-right:8px;"></i>' : '';
+            return `<li style="padding:20px;border-bottom:1px solid var(--border);${n.is_read?'':'background:var(--bg-hover);border-radius:12px;'}"><div style="font-size:15px;line-height:1.5;white-space:pre-wrap;">${icon}${n.content}</div>${a}</li>`; 
+        }).join(''); 
+    }
+
+    async function acceptRequest(reqId, btn) {
+        const r = await apiPost('/edu/friends/accept', {request_id: reqId});
+        if(r&&r.ok) { btn.outerHTML = '<span style="color:var(--text-sub);"><i class="fa-solid fa-check"></i> 承認済</span>'; showToast('承認しました'); }
+    }
+    
+    async function pushBackup(){ if(!(await showConfirm("ブラウザ内の全履歴をサーバーに預けますか？新端末で引き出せます。")))return; const msgs=await idbGetAllMsgs(); const res=await apiPost('/edu/backup/push',{data:JSON.stringify(msgs)}); if(res&&res.ok){ const d=await res.json(); id('transfer-code').innerText=d.code; showToast('コードを控えて新端末で入力してください'); } }
+    async function uploadIcon(inp){ const f=inp.files[0]; if(!f)return; const fd=new FormData(); fd.append('photo',f); const r=await apiPost('/edu/user/update_icon',fd); if(r&&r.ok){const d=await r.json();myInfo.icon_url=d.url;localStorage.setItem('myInfo',JSON.stringify(myInfo)); id('my-icon-set').src=BACKEND_URL+d.url; id('home-my-icon').src=BACKEND_URL+d.url;} }
+    
+    async function updateProfile(key,val){ 
+        if(key === 'username') { if(!/^[a-zA-Z0-9_\-\.\=]+$/.test(val)) { await showConfirm("ユーザーIDは半角英数字と一部記号 ( _ - . = ) のみ使用可能です。"); return; } }
+        const r = await apiPost(`/edu/user/update_${key}`,{[key]:val}); 
+        if(!r||!r.ok){ if(r) {const d=await r.json(); showToast(d.error);} return; } 
+        myInfo[key]=val; localStorage.setItem('myInfo',JSON.stringify(myInfo)); 
+        const sc=id('sc-'+(key==='username'?'id':key==='nickname'?'nick':'status')); 
+        if(sc){sc.classList.add('show');setTimeout(()=>sc.classList.remove('show'),2000);} 
+        if(key==='username'){id('my-id-disp').innerText=val; QRCode.toCanvas(id('my-qr'),val,{width:200, margin:2});} 
+    }
+
+    function requestPwChange(e) { if(e) e.preventDefault(); apiPost('/edu/user/request_password_change',{new_password:id('set-new-pw').value}).then(r=>{if(r&&r.ok){showToast('管理者に申請しました');id('set-new-pw').value='';}}); }
+    function startQRScanner(){ show('reader'); if(!html5QrCode) html5QrCode = new Html5Qrcode("reader"); html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: {width: 250, height: 250} }, decodedText => { html5QrCode.stop(); hide('reader'); apiPost('/edu/friends/request',{username:decodedText}).then(r=>{ if(r&&r.ok) showToast(decodedText+' に申請しました'); else showToast('ユーザーが見つかりません'); }); }).catch(err => { showToast("カメラ起動失敗"); hide('reader'); }); }
+
+    function addLocalVideo() {
+        let w = id('wrap-local');
+        if(!w) {
+            w = document.createElement('div'); w.className = 'video-wrap'; w.id = 'wrap-local';
+            const v = document.createElement('video'); v.id = 'local-video'; v.autoplay = true; v.playsinline = true; v.muted = true;
+            const ic = document.createElement('img'); ic.className = 'no-video-icon'; ic.id = 'local-no-video'; 
+            ic.src = myInfo.icon_url && myInfo.icon_url.trim() !== '' ? (myInfo.icon_url.startsWith('http')||myInfo.icon_url.startsWith('.')?myInfo.icon_url:BACKEND_URL+myInfo.icon_url) : './icon.jpeg';
+            ic.onerror = function() { this.src = './icon.jpeg'; };
+            const nb = document.createElement('div'); nb.className = 'name-badge'; nb.innerText = '自分';
+            const mo = document.createElement('div'); mo.className = 'mic-off-badge'; mo.id = 'local-mic-off'; mo.innerHTML = '<i class="fa-solid fa-microphone-slash"></i>';
+            w.appendChild(v); w.appendChild(ic); w.appendChild(nb); w.appendChild(mo);
+            id('video-grid').appendChild(w);
+        }
+        return w.querySelector('video');
+    }
+
+    function resetCallControls(mode) {
+        rtcType = mode; 
+        streamFlags = {video: (mode==='video'), audio: true};
+        const bMic=id('btn-mic'), bCam=id('btn-cam'), bSpk=id('btn-spk');
+        bMic.innerHTML='<i class="fa-solid fa-microphone"></i> ON'; bMic.className="success";
+        bSpk.innerHTML='<i class="fa-solid fa-volume-high"></i> ON'; bSpk.className="success"; 
+        
+        if(mode==='video'){ show('btn-cam'); bCam.innerHTML='<i class="fa-solid fa-video"></i> ON'; bCam.className="success"; } 
+        else { hide('btn-cam'); }
+        
+        id('video-grid').innerHTML = ''; 
+        const lv = addLocalVideo();
+        lv.style.opacity = streamFlags.video ? "1" : "0";
+        id('local-no-video').style.display = streamFlags.video ? 'none' : 'block';
+        id('local-mic-off').style.display = 'none';
+    }
+
+    function removePeer(peerId) {
+        if(peers[peerId]) { peers[peerId].close(); delete peers[peerId]; }
+        const w = id('wrap-'+peerId); if(w) w.remove();
+    }
+
+    function hangUp(emitEvent = true){
+        if(emitEvent && socket) {
+            if (rtcType === 'text') {
+                if (isGroupCall && textCallSession) {
+                    socket.emit('end_text_call', { room_id: currentRoom, session_id: textCallSession });
+                } else if (currentTarget) {
+                    socket.emit('end_text_call', { target_id: currentTarget });
+                }
+            } else if (rtcType === 'voice' || rtcType === 'video') {
+                if (isGroupCall && callSession) {
+                    socket.emit('hang_up', { room_id: currentRoom, session_id: callSession });
+                } else if (currentTarget) {
+                    socket.emit('hang_up', { target_id: currentTarget, session_id: callSession });
+                }
+            }
+            if(incomingData && !callSession && rtcType !== 'text') {
+                socket.emit('answer_call', { target_id: incomingData.caller_id, accept: false });
+            }
+        }
+        
+        Object.keys(peers).forEach(removePeer);
+        peers = {};
+        if(localStream){ localStream.getTracks().forEach(t=>t.stop()); localStream = null; }
+        
+        stopCallSound();
+        hide('video-overlay'); hide('modal-incoming'); hide('modal-calling'); hide('text-call-overlay');
+        incomingData = null; callSession = null; textCallSession = null; rtcType = 'none'; textCallData = {};
+    }
+    
+    function cancelCall() { hangUp(true); }
+
+    async function startRtcCall(mode) {
+        if(!currentRoom) return;
+        if(Object.keys(peers).length > 0) hangUp(true); 
+        
+        if (!isGroupCall) {
+            if (!onlineStatusCache[currentTarget]) {
+                await showConfirm("相手がオフラインのため通話できません。");
+                return;
+            }
+        }
+
+        const v = mode === 'video';
+
+        try {
+            localStream = await navigator.mediaDevices.getUserMedia({video: v, audio: true});
+            resetCallControls(mode);
+            id('local-video').srcObject = localStream;
+            hide('text-call-overlay');
+            hide('modal-incoming');
+            hide('modal-calling');
+
+            const callId = "call_" + Date.now().toString(36) + Math.random().toString(36).substr(2);
+            callSession = callId;
+
+            if (isGroupCall) {
+                const sysMsg = v ? 'ビデオ通話が開始されました' : '音声通話が開始されました';
+                socket.emit('send_message', {room_id: currentRoom, type: 'system_call', content: `${sysMsg}:${callId}:${mode}`});
+                show('video-overlay');
+                socket.emit('join_group_call', {room_id: currentRoom, session_id: callSession});
+            } else {
+                id('calling-name').innerText = localStorage.getItem('currentTargetName') || '相手';
+                show('modal-calling');
+                socket.emit('call_user', {target_id: currentTarget, room_id: currentRoom, video: v, session_id: callSession});
+            }
+        } catch(e) { 
+            await showConfirm("マイクまたはカメラのアクセスが拒否されました。ブラウザの設定から許可してください。"); 
+            hangUp(false);
+        }
+    }
+
+    function joinGroupCall(sId, mode) {
+        if(Object.keys(peers).length > 0) hangUp(true);
+        const v = mode === 'video';
+        navigator.mediaDevices.getUserMedia({video: v, audio: true}).then(stream => {
+            localStream = stream;
+            resetCallControls(mode); 
+            id('local-video').srcObject = localStream;
+            show('video-overlay');
+            callSession = sId;
+            socket.emit('join_group_call', {room_id: currentRoom, session_id: callSession});
+        }).catch(async err => {
+            if (v) {
+                navigator.mediaDevices.getUserMedia({video: false, audio: true}).then(stream => {
+                    localStream = stream;
+                    resetCallControls('voice');
+                    id('local-video').srcObject=localStream;
+                    show('video-overlay');
+                    callSession = sId;
+                    socket.emit('join_group_call', {room_id: currentRoom, session_id: callSession});
+                }).catch(async e => {
+                    await showConfirm("マイクのアクセスが拒否されました。設定から許可してください。");
+                });
+            } else {
+                await showConfirm("マイクのアクセスが拒否されました。設定から許可してください。");
+            }
+        });
+    }
+
+    function joinTextCall(sId) {
+        textCallSession = sId;
+        rtcType = 'text'; textCallData = {};
+        id('tc-target-name').innerText = localStorage.getItem('currentTargetName') || 'グループ';
+        id('tc-remote-text').innerText = ''; id('tc-local-input').value = '';
+        show('text-call-overlay');
+        socket.emit('join_text_call', {session_id: sId});
+    }
+
+    async function answerCallSession(a) {
+        hide('modal-incoming'); stopCallSound();
+        if(!a){ 
+            if (rtcType === 'text') socket.emit('answer_text', { caller_id: incomingData.caller_id, accept: false });
+            else socket.emit('answer_call', { target_id: incomingData.caller_id, accept: false });
+            hangUp(false); 
+            return; 
+        } 
+        if (rtcType === 'text') {
+            socket.emit('answer_text', { caller_id: incomingData.caller_id, caller_name: incomingData.caller_name, accept: true });
+            return;
+        }
+        try {
+            const v = incomingData.video;
+            localStream = await navigator.mediaDevices.getUserMedia({video: v, audio:true});
+            const mode = v ? 'video' : 'voice';
+            resetCallControls(mode); 
+            id('local-video').srcObject = localStream;
+            show('video-overlay');
+            callSession = incomingData.session_id;
+            
+            // まずsetupPeerでofferを受け取る準備をしてからanswer_callを送る
+            setupPeer(incomingData.caller_id, false, incomingData.icon_url, incomingData.caller_name);
+            socket.emit('answer_call', { target_id: incomingData.caller_id, session_id: callSession, accept: true });
+            
+        } catch(e) { 
+            showToast("マイクまたはカメラのアクセスが拒否されました。設定から許可してください。"); 
+            socket.emit('answer_call', { target_id: incomingData.caller_id, accept: false });
+            hangUp(false); 
+        }
+    }
+
+    function setupPeer(peerId, initiator, iconUrl, nickname){
+        if(peers[peerId]) return;
+        const pc = new RTCPeerConnection({
+            iceServers:[
+                {urls:'stun:stun.l.google.com:19302'},
+                {urls:'stun:stun1.l.google.com:19302'},
+                {urls:'stun:stun2.l.google.com:19302'},
+                {urls:'stun:stun3.l.google.com:19302'},
+                {urls:'stun:stun4.l.google.com:19302'}
+            ]
+        });
+        peers[peerId] = pc;
+        if(localStream) localStream.getTracks().forEach(t=>pc.addTrack(t,localStream));
+        
+        pc.ontrack = e => {
+            let w = id('wrap-'+peerId);
+            if(!w) {
+                w = document.createElement('div'); w.className = 'video-wrap'; w.id = 'wrap-'+peerId;
+                const v = document.createElement('video'); v.id = 'vid-'+peerId; v.autoplay = true; v.playsinline = true;
+                const ic = document.createElement('img'); ic.className = 'no-video-icon'; 
+                ic.src = iconUrl ? (iconUrl.startsWith('http')||iconUrl.startsWith('.')?iconUrl:BACKEND_URL+iconUrl) : './icon.jpeg';
+                ic.onerror = function() { this.src = './icon.jpeg'; };
+                const nb = document.createElement('div'); nb.className = 'name-badge'; nb.innerText = nickname || '通信中...';
+                const mo = document.createElement('div'); mo.className = 'mic-off-badge'; mo.innerHTML = '<i class="fa-solid fa-microphone-slash"></i>';
+                w.appendChild(v); w.appendChild(ic); w.appendChild(nb); w.appendChild(mo);
+                id('video-grid').appendChild(w);
+            }
+            const vid = w.querySelector('video');
+            if (vid.srcObject !== e.streams[0]) { vid.srcObject = e.streams[0]; }
+        };
+        
+        pc.onicecandidate = e => { 
+            if(e.candidate) {
+                const payload = { target_id: peerId, candidate: e.candidate, session_id: callSession };
+                if(isGroupCall) payload.room_id = currentRoom;
+                socket.emit('webrtc_ice', payload); 
+            }
+        };
+        
+        pc.onconnectionstatechange = () => { 
+            if(pc.connectionState==='disconnected'||pc.connectionState==='failed'||pc.connectionState==='closed') {
+                removePeer(peerId);
+                if (!isGroupCall && Object.keys(peers).length === 0) hangUp(false);
+            }
+        };
+        
+        if(initiator) { 
+            pc.createOffer()
+              .then(o => pc.setLocalDescription(o).then(() => o))
+              .then(o => {
+                  const payload = { target_id: peerId, offer: o, session_id: callSession };
+                  if(isGroupCall) payload.room_id = currentRoom;
+                  socket.emit('webrtc_offer', payload);
+              })
+              .catch(err => console.error("Offer error:", err));
+        }
+    }
+
+    function updateMediaStatus() {
+        const payload = { video: streamFlags.video, audio: streamFlags.audio };
+        if (isGroupCall) { payload.room_id = currentRoom; payload.session_id = callSession; }
+        else { payload.target_id = currentTarget; }
+        socket.emit("media_status", payload);
+
+        const lv = id('local-video'); if(lv) lv.style.opacity = streamFlags.video ? "1" : "0";
+        const ic = id('local-no-video'); if(ic) ic.style.display = streamFlags.video ? "none" : "block";
+        const mo = id('local-mic-off'); if(mo) mo.style.display = streamFlags.audio ? "none" : "block";
+    }
+
+    function toggleMic(){ if(localStream){ const t=localStream.getAudioTracks()[0]; if(t){ t.enabled=!t.enabled; streamFlags.audio=t.enabled; const b=id('btn-mic'); if(t.enabled){b.innerHTML='<i class="fa-solid fa-microphone"></i> ON';b.className="success";}else{b.innerHTML='<i class="fa-solid fa-microphone-slash"></i> OFF';b.className="danger";} updateMediaStatus(); } } }
+    function toggleCam(){ if(localStream){ const t=localStream.getVideoTracks()[0]; if(t){ t.enabled=!t.enabled; streamFlags.video=t.enabled; const b=id('btn-cam'); if(t.enabled){b.innerHTML='<i class="fa-solid fa-video"></i> ON';b.className="success";}else{b.innerHTML='<i class="fa-solid fa-video-slash"></i> OFF';b.className="danger";} updateMediaStatus(); } } }
+    function toggleSpk(){ const vs = document.querySelectorAll('#video-grid video'); let muted = false; vs.forEach(v => { v.muted = !v.muted; muted = v.muted; }); const b=id('btn-spk'); if(!muted){b.innerHTML='<i class="fa-solid fa-volume-high"></i> ON';b.className="success";}else{b.innerHTML='<i class="fa-solid fa-volume-xmark"></i> OFF';b.className="danger";} }
+
+    function startTextCall(){ 
+        if(!currentRoom) return; 
+        if (!isGroupCall && !onlineStatusCache[currentTarget]) {
+            showConfirm("相手がオフラインのため通話できません。").then(()=>{});
+            return;
+        }
+        rtcType = 'text';
+        id('calling-name').innerText = localStorage.getItem('currentTargetName') || '相手'; 
+        
+        if (isGroupCall) {
+            textCallSession = "tc_" + Date.now();
+            id('tc-target-name').innerText = localStorage.getItem('currentTargetName') || 'グループ';
+            id('tc-remote-text').innerText = ''; id('tc-local-input').value = ''; textCallData = {};
+            hide('video-overlay');
+            hide('modal-incoming');
+            hide('modal-calling');
+            show('text-call-overlay');
+            socket.emit('send_message', {room_id: currentRoom, type: 'system_call', content: `テキスト通話が開始されました:${textCallSession}:text`});
+            socket.emit('join_text_call', {session_id: textCallSession});
+        } else {
+            hide('video-overlay');
+            hide('text-call-overlay');
+            hide('modal-incoming');
+            show('modal-calling'); 
+            socket.emit('call_text', {target_id: currentTarget}); 
+        }
+    }
+    
+    function endTextCall(){ 
+        if(textCallSession) {
+            if (isGroupCall) socket.emit('end_text_call', { room_id: currentRoom, session_id: textCallSession }); 
+            else socket.emit('end_text_call', { target_id: currentTarget }); 
+            cleanupTextCall(); 
+        } 
+    }
+    
+    function cleanupTextCall() { 
+        hide('text-call-overlay'); 
+        textCallSession=null; rtcType='none'; textCallData = {};
+        localStorage.removeItem('tcSession'); localStorage.removeItem('tcTargetName'); 
+    }
+
+    if(token&&myInfo.id)initApp();
+</script>
+</body>
+</html>
