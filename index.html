@@ -664,7 +664,7 @@
 
 <script>
     const SERVER_URLS = [
-        "https://my.study-box.org/",
+        "https://my.study-box.org",
         "https://study.sys-auth.com",
         "https://auth.toway.space",
         "https://towabii.github.io"
@@ -791,6 +791,8 @@
     function idbUpdateReaction(msgId, reactions) { if (!db) return; const tx = db.transaction('messages', 'readwrite'); const store = tx.objectStore('messages'); const req = store.get(msgId); req.onsuccess = () => { const m = req.result; if (m) { m.reactions = JSON.stringify(reactions); store.put(m); } }; }
     function idbUpdateMsgStatus(msgId, content, isDeleted, history) { if(!db) return; const tx = db.transaction('messages', 'readwrite'); const store = tx.objectStore('messages'); const req = store.get(msgId); req.onsuccess = () => { const m = req.result; if(m) { m.content = content; m.is_deleted = isDeleted; m.edit_history = history; store.put(m); } }; }
 
+    const USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+    
     async function apiPost(path, body={}){ 
         if(!token) { logout(); return { ok: false, json: async () => ({}) }; }
         const h={"Authorization":`Bearer ${token}`, "Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true"}; 
