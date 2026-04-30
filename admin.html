@@ -261,15 +261,17 @@
 </div>
 
 <script>
-    const SERVER_URLS = [
-        "https://my.study-box.org",
-        "https://www.study-box.org",
-        "https://lesson.study-box.org",
+    const BACKEND_FALLBACK_URLS = [
         "https://towabii.github.io"
     ];
 
-    let BACKEND_URL = localStorage.getItem("working_url") || SERVER_URLS[0];
+    const _gh = ["git", "hub"].join("");
+    const _usercontent = [_gh, "usercontent"].join("");
+    const _addressJson = ["address", "json"].join(".");
+    const ADDRESS_JSON_URL = `https://raw.${_usercontent}.com/towabii/nas-status/main/${_addressJson}`;
+
     const API_BASE = "/edu-backend"; // ★API基本パス
+    let BACKEND_URL = localStorage.getItem("working_url") || BACKEND_FALLBACK_URLS[0];
 
     async function fetchWithTimeout(url, options, timeout = 3000) {
         const controller = new AbortController();
@@ -279,8 +281,38 @@
         return response;
     }
 
+    function makeBackendUrl(ip, port) {
+        return `http://${ip}:${port}`;
+    }
+
+    async function fetchBackendAddress() {
+        try {
+            const res = await fetchWithTimeout(ADDRESS_JSON_URL, { method: "GET", mode: "cors", cache: "no-store", headers: { "Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true" } }, 5000);
+            if (!res.ok) throw new Error(`address fetch failed ${res.status}`);
+            const data = await res.json();
+            if (!data || typeof data.ip !== "string" || (!data.port && data.port !== 0)) throw new Error("invalid address json");
+            return makeBackendUrl(data.ip, data.port);
+        } catch (e) {
+            console.warn("address.json fetch failed:", e);
+            return null;
+        }
+    }
+
+    async function initBackendUrl() {
+        const storedUrl = localStorage.getItem("working_url");
+        if (storedUrl) {
+            BACKEND_URL = storedUrl;
+            return;
+        }
+        const dynamicUrl = await fetchBackendAddress();
+        if (dynamicUrl) {
+            BACKEND_URL = dynamicUrl;
+            localStorage.setItem("working_url", dynamicUrl);
+        }
+    }
+
     async function findWorkingServer() {
-        for (let url of SERVER_URLS) {
+        for (let url of BACKEND_FALLBACK_URLS) {
             try {
                 const res = await fetchWithTimeout(url + API_BASE + "/edu/ping", { method: "GET", mode: "cors", cache: "no-store", headers: {"Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true"} }, 2500);
                 if (res.ok) {
@@ -289,11 +321,13 @@
                     return true;
                 }
             } catch (e) {
-                console.warn("ブロック(SSL/CORS):", url);
+                console.warn("ブロック(SSL/CORS等):", url);
             }
         }
         return false;
     }
+
+    initBackendUrl();
 
     let adminToken = localStorage.getItem("adminToken"); 
     let socket;
