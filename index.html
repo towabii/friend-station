@@ -689,13 +689,21 @@
 
     async function fetchBackendAddress() {
         try {
-            const res = await fetchWithTimeout(ADDRESS_JSON_URL, { method: "GET", mode: "cors", cache: "no-store", headers: { "Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true" } }, 5000);
+            console.log("[DEBUG] address.json取得開始:", ADDRESS_JSON_URL);
+            const res = await fetchWithTimeout(ADDRESS_JSON_URL, { method: "GET", cache: "no-store" }, 5000);
             if (!res.ok) throw new Error(`address fetch failed ${res.status}`);
             const data = await res.json();
             if (!data || typeof data.ip !== "string" || (!data.port && data.port !== 0)) throw new Error("invalid address json");
-            return makeBackendUrl(data.ip, data.port);
+            const backendUrl = makeBackendUrl(data.ip, data.port);
+            console.log("[DEBUG] バックエンド接続先:", backendUrl);
+            return backendUrl;
         } catch (e) {
-            console.warn("address.json fetch failed:", e);
+            console.error("[ERROR] address.json取得失敗:", {
+                url: ADDRESS_JSON_URL,
+                error: e.message,
+                errorType: e.name,
+                timestamp: new Date().toISOString()
+            });
             return null;
         }
     }
@@ -714,18 +722,27 @@
     }
 
     async function findWorkingServer() {
+        console.log("[DEBUG] フォールバックサーバー探索開始:", BACKEND_FALLBACK_URLS);
         for (let url of BACKEND_FALLBACK_URLS) {
             try {
-                const res = await fetchWithTimeout(url + API_BASE + "/edu/ping", { method: "GET", mode: "cors", cache: "no-store", headers: {"Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true"} }, 2500);
+                console.log("[DEBUG] サーバー試行:", url);
+                const testUrl = url + API_BASE + "/edu/ping";
+                const res = await fetchWithTimeout(testUrl, { method: "GET", cache: "no-store" }, 2500);
                 if (res.ok) {
                     BACKEND_URL = url;
                     localStorage.setItem("working_url", url);
+                    console.log("[DEBUG] サーバー接続成功:", url);
                     return true;
                 }
             } catch (e) {
-                console.warn("ブロック(SSL/CORS等):", url);
+                console.warn("[WARN] サーバー接続失敗:", {
+                    url: url,
+                    error: e.message,
+                    timestamp: new Date().toISOString()
+                });
             }
         }
+        console.error("[CRITICAL] すべてのサーバーに接続できません");
         return false;
     }
 
@@ -883,46 +900,102 @@
         if(e) e.preventDefault(); 
         const msgDiv = id('auth-msg');
         msgDiv.style.display = 'block'; msgDiv.innerText = "接続中...";
+        const loginUrl = BACKEND_URL + API_BASE + '/edu/login';
+        console.log("[DEBUG] ログイン試行:", {
+            url: loginUrl,
+            username: id('l-user').value,
+            timestamp: new Date().toISOString()
+        });
         try {
-            const r = await fetch(BACKEND_URL + API_BASE + '/edu/login',{
-                method:'POST', mode: 'cors',
-                headers:{'Content-Type':'application/json', "Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true"},
+            const r = await fetch(loginUrl, {
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
                 body:JSON.stringify({username:id('l-user').value,password:id('l-pass').value})
             }); 
+            console.log("[DEBUG] ログインレスポンス:", {
+                status: r.status,
+                statusText: r.statusText,
+                ok: r.ok,
+                url: loginUrl
+            });
             if(!r.ok && r.status !== 401 && r.status !== 403 && r.status !== 400 && r.status !== 404 && r.status !== 409) {
                 msgDiv.innerText = `通信エラー (${r.status}): CloudflareのBot設定またはTunnelが停止しています。`;
+                console.error("[ERROR] 予期しない状態コード:", r.status);
                 return;
             }
             const d=await r.json(); 
             if(r.ok){ 
                 msgDiv.style.display = 'none';
-                token=d.token;myInfo=d.user;localStorage.setItem('token',token);localStorage.setItem('myInfo',JSON.stringify(myInfo));initApp(); 
+                token=d.token;myInfo=d.user;localStorage.setItem('token',token);localStorage.setItem('myInfo',JSON.stringify(myInfo));
+                console.log("[DEBUG] ログイン成功:", {userId: d.user.id, username: d.user.username});
+                initApp(); 
             }
-            else if(r.status===403 && d.pendingToken) { msgDiv.style.display = 'none'; startPending(d.pendingToken); }
-            else { msgDiv.innerText=d.error; }
+            else if(r.status===403 && d.pendingToken) {
+                msgDiv.style.display = 'none';
+                console.log("[DEBUG] 承認待ち状態。Pending画面に遷移");
+                startPending(d.pendingToken);
+            }
+            else {
+                msgDiv.innerText=d.error;
+                console.warn("[WARN] ログイン失敗:", {status: r.status, error: d.error});
+            }
         } catch (err) {
+            console.error("[ERROR] ログイン通信例外:", {
+                error: err.message,
+                errorType: err.name,
+                url: loginUrl,
+                timestamp: new Date().toISOString()
+            });
             msgDiv.innerText = "アクセスブロック(SSL/CORS等)検知。別ルート探索中...";
             const found = await findWorkingServer();
             if(found) {
                 msgDiv.innerText = "別ルートに接続しました。ログインを再試行します...";
+                console.log("[DEBUG] フォールバック接続成功。再試行:", BACKEND_URL);
                 setTimeout(() => id('btn-submit-login').click(), 1000);
             } else {
-                msgDiv.innerText = "【致命的エラー】すべてのサーバーがブロックされています。";
+                msgDiv.innerText = "【致命的エラー】すべてのサーバーがブロックされています。ネットワーク管理者に相談してください。";
+                console.error("[CRITICAL] すべてのサーバーに接続できません");
             }
         }
     }
 
     async function submitTrans(e) {
         if(e) e.preventDefault(); 
+        const username = id('t-user').value;
+        const transferCode = id('t-code').value;
+        const restoreUrl = BACKEND_URL + API_BASE + '/edu/backup/pull?username=' + encodeURIComponent(username) + '&transfer_code=' + encodeURIComponent(transferCode);
+        console.log("[DEBUG] データ復元試行:", {url: restoreUrl, username, timestamp: new Date().toISOString()});
         try {
-            const r=await fetch(BACKEND_URL + API_BASE + '/edu/backup/pull?username=' + encodeURIComponent(id('t-user').value) + '&transfer_code=' + encodeURIComponent(id('t-code').value),{
-                method:'GET', mode:'cors',
-                headers:{'Cache-Control': 'no-cache', 'bypass-tunnel-reminder': 'true', 'ngrok-skip-browser-warning': 'true'}
+            const r=await fetch(restoreUrl,{
+                method:'GET',
+                headers:{'Content-Type':'application/json'}
             }); 
+            console.log("[DEBUG] 復元レスポンス:", {status: r.status, statusText: r.statusText});
             const d=await r.json(); 
-            if(r.ok){ await initDB(); await idbClearMsgs(); if(d.data){ for(let m of d.data) await idbPutMsg(m); } showToast('復元しました。再ログインしてください。'); toggleAuth('login'); }
-            else { id('auth-msg').style.display='block'; id('auth-msg').innerText=d.error; }
-        } catch (err) { id('auth-msg').style.display='block'; id('auth-msg').innerText="通信エラー(SSL/CORS等)"; }
+            if(r.ok){
+                await initDB();
+                await idbClearMsgs();
+                if(d.data){
+                    for(let m of d.data) await idbPutMsg(m);
+                }
+                console.log("[DEBUG] データ復元成功");
+                showToast('復元しました。再ログインしてください。');
+                toggleAuth('login');
+            }
+            else {
+                id('auth-msg').style.display='block';
+                id('auth-msg').innerText=d.error;
+                console.warn("[WARN] 復元失敗:", {status: r.status, error: d.error});
+            }
+        } catch (err) {
+            id('auth-msg').style.display='block';
+            id('auth-msg').innerText="通信エラー(SSL/CORS等)\n" + err.message;
+            console.error("[ERROR] 復元通信例外:", {
+                error: err.message,
+                url: restoreUrl,
+                timestamp: new Date().toISOString()
+            });
+        }
     }
 
     async function submitRegistration() {
@@ -933,13 +1006,39 @@
         const uidVal = id('r-user').value;
         if(!/^[a-zA-Z0-9_\-\.\=]+$/.test(uidVal)) { await showConfirm("ユーザーIDは半角英数字と一部記号 ( _ - . = ) のみ使用可能です。"); return; }
         
-        const b={username:uidVal,nickname:id('r-nick').value,first_name:id('r-fn').value,last_name:id('r-ln').value,password:id('r-pass').value,school_name:id('r-school').value,grade:id('r-grade').value,class_num:id('r-class').value,attendance_num:id('r-att').value,birthdate:id('r-birth').value}; 
+        const b={username:uidVal,nickname:id('r-nick').value,first_name:id('r-fn').value,last_name:id('r-ln').value,password:id('r-pass').value,school_name:id('r-school').value,grade:id('r-grade').value,class_num:id('r-class').value,attendance_num:id('r-att').value,birthdate:id('r-birth').value};
+        const registerUrl = BACKEND_URL + API_BASE + '/edu/register';
+        console.log("[DEBUG] ユーザー登録試行:", {
+            url: registerUrl,
+            username: uidVal,
+            timestamp: new Date().toISOString()
+        });
         try {
-            const r=await fetch(BACKEND_URL + API_BASE + '/edu/register',{ method:'POST', mode:'cors', headers:{'Content-Type':'application/json', "Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true"}, body:JSON.stringify(b) }); 
+            const r=await fetch(registerUrl,{
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body:JSON.stringify(b)
+            }); 
+            console.log("[DEBUG] 登録レスポンス:", {status: r.status, statusText: r.statusText});
             const d=await r.json();
-            if(r.ok && d.pendingToken){ startPending(d.pendingToken); } 
-            else if(!r.ok){ id('auth-msg').style.display='block'; id('auth-msg').innerText=d.error; }
-        } catch (err) { id('auth-msg').style.display='block'; id('auth-msg').innerText="通信エラー(SSL/CORS等)"; }
+            if(r.ok && d.pendingToken){
+                console.log("[DEBUG] 登録成功。承認待ち状態へ");
+                startPending(d.pendingToken);
+            } 
+            else if(!r.ok){
+                id('auth-msg').style.display='block';
+                id('auth-msg').innerText=d.error;
+                console.warn("[WARN] 登録失敗:", {status: r.status, error: d.error});
+            }
+        } catch (err) {
+            id('auth-msg').style.display='block';
+            id('auth-msg').innerText="通信エラー(SSL/CORS等)\n" + err.message;
+            console.error("[ERROR] 登録通信例外:", {
+                error: err.message,
+                url: registerUrl,
+                timestamp: new Date().toISOString()
+            });
+        }
     }
 
     function playSample(file) {

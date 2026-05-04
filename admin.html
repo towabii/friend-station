@@ -287,13 +287,21 @@
 
     async function fetchBackendAddress() {
         try {
-            const res = await fetchWithTimeout(ADDRESS_JSON_URL, { method: "GET", mode: "cors", cache: "no-store", headers: { "Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true" } }, 5000);
+            console.log("[DEBUG] address.json取得開始:", ADDRESS_JSON_URL);
+            const res = await fetchWithTimeout(ADDRESS_JSON_URL, { method: "GET", cache: "no-store" }, 5000);
             if (!res.ok) throw new Error(`address fetch failed ${res.status}`);
             const data = await res.json();
             if (!data || typeof data.ip !== "string" || (!data.port && data.port !== 0)) throw new Error("invalid address json");
-            return makeBackendUrl(data.ip, data.port);
+            const backendUrl = makeBackendUrl(data.ip, data.port);
+            console.log("[DEBUG] バックエンド接続先:", backendUrl);
+            return backendUrl;
         } catch (e) {
-            console.warn("address.json fetch failed:", e);
+            console.error("[ERROR] address.json取得失敗:", {
+                url: ADDRESS_JSON_URL,
+                error: e.message,
+                errorType: e.name,
+                timestamp: new Date().toISOString()
+            });
             return null;
         }
     }
@@ -312,18 +320,27 @@
     }
 
     async function findWorkingServer() {
+        console.log("[DEBUG] フォールバックサーバー探索開始:", BACKEND_FALLBACK_URLS);
         for (let url of BACKEND_FALLBACK_URLS) {
             try {
-                const res = await fetchWithTimeout(url + API_BASE + "/edu/ping", { method: "GET", mode: "cors", cache: "no-store", headers: {"Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true"} }, 2500);
+                console.log("[DEBUG] サーバー試行:", url);
+                const testUrl = url + API_BASE + "/edu/ping";
+                const res = await fetchWithTimeout(testUrl, { method: "GET", cache: "no-store" }, 2500);
                 if (res.ok) {
                     BACKEND_URL = url;
                     localStorage.setItem("working_url", url);
+                    console.log("[DEBUG] サーバー接続成功:", url);
                     return true;
                 }
             } catch (e) {
-                console.warn("ブロック(SSL/CORS等):", url);
+                console.warn("[WARN] サーバー接続失敗:", {
+                    url: url,
+                    error: e.message,
+                    timestamp: new Date().toISOString()
+                });
             }
         }
+        console.error("[CRITICAL] すべてのサーバーに接続できません");
         return false;
     }
 
@@ -378,31 +395,55 @@
         msgDiv.innerText = "接続中...";
 
         const password = document.getElementById("admin-pass").value;
+        console.log("[DEBUG] ログイン試行:", {
+            url: BACKEND_URL + API_BASE + "/edu/admin/login",
+            timestamp: new Date().toISOString()
+        });
         try {
-            const r = await fetch(BACKEND_URL + API_BASE + "/edu/admin/login", { 
-                method: "POST", mode: "cors",
-                headers: { "Content-Type": "application/json", "Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true" }, 
+            const loginUrl = BACKEND_URL + API_BASE + "/edu/admin/login";
+            const r = await fetch(loginUrl, { 
+                method: "POST",
+                headers: { "Content-Type": "application/json" }, 
                 body: JSON.stringify({ password }) 
+            });
+            console.log("[DEBUG] ログインレスポンス:", {
+                status: r.status,
+                statusText: r.statusText,
+                url: loginUrl
             });
             if (r.ok) { 
                 msgDiv.style.display = 'none';
                 const d = await r.json(); 
                 adminToken = d.token; 
-                localStorage.setItem("adminToken", adminToken); 
+                localStorage.setItem("adminToken", adminToken);
+                console.log("[DEBUG] ログイン成功");
                 initPanel(); 
             } else if (r.status === 401) {
                 msgDiv.innerText = "パスワードが違います";
+                console.warn("[WARN] パスワード認証失敗");
             } else {
                 msgDiv.innerText = `通信エラー (${r.status})`;
+                console.error("[ERROR] ログイン通信エラー:", {
+                    status: r.status,
+                    statusText: r.statusText
+                });
             }
         } catch (err) {
+            console.error("[ERROR] ログイン例外:", {
+                error: err.message,
+                errorType: err.name,
+                url: BACKEND_URL,
+                timestamp: new Date().toISOString()
+            });
             msgDiv.innerText = "アクセスブロック検知。別ルート探索中...";
             const found = await findWorkingServer();
             if(found) {
                 msgDiv.innerText = "別ルートに接続しました。ログインを再試行します...";
+                console.log("[DEBUG] フォールバック接続成功。再試行します");
                 setTimeout(() => document.getElementById('btn-submit-login').click(), 1000);
             } else {
-                msgDiv.innerText = "すべてのサーバーがブロックされています。";
+                msgDiv.innerText = "すべてのサーバーがブロックされています。ネットワーク管理者に相談してください。";
+                console.error("[CRITICAL] すべてのサーバーに接続できません");
             }
         }
     }
@@ -433,22 +474,27 @@
     async function handleChatAuth(e) {
         e.preventDefault();
         const password = document.getElementById('chat-auth-pass').value;
+        console.log("[DEBUG] チャット監視認証試行");
         try {
             const r = await fetch(BACKEND_URL + API_BASE + "/edu/admin/login", { 
-                method: "POST", mode: "cors",
-                headers: { "Content-Type": "application/json", "Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true" }, 
+                method: "POST",
+                headers: { "Content-Type": "application/json" }, 
                 body: JSON.stringify({ password }) 
             });
+            console.log("[DEBUG] チャット認証レスポンス:", { status: r.status });
             if(r.ok) {
                 document.getElementById('modal-chat-auth').classList.add('hidden');
                 document.getElementById('chat-auth-pass').value = '';
                 chatWarned = true;
+                console.log("[DEBUG] チャット監視アクセス許可");
                 executeSwitchTab('msgs');
             } else {
                 alert("パスワードが違います");
+                console.warn("[WARN] チャット認証失敗");
             }
         } catch (err) {
-            alert("通信エラー(SSL/CORS等)");
+            console.error("[ERROR] チャット認証通信エラー:", err.message);
+            alert("通信エラー(SSL/CORS等)\n" + err.message);
         }
     }
 
