@@ -1,0 +1,311 @@
+Gemini
+デモ用SNSサイト作成
+Gemini との会話
+これを、バックグラウンドの機能を消して、宣伝用のやつを作成して。
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Friend Station Demo</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        
+        :root { 
+            --bg-dark: #000000; --bg-panel: #16181c; --bg-hover: #202327; 
+            --text-main: #e7e9ea; --text-sub: #71767b; --border: #2f3336; 
+            --accent: #2ecc71; --accent-glow: rgba(46, 204, 113, 0.2);
+            --danger: #e74c3c; --success: #2ecc71; 
+        }
+        *{margin:0;padding:0;box-sizing:border-box; -webkit-tap-highlight-color: transparent;} 
+        body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg-dark);color:var(--text-main);height:100vh;overflow:hidden;display:flex;}
+        
+        .hidden{display:none!important} 
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-thumb { background: #3f4347; border-radius: 3px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+
+        input,select,textarea { width:100%; padding:14px 16px; margin-bottom:10px; border:1px solid var(--border); border-radius:12px; background:var(--bg-panel); color:var(--text-main); outline:none; font-size:15px; transition:all 0.3s ease; } 
+        input:focus,textarea:focus { border-color:var(--accent); box-shadow: 0 0 0 2px var(--accent-glow); }
+        button { padding:12px 20px; border:none; border-radius:12px; background:var(--accent); color:#fff; cursor:pointer; font-weight:600; font-size:15px; transition:all 0.3s ease; } 
+        button:hover { transform: translateY(-2px); box-shadow: 0 4px 12px var(--accent-glow); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+        button.danger { background:var(--danger); } button.danger:hover { box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3); }
+        button.success { background:var(--success); }
+        button[style*="background:transparent"], .emoji-btn, .msg-react-btn, .msg-opt-btn { box-shadow: none !important; }
+        button[style*="background:transparent"]:hover, .emoji-btn:hover { transform: scale(1.1); }
+
+        .switch { position: relative; display: inline-block; width: 46px; height: 24px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--bg-hover); transition: .4s; border-radius: 24px; border: 1px solid var(--border); }
+        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: var(--text-main); transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--accent); border-color: var(--accent); }
+        input:checked + .slider:before { transform: translateX(22px); background-color: #fff; }
+
+        i.fa-solid, i.fa-regular { font-size: 1.1em; } .nav-btn i { width: 26px; text-align: center; }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        .toast { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); background: var(--text-main); color: var(--bg-dark); padding: 12px 24px; border-radius: 30px; box-shadow: 0 5px 15px rgba(0,0,0,0.5); z-index: 10000; font-weight: bold; font-size: 14px; opacity: 0; transition: all 0.3s ease; pointer-events: none; }
+        .toast.show { opacity: 1; top: 30px; }
+        #custom-confirm .modal { max-width: 320px; text-align: center; padding: 30px 25px; }
+
+        #scr-auth, #scr-pending {width:100%;max-width:420px;margin:auto;background:var(--bg-panel);padding:40px 30px;border-radius:24px;border:1px solid var(--border);box-shadow:0 15px 50px rgba(0,0,0,0.8); animation: slideUp 0.4s ease-out;}
+        #scr-auth h2{text-align:center;margin-bottom:25px;font-family:cursive;font-size:2.2em;color:var(--accent);}
+        .auth-link{background:none;color:var(--accent);text-decoration:none;font-size:14px;padding:10px 0;width:100%;text-align:center;display:block;} .auth-link:hover{text-decoration:underline; transform:none;}
+        .loader { margin:20px auto; border:4px solid var(--border); border-top:4px solid var(--accent); border-radius:50%; width:40px; height:40px; animation:spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .reg-step h3 { font-size: 1.1em; margin-bottom: 20px; color: var(--accent); text-align: center; } .reg-step button { margin-top: 15px; width: 100%; }
+
+        #scr-main{display:flex;width:100%;height:100%;position:relative; animation: fadeIn 0.4s ease;}
+        .sidebar{width:240px;background:var(--bg-dark);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:20px;gap:10px;z-index:10;}
+        .brand{font-size:22px;font-weight:bold;color:var(--accent);margin-bottom:25px;font-family:cursive;padding-left:10px; display:flex; align-items:center;}
+        .nav-btn{display:flex;align-items:center;gap:15px;background:transparent;color:var(--text-main);font-size:18px;padding:14px 15px;justify-content:flex-start;border-radius:25px;position:relative;}
+        .nav-btn:hover{background:var(--bg-hover); transform:none;} .nav-btn.active{font-weight:bold;color:var(--accent);} 
+        .badge{position:absolute;top:5px;right:15px;background:var(--danger);font-size:11px;padding:2px 6px;border-radius:10px;color:#fff;}
+        @media(max-width: 768px){ .sidebar{width:70px;padding:20px 10px;align-items:center;} .brand{display:none;} .nav-btn span{display:none;} .nav-btn{padding:12px;} .badge{right:5px;} }
+        
+        #slide-menu{position:absolute;top:0;left:240px;width:280px;height:100%;background:var(--bg-panel);border-right:1px solid var(--border);transform:translateX(-100%);transition:transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);z-index:9;padding:25px 20px;display:flex;flex-direction:column;gap:12px; box-shadow: 10px 0 30px rgba(0,0,0,0.5);}
+        @media(max-width: 768px){ #slide-menu{left:70px;} } #slide-menu.open{transform:translateX(0);}
+        #chat-menu{position:fixed!important;top:70px!important;right:20px!important;z-index:2147483647!important;left:auto!important;transform:none!important;}
+        #chat-menu, #chat-menu * { z-index:2147483647!important; }
+        .chat-box, .msg-wrap, .msg, .sys-call-msg { z-index:1; }
+        .sys-call-msg { position:relative; z-index:1; }
+        .menu-item{padding:14px;border-radius:12px;cursor:pointer;font-weight:bold;display:flex;align-items:center;gap:15px; transition:all 0.2s;} .menu-item:hover{background:var(--bg-hover);color:var(--accent);}
+        .menu-item i { width: 20px; text-align:center; }
+
+        .list-panel{width:350px;background:var(--bg-dark);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:5;transition:width 0.3s;}
+        .panel-header{padding:20px;font-size:1.4em;font-weight:bold;border-bottom:1px solid var(--border);background:rgba(0,0,0,0.8);backdrop-filter:blur(10px);position:sticky;top:0;z-index:2;}
+        .scroll-area{flex:1;overflow-y:auto;}
+        
+        .notes-area{padding:20px 20px 15px 20px; border-bottom:1px solid var(--border); min-height: 140px;}
+        .notes-list{display:flex;gap:15px;overflow-x:auto;padding-top:25px;padding-bottom:10px;scrollbar-width:none;} .notes-list::-webkit-scrollbar{display:none;}
+        .note-item{display:flex;flex-direction:column;align-items:center;width:72px;flex-shrink:0;position:relative;cursor:pointer;gap:6px;}
+        .note-img-wrap{width:68px;height:68px;border-radius:50%;background:linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);padding:3px;display:flex;align-items:center;justify-content:center;position:relative;}
+        .note-item.viewed .note-img-wrap { background: var(--border); }
+        .note-item.my-note .note-img-wrap { background: transparent; border: 2px solid var(--border); padding: 2px; }
+        .note-item img{width:100%;height:100%;border-radius:50%;object-fit:cover;border:2px solid var(--bg-dark);}
+        .note-name { font-size: 11px; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; text-align: center; }
+        .note-bubble{position:absolute;top:-15px;right:-15px;background:var(--bg-panel);border:1px solid var(--border);border-radius:15px;padding:4px 8px;font-size:11px;white-space:nowrap;max-width:80px;overflow:hidden;text-overflow:ellipsis;z-index:2;color:var(--text-main); box-shadow:0 2px 5px rgba(0,0,0,0.5);}
+        .note-reply-btn{position:absolute;top:-25px;right:-5px;background:var(--accent);color:#fff;border-radius:50%;width:24px;height:24px;display:none;align-items:center;justify-content:center;font-size:10px;z-index:3;cursor:pointer;}
+        .note-item:hover .note-reply-btn{display:flex;}
+        
+        .room-item{padding:15px 20px;display:flex;align-items:center;gap:15px;cursor:pointer; transition:background 0.2s; position:relative;} .room-item:hover{background:var(--bg-hover);} 
+        .room-item img{width:52px;height:52px;border-radius:50%;object-fit:cover;}
+        
+        .online-badge{position:absolute;bottom:0;right:0;width:14px;height:14px;background:#2ecc71;border:2px solid var(--bg-dark);border-radius:50%;display:none;z-index:2;}
+        .is-online .online-badge{display:block;}
+        .room-unread-badge { background: var(--danger); color: #fff; border-radius: 10px; padding: 2px 8px; font-size: 12px; font-weight: bold; margin-left: auto; }
+
+        .main-panel-container{flex:1;position:relative;background:var(--bg-dark);display:flex;flex-direction:column;}
+        .main-screen{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;background:var(--bg-dark);z-index:1;}
+        .main-screen.active{z-index:2; animation: fadeIn 0.3s ease-out;}
+        @media(max-width: 768px){ .list-panel{width:100%; position:absolute; left:70px; height:100%;} .main-panel-container{position:absolute; left:70px; width:calc(100% - 70px); height:100%; z-index:6; transform:translateX(100%); transition:transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);} .main-panel-container.active{transform:translateX(0);} }
+
+        .chat-header{padding:12px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,0.8);backdrop-filter:blur(10px);z-index:2;}
+        .chat-box{flex:1;padding:20px;overflow-y:auto;display:flex;flex-direction:column;gap:20px;}
+        .msg-wrap{display:flex;flex-direction:column;max-width:75%;position:relative;} .my-msg{align-self:flex-end;} .other-msg{align-self:flex-start;}
+        
+        .reply-banner{font-size:12px;color:var(--text-sub);background:var(--bg-hover);padding:6px 10px;border-radius:12px;margin-bottom:4px;z-index:1;display:inline-flex; align-items:center; gap:5px; align-self:flex-start;}
+        .msg{padding:12px 16px;border-radius:20px;word-wrap:break-word;position:relative;z-index:2;user-select:none; font-size:15px; line-height:1.4; display:flex; flex-direction:column;} 
+        
+        .my-msg .msg{background:var(--accent);color:#fff;border-bottom-right-radius:4px;} .other-msg .msg{background:var(--bg-panel);border:1px solid var(--border);border-bottom-left-radius:4px;}
+        .msg img, .msg video{max-width:100%;border-radius:12px;margin-top:8px;cursor:pointer;}
+        .msg-info{font-size:0.75em;color:var(--text-sub);margin-top:6px; display:flex; gap:5px; align-items:center;} .is-read{color:var(--accent);}
+        .reactions-badge{position:absolute;bottom:-12px;right:10px;background:var(--bg-panel);border:1px solid var(--border);border-radius:12px;padding:3px 8px;font-size:12px;display:flex;gap:4px;z-index:3; box-shadow:0 2px 5px rgba(0,0,0,0.5);}
+        .msg-react-btn { background:transparent; border:none; font-size:18px; cursor:pointer; opacity:0.5; transition:0.2s; padding:0 5px; } .msg-react-btn:hover { opacity:1; transform:scale(1.2); }
+        .msg-opt-btn { background:transparent; border:none; font-size:14px; cursor:pointer; opacity:0.5; padding:5px; color:var(--text-main); } .msg-opt-btn:hover { opacity:1; }
+        
+        .chat-input-area{padding:15px 20px;background:var(--bg-dark);border-top:1px solid var(--border);display:flex;flex-direction:column;gap:8px;}
+        #reply-preview, #edit-preview {background:var(--bg-hover);padding:10px 15px;border-radius:12px;font-size:13px;display:flex;justify-content:space-between;align-items:center;color:var(--text-sub);}
+        .chat-input-row{display:flex;align-items:center;gap:12px;} .chat-input-row input{margin:0;flex:1;border-radius:24px;background:var(--bg-panel);padding:12px 18px;}
+        .file-status{font-size:12px;color:var(--accent);white-space:nowrap;}
+
+        .post-card{border-bottom:1px solid var(--border);padding:20px;transition:background 0.2s;position:relative;cursor:pointer;} .post-card:hover{background:rgba(255,255,255,0.02);}
+        .post-header{display:flex;align-items:center;gap:12px;margin-bottom:10px;} .post-header img{width:44px;height:44px;border-radius:50%;object-fit:cover;cursor:pointer;}
+        .post-content{font-size:16px;line-height:1.5;margin-bottom:12px;white-space:pre-wrap;word-break:break-word;}
+        .post-media{width:100%;max-width:500px;border-radius:16px;margin-bottom:12px;border:1px solid var(--border);cursor:pointer;}
+        .post-actions{display:flex;justify-content:space-between;max-width:250px;color:var(--text-sub);font-size:15px;margin-top:12px;} 
+        .post-actions div{cursor:pointer;display:flex;align-items:center;gap:8px; transition:color 0.2s;} .post-actions div:hover{color:var(--accent);} .liked{color:var(--danger) !important;}
+        .del-post-btn{position:absolute;top:20px;right:20px;color:var(--text-sub);cursor:pointer;font-size:18px; transition:color 0.2s;} .del-post-btn:hover{color:var(--danger);}
+
+        .modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:2000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(5px);}
+        .modal-overlay:not(.hidden) .modal { animation: slideUp 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); }
+        .modal{background:var(--bg-panel);padding:25px;border-radius:24px;border:1px solid var(--border);width:95%;max-width:420px;max-height:85vh;display:flex;flex-direction:column;position:relative; box-shadow:0 15px 50px rgba(0,0,0,0.8);}
+        .close-btn{position:absolute;top:15px;right:20px;font-size:24px;cursor:pointer;color:var(--text-sub); transition:color 0.2s;} .close-btn:hover{color:var(--text-main);}
+        .modal img.prof-lg{width:100px;height:100px;border-radius:50%;object-fit:cover;margin:0 auto 15px;display:block;border:3px solid var(--accent);}
+        
+        #comments-list{flex:1;overflow-y:auto;margin:15px 0;display:flex;flex-direction:column;gap:15px;}
+        .comment-item{display:flex;gap:12px;font-size:15px;} .comment-item img.c-ic{width:36px;height:36px;border-radius:50%;}
+        .comment-item img.c-media{max-width:200px;border-radius:12px;margin-top:8px;border:1px solid var(--border);}
+        
+        #context-menu{position:fixed;background:var(--bg-panel);border:1px solid var(--border);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,0.8);z-index:2500;padding:8px;display:flex;flex-direction:column;gap:4px;}
+        .ctx-item{padding:12px 16px;cursor:pointer;border-radius:8px;display:flex;align-items:center;gap:12px; font-size:15px; transition:background 0.2s;} .ctx-item:hover{background:var(--bg-hover);}
+        .emoji-btn{background:none;border:none;font-size:26px;cursor:pointer;}
+        .saved-check{color:var(--accent);font-size:13px;margin-left:12px;opacity:0;transition:opacity 0.3s;} .saved-check.show{opacity:1;}
+        
+        #video-overlay {position:fixed;top:0;left:0;width:100%;height:100%;background:#000;z-index:3000;display:flex;flex-direction:column;}
+        #video-grid { flex:1; display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:15px; padding:20px; padding-bottom:100px; overflow-y:auto; }
+        .video-wrap { position:relative; width:100%; max-width:400px; aspect-ratio:4/3; background:#111; border-radius:16px; overflow:hidden; display:flex; align-items:center; justify-content:center; box-shadow:0 10px 30px rgba(0,0,0,0.5); border:1px solid #333; }
+        .video-wrap video { width:100%; height:100%; object-fit:cover; transition: opacity 0.3s ease; }
+        .video-wrap .no-video-icon { position:absolute; width:120px; height:120px; border-radius:50%; object-fit:cover; display:none; border:3px solid var(--border); box-shadow:0 4px 15px rgba(0,0,0,0.8); z-index:1; }
+        .video-wrap .name-badge { position:absolute; bottom:10px; left:10px; background:rgba(0,0,0,0.6); color:#fff; padding:6px 12px; border-radius:12px; font-size:13px; backdrop-filter:blur(5px); font-weight:bold; z-index:2; }
+        .video-wrap .mic-off-badge { position:absolute; top:10px; right:10px; color:var(--danger); font-size:18px; display:none; background:rgba(0,0,0,0.6); padding:8px; border-radius:50%; backdrop-filter:blur(5px); z-index:2; }
+        .call-controls{position:absolute;bottom:40px;left:50%;transform:translateX(-50%);display:flex;gap:15px;background:rgba(0,0,0,0.7);backdrop-filter:blur(10px);padding:15px 25px;border-radius:40px;box-shadow:0 10px 30px rgba(0,0,0,0.5);}
+
+        #text-call-overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:var(--bg-dark);z-index:100;display:flex;flex-direction:column;padding:25px;}
+        .tc-box{flex:1;background:var(--bg-panel);padding:25px;border-radius:20px;overflow-y:auto;border:1px solid var(--border);font-size:32px; line-height:1.4; display:flex; flex-direction:column;}
+        #tc-remote-text{flex:1; white-space:pre-wrap;}
+        #tc-local-input{flex:1;font-size:32px;padding:25px;border-radius:20px;border:2px solid var(--accent);background:var(--bg-dark);resize:none;color:var(--text-main); line-height:1.4;}
+        
+        .sys-call-msg { text-align:center; padding:15px; margin:10px 0; background:rgba(46,204,113,0.1); border:1px solid var(--accent); border-radius:12px; color:var(--accent); }
+    
+        /* デモ用の調整: ログインを飛ばしてメインを表示 */
+        #scr-login { display: none !important; }
+        #scr-main { display: flex !important; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+<div id="scr-main">
+    <!-- サイドバー -->
+    <div class="sidebar">
+        <div class="brand" style="font-size:20px; font-weight:bold; color:var(--accent); margin-bottom:20px; padding:10px;">Friend Station</div>
+        <div class="nav-btn active" onclick="switchTab('home')"><i class="fa-solid fa-house"></i> <span>ホーム</span></div>
+        <div class="nav-btn" onclick="switchTab('chat')"><i class="fa-solid fa-message"></i> <span>メッセージ</span></div>
+        <div class="nav-btn"><i class="fa-solid fa-bell"></i> <span>通知</span></div>
+        <div class="nav-btn"><i class="fa-solid fa-user"></i> <span>プロフィール</span></div>
+    </div>
+
+    <!-- リストパネル -->
+    <div class="list-panel">
+        <!-- ホームタブ -->
+        <div id="tab-home" class="scroll-area">
+            <div class="panel-header">タイムライン</div>
+            <div id="posts-container">
+                <div class="post-card">
+                    <div class="post-header"><img src="https://i.pravatar.cc/150?u=1"><div><div style="font-weight:bold;">佐藤 健太</div><div style="font-size:12px;color:var(--text-sub);">10分前</div></div></div>
+                    <div class="post-content">Friend Stationのデモサイトへようこそ！\nこのサイトではバックエンドなしでUIの体験が可能です。</div>
+                    <div class="post-actions"><div><i class="fa-regular fa-heart"></i> 12</div><div><i class="fa-regular fa-comment"></i> 4</div></div>
+                </div>
+                <div class="post-card">
+                    <div class="post-header"><img src="https://i.pravatar.cc/150?u=2"><div><div style="font-weight:bold;">田中 美咲</div><div style="font-size:12px;color:var(--text-sub);">1時間前</div></div></div>
+                    <div class="post-content">新しいノート機能、使いやすくていい感じ！✨</div>
+                    <div class="post-actions"><div><i class="fa-regular fa-heart"></i> 28</div><div><i class="fa-regular fa-comment"></i> 2</div></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- チャットタブ -->
+        <div id="tab-chat" class="scroll-area hidden">
+            <div class="panel-header">メッセージ</div>
+            <!-- ノートセクション -->
+            <div class="notes-area" style="padding:15px; border-bottom:1px solid var(--border);">
+                <div class="notes-list" style="display:flex; gap:12px; overflow-x:auto;">
+                    <div class="note-item" style="text-align:center; min-width:60px;">
+                        <div style="position:relative;"><img src="https://i.pravatar.cc/150?u=1" style="width:50px; height:50px; border-radius:50%; border:2px solid var(--accent);"><div style="position:absolute; top:-5px; right:-5px; background:var(--bg-panel); border:1px solid var(--border); border-radius:10px; font-size:10px; padding:2px 5px;">暇！</div></div>
+                        <div style="font-size:11px; margin-top:5px;">佐藤</div>
+                    </div>
+                    <div class="note-item" style="text-align:center; min-width:60px;">
+                        <div style="position:relative;"><img src="https://i.pravatar.cc/150?u=2" style="width:50px; height:50px; border-radius:50%; border:2px solid var(--accent);"><div style="position:absolute; top:-5px; right:-5px; background:var(--bg-panel); border:1px solid var(--border); border-radius:10px; font-size:10px; padding:2px 5px;">勉強中</div></div>
+                        <div style="font-size:11px; margin-top:5px;">田中</div>
+                    </div>
+                </div>
+            </div>
+            <!-- ルーム一覧 -->
+            <div id="rooms-container">
+                <div class="room-item" onclick="openChat('田中 美咲', 'https://i.pravatar.cc/150?u=2')">
+                    <img src="https://i.pravatar.cc/150?u=2" style="width:50px; height:50px; border-radius:50%;">
+                    <div><div style="font-weight:bold;">田中 美咲</div><div style="font-size:13px; color:var(--text-sub);">了解しました！</div></div>
+                </div>
+                <div class="room-item" onclick="openChat('佐藤 健太', 'https://i.pravatar.cc/150?u=1')">
+                    <img src="https://i.pravatar.cc/150?u=1" style="width:50px; height:50px; border-radius:50%;">
+                    <div><div style="font-weight:bold;">佐藤 健太</div><div style="font-size:13px; color:var(--text-sub);">明日の予定はどう？</div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- メインコンテンツ -->
+    <div class="main-panel-container" style="flex:1; display:flex; flex-direction:column;">
+        <div id="welcome-view" style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; color:var(--text-sub);">
+            <i class="fa-solid fa-comments" style="font-size:48px; margin-bottom:20px;"></i>
+            <p>メッセージを選択して会話を始めましょう</p>
+        </div>
+
+        <div id="chat-view" class="hidden" style="display:flex; flex-direction:column; height:100%;">
+            <div class="chat-header" style="padding:15px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <img id="chat-user-img" src="" style="width:35px; height:35px; border-radius:50%;">
+                    <span id="chat-user-name" style="font-weight:bold;"></span>
+                </div>
+                <div style="display:flex; gap:20px; color:var(--accent); cursor:pointer;">
+                    <i class="fa-solid fa-phone" onclick="alert('通話デモを開始します')"></i>
+                    <i class="fa-solid fa-video"></i>
+                </div>
+            </div>
+            <div id="chat-messages" class="chat-box" style="flex:1; padding:20px; overflow-y:auto; display:flex; flex-direction:column; gap:15px;">
+                <!-- メッセージがここに表示される -->
+            </div>
+            <div class="chat-input-area" style="padding:15px; border-top:1px solid var(--border); display:flex; gap:10px;">
+                <input type="text" id="msg-input" placeholder="メッセージを入力..." style="flex:1; margin-bottom:0;">
+                <button onclick="sendMsg()" style="background:var(--accent); border:none; color:white; padding:0 20px; border-radius:10px;">送信</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function switchTab(tab) {
+        document.getElementById('tab-home').classList.add('hidden');
+        document.getElementById('tab-chat').classList.add('hidden');
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+        
+        if(tab === 'home') {
+            document.getElementById('tab-home').classList.remove('hidden');
+            event.currentTarget.classList.add('active');
+        } else {
+            document.getElementById('tab-chat').classList.remove('hidden');
+            event.currentTarget.classList.add('active');
+        }
+    }
+
+    function openChat(name, img) {
+        document.getElementById('welcome-view').classList.add('hidden');
+        document.getElementById('chat-view').classList.remove('hidden');
+        document.getElementById('chat-user-name').innerText = name;
+        document.getElementById('chat-user-img').src = img;
+        document.getElementById('chat-messages').innerHTML = `
+            <div class="msg-wrap other-msg"><div class="msg">こんにちは！デモへようこそ。</div></div>
+        `;
+    }
+
+    function sendMsg() {
+        const input = document.getElementById('msg-input');
+        if(!input.value) return;
+        const box = document.getElementById('chat-messages');
+        
+        const myMsg = document.createElement('div');
+        myMsg.className = 'msg-wrap my-msg';
+        myMsg.innerHTML = `<div class="msg">${input.value}</div>`;
+        box.appendChild(myMsg);
+        
+        const text = input.value;
+        input.value = '';
+        box.scrollTop = box.scrollHeight;
+
+        setTimeout(() => {
+            const reply = document.createElement('div');
+            reply.className = 'msg-wrap other-msg';
+            reply.innerHTML = `<div class="msg">「${text}」ですね、了解です！（デモ応答）</div>`;
+            box.appendChild(reply);
+            box.scrollTop = box.scrollHeight;
+        }, 1000);
+    }
+</script>
+
+</body>
+</html>

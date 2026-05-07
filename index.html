@@ -1,4 +1,3 @@
-以下が修正済みの index.html のフルコードです。
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -664,19 +663,15 @@
 </div>
 
 <script>
-    const BACKEND_FALLBACK_URLS = [
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
+    const SERVER_URLS = [
+        "https://my.study-box.org",
+        "https://www.study-box.org",
+        "https://lesson.study-box.org",
         "https://towabii.github.io"
     ];
 
-    const _gh = ["git", "hub"].join("");
-    const _usercontent = [_gh, "usercontent"].join("");
-    const _addressJson = ["address", "json"].join(".");
-    const ADDRESS_JSON_URL = `https://raw.${_usercontent}.com/towabii/nas-status/main/${_addressJson}`;
-
-    const API_BASE = "/edu-backend"; 
-    let BACKEND_URL = localStorage.getItem("working_url") || BACKEND_FALLBACK_URLS[0];
+    let BACKEND_URL = localStorage.getItem("working_url") || SERVER_URLS[0];
+    const API_BASE = "/edu-backend"; // ★API基本パス
 
     async function fetchWithTimeout(url, options, timeout = 3000) {
         const controller = new AbortController();
@@ -686,41 +681,12 @@
         return response;
     }
 
-    function makeBackendUrl(ip, port) {
-        return `http://${ip}:${port}`;
-    }
-
-    async function fetchBackendAddress() {
-        try {
-            const res = await fetchWithTimeout(ADDRESS_JSON_URL, { method: "GET", mode: "cors", cache: "no-store", headers: { "Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true" } }, 5000);
-            if (!res.ok) throw new Error(`address fetch failed ${res.status}`);
-            const data = await res.json();
-            if (!data || typeof data.ip !== "string" || (!data.port && data.port !== 0)) throw new Error("invalid address json");
-            return makeBackendUrl(data.ip, data.port);
-        } catch (e) {
-            console.warn("address.json fetch failed:", e);
-            return null;
-        }
-    }
-
-    async function initBackendUrl() {
-        const storedUrl = localStorage.getItem("working_url");
-        if (storedUrl) {
-            BACKEND_URL = storedUrl;
-            return;
-        }
-        const dynamicUrl = await fetchBackendAddress();
-        if (dynamicUrl) {
-            BACKEND_URL = dynamicUrl;
-            localStorage.setItem("working_url", dynamicUrl);
-        }
-    }
-
     async function findWorkingServer() {
-        for (let url of BACKEND_FALLBACK_URLS) {
+        for (let url of SERVER_URLS) {
             try {
                 const res = await fetchWithTimeout(url + API_BASE + "/edu/ping", { method: "GET", mode: "cors", cache: "no-store", headers: {"Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true"} }, 2500);
                 if (res.ok) {
+                    console.log("接続成功:", url);
                     BACKEND_URL = url;
                     localStorage.setItem("working_url", url);
                     return true;
@@ -729,10 +695,8 @@
                 console.warn("ブロック(SSL/CORS等):", url);
             }
         }
-        return false;
+        return false; 
     }
-
-    initBackendUrl();
 
     let token = localStorage.getItem('token'), myInfo = JSON.parse(localStorage.getItem('myInfo'))||{};
     let socket, currentRoom = '', currentTarget = '', db = null;
@@ -1182,7 +1146,7 @@
             playCallSound();
         };
         socket.on('incoming_call', showIncomingCallUI);
-        socket.on('call_received', showIncomingCallUI); // ★ 新規イベント
+        socket.on('call_received', showIncomingCallUI); // ★ 新規イベント？
 
         const showActiveCallUI = d => {
             console.log('showActiveCallUI called with:', d);
@@ -1193,7 +1157,7 @@
             setupPeer(d.answerer_id, true, d.icon_url, d.nickname);
         };
         socket.on('call_answered', showActiveCallUI);
-        socket.on('call_started', showActiveCallUI); // ★ 新規イベント
+        socket.on('call_started', showActiveCallUI); // ★ 新規イベント？
 
         socket.on('call_rejected', d => {
             hide('modal-calling');
@@ -1223,7 +1187,7 @@
             playCallSound();
         };
         socket.on('incoming_text_call', showIncomingTextCallUI);
-        socket.on('text_call_received', showIncomingTextCallUI); // ★ 新規イベント
+        socket.on('text_call_received', showIncomingTextCallUI); // ★ 新規イベント？
 
         socket.on('text_call_started', d => {
             console.log('text_call_started called with:', d);
@@ -1686,8 +1650,9 @@
     async function loadNotes(){ 
         const r=await apiGet('/edu/notes/list'); if(!r||!r.ok)return; const l=await r.json(); 
         const now = Date.now();
-        const EXPIRY_24H = 24 * 60 * 60 * 1000; 
+        const EXPIRY_24H = 24 * 60 * 60 * 1000; // 24時間（ミリ秒）
         
+        // 24時間以内のノートのみをフィルタリング
         const validNotes = l.filter(n => {
             const createdAt = n.created_at ? new Date(n.created_at).getTime() : 0;
             return now - createdAt < EXPIRY_24H;
@@ -1960,6 +1925,7 @@
             show('video-overlay');
             callSession = incomingData.session_id;
             
+            // まずsetupPeerでofferを受け取る準備をしてからanswer_callを送る
             setupPeer(incomingData.caller_id, false, incomingData.icon_url, incomingData.caller_name);
             socket.emit('answer_call', { target_id: incomingData.caller_id, session_id: callSession, accept: true });
             
