@@ -664,7 +664,7 @@
 
 <script>
     const SERVER_URLS = [
-        "https://www.study-box.org",
+        "https://my.study-box.org",
         "https://www.study-box.org",
         "https://lesson.study-box.org",
         "https://towabii.github.io"
@@ -1146,7 +1146,7 @@
             playCallSound();
         };
         socket.on('incoming_call', showIncomingCallUI);
-        socket.on('call_received', showIncomingCallUI); // ★ 新規イベント？
+        socket.on('call_received', showIncomingCallUI); 
 
         const showActiveCallUI = d => {
             console.log('showActiveCallUI called with:', d);
@@ -1157,7 +1157,7 @@
             setupPeer(d.answerer_id, true, d.icon_url, d.nickname);
         };
         socket.on('call_answered', showActiveCallUI);
-        socket.on('call_started', showActiveCallUI); // ★ 新規イベント？
+        socket.on('call_started', showActiveCallUI); 
 
         socket.on('call_rejected', d => {
             hide('modal-calling');
@@ -1187,7 +1187,7 @@
             playCallSound();
         };
         socket.on('incoming_text_call', showIncomingTextCallUI);
-        socket.on('text_call_received', showIncomingTextCallUI); // ★ 新規イベント？
+        socket.on('text_call_received', showIncomingTextCallUI);
 
         socket.on('text_call_started', d => {
             console.log('text_call_started called with:', d);
@@ -1654,7 +1654,7 @@
         
         // 24時間以内のノートのみをフィルタリング
         const validNotes = l.filter(n => {
-            const createdAt = n.created_at ? new Date(n.created_at).getTime() : 0;
+            const createdAt = n.timestamp ? new Date(n.timestamp).getTime() : 0; // ✅ 修正: created_at -> timestamp
             return now - createdAt < EXPIRY_24H;
         });
         
