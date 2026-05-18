@@ -431,7 +431,12 @@
                 path: API_BASE + '/edu-sync', 
                 auth: {token: adminToken},
                 transports: ['polling', 'websocket'],
-                upgrade: true
+                upgrade: true,
+                withCredentials: true,
+                extraHeaders: {
+                    "bypass-tunnel-reminder": "true",
+                    "ngrok-skip-browser-warning": "true"
+                }
             });
             socket.on("admin_new_message", m => {
                 const tbody = document.getElementById("ui-msgs");

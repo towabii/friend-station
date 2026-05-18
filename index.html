@@ -912,7 +912,12 @@
             path: API_BASE + '/edu-sync', 
             auth: {token: pendingToken}, 
             transports: ['polling', 'websocket'], 
-            upgrade: true
+            upgrade: true,
+            withCredentials: true,
+            extraHeaders: {
+                "bypass-tunnel-reminder": "true",
+                "ngrok-skip-browser-warning": "true"
+            }
         });
         socket.on('registration_approved', d => {
             if(window.Notification && Notification.permission==="granted" && localStorage.getItem('set-notif')!=='false') new Notification('承認されました',{body:'Friend Stationにログインします'});
@@ -1183,7 +1188,12 @@
         if(socket) { socket.disconnect(); socket = null; }
         socket=io(BACKEND_URL,{
             path: API_BASE + '/edu-sync',
-            auth:{token}, transports: ['polling', 'websocket'], upgrade: true
+            auth:{token}, transports: ['polling', 'websocket'], upgrade: true,
+            withCredentials: true,
+            extraHeaders: {
+                "bypass-tunnel-reminder": "true",
+                "ngrok-skip-browser-warning": "true"
+            }
         });
         
         socket.on("connect_error", (err) => { if (err.message === "NoToken" || err.message === "InvToken") { logout(); } });
