@@ -1384,8 +1384,8 @@ io.on('connection', socket => {
 });
 
 initialize().then(() => {
-  server.listen(PORT, '0.0.0.0', () => {
-    console.log(`Friend Station backend running on http://0.0.0.0:${PORT}${BACKEND_PATH}`);
+  server.listen(PORT, () => {
+    console.log(`Friend Station backend running on http://localhost:${PORT}${BACKEND_PATH}`);
   });
 }).catch(err => {
   console.error('Failed to initialize backend:', err);

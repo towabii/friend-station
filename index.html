@@ -671,19 +671,14 @@
     ];
 
     let BACKEND_URL = localStorage.getItem("working_url") || SERVER_URLS[0];
-    const API_BASE = "/edu-backend"; 
+    const API_BASE = "/edu-backend"; // ★API基本パス
 
     async function fetchWithTimeout(url, options, timeout = 3000) {
         const controller = new AbortController();
         const id = setTimeout(() => controller.abort(), timeout);
-        try {
-            const response = await fetch(url, { ...options, signal: controller.signal });
-            clearTimeout(id);
-            return response;
-        } catch (err) {
-            clearTimeout(id);
-            throw err;
-        }
+        const response = await fetch(url, { ...options, signal: controller.signal });
+        clearTimeout(id);
+        return response;
     }
 
     async function findWorkingServer() {
@@ -788,83 +783,13 @@
         if(t === 'reg') { document.querySelectorAll('.reg-step').forEach(el => el.classList.add('hidden')); id('step1').classList.remove('hidden'); }
     }
 
-    function initDB(){ 
-        return new Promise((res)=>{ 
-            try {
-                const req = indexedDB.open("FriendStationDB", 1); 
-                req.onupgradeneeded = e => { 
-                    const db = e.target.result; 
-                    if(!db.objectStoreNames.contains('messages')){ 
-                        const s=db.createObjectStore('messages',{keyPath:'msg_id'}); 
-                        s.createIndex('room_id','room_id',{unique:false}); 
-                        s.createIndex('timestamp','timestamp',{unique:false}); 
-                    } 
-                }; 
-                req.onsuccess = e => { db = e.target.result; res(); }; 
-                req.onerror = e => { console.warn("IDB Error", e); res(); };
-            } catch(e) { console.warn("IDB Exception", e); res(); }
-        }); 
-    }
-    function idbPutMsg(m){ 
-        return new Promise(r=>{ 
-            if(!db) return r(); 
-            try {
-                const tx=db.transaction('messages','readwrite'); 
-                tx.objectStore('messages').put(m); 
-                tx.oncomplete=r; 
-                tx.onerror=r;
-            } catch(e) { r(); }
-        }); 
-    }
-    function idbGetRoomMsgs(r_id){ 
-        return new Promise(res=>{ 
-            if(!db) return res([]);
-            try {
-                const req=db.transaction('messages','readonly').objectStore('messages').index('room_id').getAll(r_id); 
-                req.onsuccess=()=>res(req.result.sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp))); 
-                req.onerror=()=>res([]);
-            } catch(e) { res([]); }
-        }); 
-    }
-    function idbGetAllMsgs(){ 
-        return new Promise(res=>{ 
-            if(!db) return res([]);
-            try {
-                const req=db.transaction('messages','readonly').objectStore('messages').getAll(); 
-                req.onsuccess=()=>res(req.result); 
-                req.onerror=()=>res([]);
-            } catch(e) { res([]); }
-        }); 
-    }
-    function idbClearMsgs(){ 
-        return new Promise(r=>{ 
-            if(!db) return r();
-            try {
-                const tx=db.transaction('messages','readwrite'); 
-                tx.objectStore('messages').clear(); 
-                tx.oncomplete=r; 
-                tx.onerror=r;
-            } catch(e) { r(); }
-        }); 
-    }
-    function idbUpdateReaction(msgId, reactions) { 
-        if (!db) return; 
-        try {
-            const tx = db.transaction('messages', 'readwrite'); 
-            const store = tx.objectStore('messages'); 
-            const req = store.get(msgId); 
-            req.onsuccess = () => { const m = req.result; if (m) { m.reactions = JSON.stringify(reactions); store.put(m); } }; 
-        } catch(e) {}
-    }
-    function idbUpdateMsgStatus(msgId, content, isDeleted, history) { 
-        if(!db) return; 
-        try {
-            const tx = db.transaction('messages', 'readwrite'); 
-            const store = tx.objectStore('messages'); 
-            const req = store.get(msgId); 
-            req.onsuccess = () => { const m = req.result; if(m) { m.content = content; m.is_deleted = isDeleted; m.edit_history = history; store.put(m); } }; 
-        } catch(e) {}
-    }
+    function initDB(){ return new Promise((res)=>{ const req=indexedDB.open("FriendStationDB",1); req.onupgradeneeded=e=>{ const db=e.target.result; if(!db.objectStoreNames.contains('messages')){ const s=db.createObjectStore('messages',{keyPath:'msg_id'}); s.createIndex('room_id','room_id',{unique:false}); s.createIndex('timestamp','timestamp',{unique:false}); } }; req.onsuccess=e=>{ db=e.target.result; res(); }; }); }
+    function idbPutMsg(m){ return new Promise(r=>{ const tx=db.transaction('messages','readwrite'); tx.objectStore('messages').put(m); tx.oncomplete=r; }); }
+    function idbGetRoomMsgs(r_id){ return new Promise(res=>{ const req=db.transaction('messages','readonly').objectStore('messages').index('room_id').getAll(r_id); req.onsuccess=()=>res(req.result.sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp))); }); }
+    function idbGetAllMsgs(){ return new Promise(res=>{ const req=db.transaction('messages','readonly').objectStore('messages').getAll(); req.onsuccess=()=>res(req.result); }); }
+    function idbClearMsgs(){ return new Promise(r=>{ const tx=db.transaction('messages','readwrite'); tx.objectStore('messages').clear(); tx.oncomplete=r; }); }
+    function idbUpdateReaction(msgId, reactions) { if (!db) return; const tx = db.transaction('messages', 'readwrite'); const store = tx.objectStore('messages'); const req = store.get(msgId); req.onsuccess = () => { const m = req.result; if (m) { m.reactions = JSON.stringify(reactions); store.put(m); } }; }
+    function idbUpdateMsgStatus(msgId, content, isDeleted, history) { if(!db) return; const tx = db.transaction('messages', 'readwrite'); const store = tx.objectStore('messages'); const req = store.get(msgId); req.onsuccess = () => { const m = req.result; if(m) { m.content = content; m.is_deleted = isDeleted; m.edit_history = history; store.put(m); } }; }
 
     const USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
     
@@ -912,15 +837,10 @@
             path: API_BASE + '/edu-sync', 
             auth: {token: pendingToken}, 
             transports: ['polling', 'websocket'], 
-            upgrade: true,
-            withCredentials: true,
-            extraHeaders: {
-                "bypass-tunnel-reminder": "true",
-                "ngrok-skip-browser-warning": "true"
-            }
+            upgrade: true
         });
         socket.on('registration_approved', d => {
-            if(window.Notification && Notification.permission==="granted" && localStorage.getItem('set-notif')!=='false') new Notification('承認されました',{body:'Friend Stationにログインします'});
+            if(Notification.permission==="granted" && localStorage.getItem('set-notif')!=='false') new Notification('承認されました',{body:'Friend Stationにログインします'});
             token = d.token; myInfo = d.user; localStorage.setItem('token', token); localStorage.setItem('myInfo', JSON.stringify(myInfo));
             socket.disconnect(); hide('scr-pending'); initApp(); 
         });
@@ -1030,8 +950,8 @@
 
     function showBrowserNotif(title, body) {
         playNotifSound();
-        if (window.Notification && localStorage.getItem('set-notif') !== 'false' && Notification.permission === "granted") {
-            try { new Notification(title, { body }); } catch(e){}
+        if (localStorage.getItem('set-notif') !== 'false' && Notification.permission === "granted") {
+            new Notification(title, { body });
         }
     }
 
@@ -1153,47 +1073,27 @@
         if (!token) { logout(); return; }
         
         hide('scr-auth'); hide('scr-pending'); show('scr-main'); await initDB();
+        id('set-nick').value=myInfo.nickname; id('set-id').value=myInfo.username; id('set-status').value=myInfo.status_message||''; id('my-id-disp').innerText=myInfo.username; 
         
-        try {
-            id('set-nick').value=myInfo.nickname; id('set-id').value=myInfo.username; id('set-status').value=myInfo.status_message||''; id('my-id-disp').innerText=myInfo.username; 
-            
-            id('set-sound').checked = localStorage.getItem('set-sound') !== 'false';
-            if(id('set-notif')) id('set-notif').checked = localStorage.getItem('set-notif') !== 'false';
-            id('set-notif-sound').value = localStorage.getItem('set-notif-sound') || 'tuuti1.mp3';
-            id('set-call-sound-file').value = localStorage.getItem('set-call-sound-file') || 'call1.mp3';
-            id('set-call-sound').checked = localStorage.getItem('set-call-sound') !== 'false';
+        id('set-sound').checked = localStorage.getItem('set-sound') !== 'false';
+        id('set-notif').checked = localStorage.getItem('set-notif') !== 'false';
+        id('set-notif-sound').value = localStorage.getItem('set-notif-sound') || 'tuuti1.mp3';
+        id('set-call-sound-file').value = localStorage.getItem('set-call-sound-file') || 'call1.mp3';
+        id('set-call-sound').checked = localStorage.getItem('set-call-sound') !== 'false';
 
-            if(myInfo.icon_url){ const ic = myInfo.icon_url.startsWith('http')||myInfo.icon_url.startsWith('.')?myInfo.icon_url:BACKEND_URL+myInfo.icon_url; id('my-icon-set').src=ic; id('home-my-icon').src=ic; }
-        } catch(e) {}
-        
-        try { QRCode.toCanvas(id('my-qr'),myInfo.username,{width:200, margin:2}); } catch(e){}
-        
-        if(window.Notification && Notification.permission!=="denied" && localStorage.getItem('set-notif') !== 'false') {
-            try { Notification.requestPermission().catch(e=>{}); } catch(e){}
-        }
+        if(myInfo.icon_url){ const ic = myInfo.icon_url.startsWith('http')||myInfo.icon_url.startsWith('.')?myInfo.icon_url:BACKEND_URL+myInfo.icon_url; id('my-icon-set').src=ic; id('home-my-icon').src=ic; }
+        QRCode.toCanvas(id('my-qr'),myInfo.username,{width:200, margin:2});
+        if(Notification.permission!=="denied" && localStorage.getItem('set-notif') !== 'false') Notification.requestPermission();
         
         switchNav(currentNav); if(currentMain !== 'chat') switchMainPanel(currentMain);
         
-        try {
-            const lastSync=localStorage.getItem('lastSync')||'1970-01-01T00:00:00.000Z'; 
-            const sRes=await apiGet('/edu/sync/messages',{since:lastSync}); 
-            if(sRes && sRes.ok){ 
-                const {messages}=await sRes.json(); 
-                for(let m of messages)await idbPutMsg(m); 
-                localStorage.setItem('lastSync',new Date().toISOString()); 
-            }
-        } catch(e) {}
+        const lastSync=localStorage.getItem('lastSync')||'1970-01-01T00:00:00.000Z'; const sRes=await apiGet('/edu/sync/messages',{since:lastSync}); if(sRes && sRes.ok){ const {messages}=await sRes.json(); for(let m of messages)await idbPutMsg(m); localStorage.setItem('lastSync',new Date().toISOString()); }
         updateUnreadBadge();
         
         if(socket) { socket.disconnect(); socket = null; }
         socket=io(BACKEND_URL,{
             path: API_BASE + '/edu-sync',
-            auth:{token}, transports: ['polling', 'websocket'], upgrade: true,
-            withCredentials: true,
-            extraHeaders: {
-                "bypass-tunnel-reminder": "true",
-                "ngrok-skip-browser-warning": "true"
-            }
+            auth:{token}, transports: ['polling', 'websocket'], upgrade: true
         });
         
         socket.on("connect_error", (err) => { if (err.message === "NoToken" || err.message === "InvToken") { logout(); } });
@@ -1206,7 +1106,7 @@
                 if(!document.hidden) markReadSafely(); else { startTitleBlink(); playNotifSound(); }
             } else { 
                 updateUnreadBadge(); 
-                if(m.user_id!==myInfo.id) { startTitleBlink(); if(window.Notification && localStorage.getItem('set-notif')!=='false' && Notification.permission==="granted"){ playNotifSound(); try{new Notification(m.user_name, {body: m.type==='text'?m.content:'メディア'});}catch(e){} } }
+                if(m.user_id!==myInfo.id) { startTitleBlink(); if(localStorage.getItem('set-notif')!=='false' && Notification.permission==="granted"){ playNotifSound(); new Notification(m.user_name, {body: m.type==='text'?m.content:'メディア'}); } }
             }
         });
         
@@ -1246,7 +1146,7 @@
             playCallSound();
         };
         socket.on('incoming_call', showIncomingCallUI);
-        socket.on('call_received', showIncomingCallUI); 
+        socket.on('call_received', showIncomingCallUI); // ★ 新規イベント？
 
         const showActiveCallUI = d => {
             console.log('showActiveCallUI called with:', d);
@@ -1257,7 +1157,7 @@
             setupPeer(d.answerer_id, true, d.icon_url, d.nickname);
         };
         socket.on('call_answered', showActiveCallUI);
-        socket.on('call_started', showActiveCallUI); 
+        socket.on('call_started', showActiveCallUI); // ★ 新規イベント？
 
         socket.on('call_rejected', d => {
             hide('modal-calling');
@@ -1287,7 +1187,7 @@
             playCallSound();
         };
         socket.on('incoming_text_call', showIncomingTextCallUI);
-        socket.on('text_call_received', showIncomingTextCallUI);
+        socket.on('text_call_received', showIncomingTextCallUI); // ★ 新規イベント？
 
         socket.on('text_call_started', d => {
             console.log('text_call_started called with:', d);
@@ -1551,11 +1451,8 @@
     }
     
     function openMsgOpt(e, msgId, isMe, timestamp) {
-        if(!db) return;
-        try {
-            const dbReq = db.transaction('messages', 'readonly').objectStore('messages').get(msgId);
-            dbReq.onsuccess = () => { const m = dbReq.result; if(!m || m.is_deleted) return; showContextMenu(e.pageX, e.pageY, msgId, m.content.substring(0,20), m.user_name, isMe, timestamp); }
-        } catch(e){}
+        const dbReq = db.transaction('messages', 'readonly').objectStore('messages').get(msgId);
+        dbReq.onsuccess = () => { const m = dbReq.result; if(!m || m.is_deleted) return; showContextMenu(e.pageX, e.pageY, msgId, m.content.substring(0,20), m.user_name, isMe, timestamp); }
     }
 
     function showContextMenu(x, y, msgId, textPreview, userName, isMe, timestamp){
@@ -1757,7 +1654,7 @@
         
         // 24時間以内のノートのみをフィルタリング
         const validNotes = l.filter(n => {
-            const createdAt = n.timestamp ? new Date(n.timestamp).getTime() : 0; // ✅ 修正: created_at -> timestamp
+            const createdAt = n.created_at ? new Date(n.created_at).getTime() : 0;
             return now - createdAt < EXPIRY_24H;
         });
         
@@ -1855,7 +1752,7 @@
         myInfo[key]=val; localStorage.setItem('myInfo',JSON.stringify(myInfo)); 
         const sc=id('sc-'+(key==='username'?'id':key==='nickname'?'nick':'status')); 
         if(sc){sc.classList.add('show');setTimeout(()=>sc.classList.remove('show'),2000);} 
-        if(key==='username'){id('my-id-disp').innerText=val; try { QRCode.toCanvas(id('my-qr'),val,{width:200, margin:2}); } catch(e){} } 
+        if(key==='username'){id('my-id-disp').innerText=val; QRCode.toCanvas(id('my-qr'),val,{width:200, margin:2});} 
     }
 
     function requestPwChange(e) { if(e) e.preventDefault(); apiPost('/edu/user/request_password_change',{new_password:id('set-new-pw').value}).then(r=>{if(r&&r.ok){showToast('管理者に申請しました');id('set-new-pw').value='';}}); }
@@ -1993,7 +1890,7 @@
                     await showConfirm("マイクのアクセスが拒否されました。設定から許可してください。");
                 });
             } else {
-                await showConfirm("マイクのアクセスが拒ぎされました。設定から許可してください。");
+                await showConfirm("マイクのアクセスが拒否されました。設定から許可してください。");
             }
         });
     }
