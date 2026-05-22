@@ -714,6 +714,7 @@
     let currentMain = localStorage.getItem('activeMain') || 'chat';
     let onlineStatusCache = {}; 
     let titleBlinkInterval = null;
+    let titleBlinkType = null;
     let originalTitle = "Friend Station";
     let prevNotifIds = new Set();
     let isFirstLoadNotifs = true;
@@ -983,11 +984,15 @@
         hide('modal-media-view');
     }
 
-    function startTitleBlink(type = 'メッセージ') {
+    function startTitleBlink(type = 'メッセージ', senderName = '') {
         if(!document.hidden) return;
+        if(type === '通知' && titleBlinkType === 'メッセージ') return;
         if(titleBlinkInterval) clearInterval(titleBlinkInterval);
+        titleBlinkType = type;
         let showMsg = true;
-        const label = type === '通知' ? '新着通知' : '新着メッセージ';
+        const label = type === '通知'
+            ? '新着通知'
+            : senderName ? `${senderName}からのメッセージ` : '新着メッセージ';
         titleBlinkInterval = setInterval(() => {
             document.title = showMsg ? `(!) 【${label}】` : originalTitle;
             showMsg = !showMsg;
@@ -1007,6 +1012,7 @@
     document.addEventListener("visibilitychange", () => {
         if(!document.hidden) {
             if(titleBlinkInterval) { clearInterval(titleBlinkInterval); titleBlinkInterval = null; }
+            titleBlinkType = null;
             document.title = originalTitle;
             updateUnreadBadge();
             if(currentRoom && currentMain === 'chat') markReadSafely();
@@ -1103,10 +1109,10 @@
             await idbPutMsg(m); 
             if(m.room_id===currentRoom && id('main-chat').classList.contains('active')){
                 renderMsg(m, true); scrollToBottom('chat'); 
-                if(!document.hidden) markReadSafely(); else { startTitleBlink(); playNotifSound(); }
+                if(!document.hidden) markReadSafely(); else { startTitleBlink('メッセージ', m.user_name); playNotifSound(); }
             } else { 
                 updateUnreadBadge(); 
-                if(m.user_id!==myInfo.id) { startTitleBlink(); if(localStorage.getItem('set-notif')!=='false' && Notification.permission==="granted"){ playNotifSound(); new Notification(m.user_name, {body: m.type==='text'?m.content:'メディア'}); } }
+                if(m.user_id!==myInfo.id) { startTitleBlink('メッセージ', m.user_name); if(localStorage.getItem('set-notif')!=='false' && Notification.permission==="granted"){ playNotifSound(); new Notification(m.user_name, {body: m.type==='text'?m.content:'メディア'}); } }
             }
         });
         
@@ -1115,7 +1121,17 @@
         socket.on('messages_read_bulk', ({roomId, updates}) => { if(roomId === currentRoom) { updates.forEach(u => { const rdEl = id(`rd-${u.msg_id}`); if(rdEl) { if(roomId.startsWith('g_')) { rdEl.innerText = `既読 ${u.read_count}`; rdEl.style.display = 'inline'; } else { rdEl.innerText = `既読`; rdEl.style.display = 'inline'; } } }); } });
         socket.on('messages_read', ({roomId}) => { if(roomId === currentRoom && !roomId.startsWith('g_')) { document.querySelectorAll('.msg-info .is-read').forEach(el => { el.innerText = '既読'; el.style.display = 'inline'; }); } });
 
-        socket.on('new_notification',()=>{loadNotifs(); updateUnreadBadge(); if(document.hidden) startTitleBlink('通知');});
+        socket.on('new_notification',()=>{
+            loadNotifs();
+            updateUnreadBadge();
+            if(localStorage.getItem('set-notif')!=='false') {
+                playNotifSound();
+                if(Notification.permission==='granted') {
+                    new Notification('通知', { body: '新しい通知があります' });
+                }
+            }
+            if(document.hidden) startTitleBlink('通知');
+        });
         socket.on('unread_update', updateUnreadBadge);
         socket.on('new_post_timeline',()=>{if(currentMain==='home')loadTimeline();});
         socket.on('notes_update', loadNotes);
@@ -1316,7 +1332,15 @@
 
     async function acceptRequestFromProfile(reqId, uid) {
         const r = await apiPost('/edu/friends/accept', {request_id: reqId});
-        if(r && r.ok) { showToast('承認しました'); const actArea = id('mp-action-area'); actArea.innerHTML = `<button type="button" style="background:var(--bg-hover);color:var(--text-sub);cursor:default;" disabled><i class="fa-solid fa-user-check"></i> フレンド</button>`; }
+        if(r && r.ok) {
+            showToast('承認しました');
+            const actArea = id('mp-action-area');
+            if(actArea) {
+                actArea.innerHTML = `<button type="button" style="background:var(--bg-hover);color:var(--text-sub);cursor:default;" disabled><i class="fa-solid fa-user-check"></i> フレンド</button>`;
+            }
+            loadNotifs();
+            updateUnreadBadge();
+        }
     }
 
     function showCurrentProfile(){ if(currentTarget) apiGet('/edu/friends/list').then(async r=>{ if(r&&r.ok){const l=await r.json(); const u=l.find(x=>x.id===currentTarget); if(u) openProfileModal(u.id, u.username, u.nickname, u.icon_url, u.status_message);} }); }
