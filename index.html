@@ -1731,7 +1731,7 @@
         isFirstLoadNotifs = false; l.forEach(n => prevNotifIds.add(n.id));
 
         id('ui-notifs').innerHTML=l.map(n=>{ 
-            let a=''; if(n.type==='friend_request'&&n.req_status==='pending') a=`<div style="margin-top:15px;"><button type="button" class="success" style="padding:10px 20px;border-radius:20px;font-size:14px;" onclick="acceptRequest('${n.request_id}', this)">承認</button></div>`; 
+            let a=''; if(n.type==='friend_request'&&n.req_status==='pending') a=`<div style="margin-top:15px;"><button type="button" class="success" style="padding:10px 20px;border-radius:20px;font-size:14px;" onclick="acceptRequestFromProfile('${n.request_id}', '${n.sender_id}')">承認</button></div>`; 
             let icon = n.type==='system' ? '<i class="fa-solid fa-bullhorn" style="color:var(--accent);margin-right:8px;"></i>' : '';
             return `<li style="padding:20px;border-bottom:1px solid var(--border);${n.is_read?'':'background:var(--bg-hover);border-radius:12px;'}"><div style="font-size:15px;line-height:1.5;white-space:pre-wrap;">${icon}${n.content}</div>${a}</li>`; 
         }).join(''); 

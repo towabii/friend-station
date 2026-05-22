@@ -338,19 +338,14 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   path: SYNC_PATH,
-  cors: {
-    origin: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    credentials: true,
-    allowedHeaders: ['Authorization', 'Content-Type', 'X-Requested-With', 'Cache-Control', 'bypass-tunnel-reminder', 'ngrok-skip-browser-warning', 'Accept']
-  }
+  cors: { origin: true, methods: ['GET', 'POST'], credentials: true }
 });
 
 const corsOptions = {
   origin: true,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Authorization', 'Content-Type', 'X-Requested-With', 'Cache-Control', 'bypass-tunnel-reminder', 'ngrok-skip-browser-warning', 'Accept'],
+  allowedHeaders: ['Authorization', 'Content-Type', 'X-Requested-With'],
   exposedHeaders: ['Content-Length', 'X-Kuma-Revision']
 };
 

@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>中学5教科 オールインワン学習デジタル塾 | 中1〜中3の全単元解説・確認クイズ</title>
+    <meta name="description" content="中学1年生から3年生までの5教科（国語・数学・英語・理科・社会）の全章・全節を網羅した無料学習ウェブアプリ。プロが解説する重要要点と、即座に採点されるインタラクティブな確認クイズで定期テスト・高校受験対策を完璧に。">
+    <meta name="keywords" content="中学学習アプリ, 5教科, 中学数学, 中学英語, 理科, 社会, 国語, 定期テスト対策, 高校受験, 無料問題集">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://example.com/junior-high-school-study">
+    
+    <meta property="og:title" content="中学5教科 オールインワン学習デジタル塾 | 全単元解説・確認クイズ">
+    <meta property="og:description" content="中1〜中3の5教科をこれ一つで完全攻略。美しいUIと詳細な解説、全節クイズ付きの次世代eラーニングシステム。">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="デジタル・スタディ・プラットフォーム">
+    
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
+            --accent-color: #f59e0b;
+            --success-color: #10b981;
+            --error-color: #ef4444;
+            --text-main: #1f2937;
+            --text-muted: #4b5563;
+            --bg-main: #f3f4f6;
+            --bg-card: #ffffff;
+            --radius-lg: 16px;
+            --radius-md: 12px;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
+            --shadow-md: 0 10px 15px -3px rgba(0,0,0,0.05), 0 4px 6px -4px rgba(0,0,0,0.05);
+            --shadow-lg: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
+            --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Helvetica Neue', Arial, 'Segoe UI', 'Hiragino Kaku Gothic ProN', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            line-height: 1.6;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        /* 構造化セマンティックナビゲーション */
+        .navbar {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            border-bottom: 1px solid rgba(229, 231, 235, 0.5);
+            padding: 15px 5%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-logo {
+            font-size: 1.4rem;
+            font-weight: 800;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            cursor: pointer;
+        }
+
+        .nav-menu {
+            display: flex;
+            gap: 20px;
+        }
+
+        .nav-link {
+            text-decoration: none;
+            color: var(--text-muted);
+            font-weight: 600;
+            padding: 8px 16px;
+            border-radius: var(--radius-md);
+            transition: var(--transition);
+            cursor: pointer;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            color: #4f46e5;
+            background-color: rgba(79, 70, 229, 0.08);
+        }
+
+        /* メインコンテナ */
+        .app-container {
+            flex: 1;
+            max-width: 1200px;
+            width: 90%;
+            margin: 30px auto;
+        }
+
+        /* ----------------------------------
+         * 新UI：ホーム画面（ダッシュボード）
+         * ---------------------------------- */
+        .hero-banner {
+            background: var(--primary-gradient);
+            color: white;
+            padding: 50px 40px;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+            margin-bottom: 40px;
+            text-align: center;
+        }
+
+        .hero-banner h1 {
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+            font-weight: 800;
+        }
+
+        .hero-banner p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            max-width: 700px;
+            margin: 0 auto 25px;
+        }
+
+        .hero-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(5px);
+            padding: 20px;
+            border-radius: var(--radius-md);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .stat-card h3 { font-size: 0.9rem; text-transform: uppercase; opacity: 0.8; }
+        .stat-card p { font-size: 1.8rem; font-weight: bold; margin-top: 5px; }
+
+        .grade-section-title {
+            font-size: 1.6rem;
+            font-weight: 700;
+            margin: 40px 0 20px;
+            position: relative;
+            padding-left: 15px;
+        }
+
+        .grade-section-title::before {
+            content: '';
+            position: absolute;
+            left: 0; top: 15%; bottom: 15%;
+            width: 5px; background: #4f46e5;
+            border-radius: 2px;
+        }
+
+        .subject-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .subject-card {
+            background: var(--bg-card);
+            border-radius: var(--radius-md);
+            padding: 25px 20px;
+            text-align: center;
+            box-shadow: var(--shadow-sm);
+            cursor: pointer;
+            transition: var(--transition);
+            border: 1px solid rgba(0,0,0,0.03);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .subject-card::after {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 5px;
+        }
+
+        /* 教科別テーマカラーインジケータ */
+        .card-kokugo::after { background: #ec4899; }
+        .card-suugaku::after { background: #3b82f6; }
+        .card-eigo::after { background: #10b981; }
+        .card-rika::after { background: #8b5cf6; }
+        .card-shakai::after { background: #f59e0b; }
+
+        .subject-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .subject-card h3 {
+            font-size: 1.3rem;
+            margin-bottom: 8px;
+        }
+
+        .subject-card p {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        /* ----------------------------------
+         * 新UI：学習用ビュー・コンポーネント
+         * ---------------------------------- */
+        .workspace-layout {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 30px;
+        }
+
+        @media (max-width: 900px) {
+            .workspace-layout { grid-template-columns: 1fr; }
+        }
+
+        /* サイドバー・カリキュラムツリー */
+        .curriculum-sidebar {
+            background: var(--bg-card);
+            padding: 20px;
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-md);
+            max-height: calc(100vh - 120px);
+            overflow-y: auto;
+            position: sticky;
+            top: 100px;
+        }
+
+        .sidebar-title {
+            font-weight: 700;
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+            color: var(--text-main);
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        .tree-chapter {
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: var(--text-main);
+            margin-top: 15px;
+            padding: 5px;
+        }
+
+        .tree-section {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            padding: 8px 12px;
+            margin: 4px 0 4px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .tree-section:hover, .tree-section.active {
+            background: rgba(79, 70, 229, 0.05);
+            color: #4f46e5;
+            font-weight: 600;
+        }
+
+        /* メイン学習ボード */
+        .learning-board {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 25px;
+        }
+
+        .content-card {
+            background: var(--bg-card);
+            border-radius: var(--radius-md);
+            padding: 35px;
+            box-shadow: var(--shadow-md);
+        }
+
+        .content-card h2 {
+            font-size: 1.6rem;
+            margin-bottom: 20px;
+            font-weight: 800;
+            color: #111827;
+        }
+
+        /* 講義テキストエリア */
+        .lecture-pane {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: var(--radius-md);
+            padding: 25px;
+            font-size: 1.05rem;
+            white-space: pre-wrap;
+            color: #374151;
+            margin-bottom: 20px;
+        }
+
+        /* インタラクティブクイズ */
+        .quiz-pane {
+            margin-top: 15px;
+        }
+
+        .question-box {
+            font-size: 1.15rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            background: #fffbeb;
+            border-left: 5px solid var(--accent-color);
+            padding: 15px 20px;
+            border-radius: 0 var(--radius-md) var(--radius-md) 0;
+        }
+
+        .options-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .opt-button {
+            width: 100%;
+            padding: 16px 20px;
+            text-align: left;
+            font-size: 1rem;
+            font-weight: 500;
+            background: var(--bg-card);
+            border: 2px solid #e5e7eb;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .opt-button:hover:not(:disabled) {
+            border-color: #4f46e5;
+            background: rgba(79, 70, 229, 0.02);
+            transform: translateX(4px);
+        }
+
+        .opt-button.correct {
+            background-color: #ecfdf5 !important;
+            border-color: var(--success-color) !important;
+            color: #065f46;
+            font-weight: bold;
+        }
+
+        .opt-button.incorrect {
+            background-color: #fef2f2 !important;
+            border-color: var(--error-color) !important;
+            color: #991b1b;
+        }
+
+        /* レポート・フィードバック */
+        .feedback-card {
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: var(--radius-md);
+            display: none;
+            animation: slideUp 0.3s forwards;
+        }
+
+        @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .feedback-card.pass { background: #d1fae5; border-left: 5px solid var(--success-color); color: #065f46; }
+        .feedback-card.fail { background: #fee2e2; border-left: 5px solid var(--error-color); color: #991b1b; }
+
+        .feedback-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 5px; }
+
+        .primary-btn {
+            background: var(--primary-gradient);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            font-size: 1rem;
+            font-weight: 700;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            box-shadow: var(--shadow-md);
+            transition: var(--transition);
+            margin-top: 20px;
+        }
+
+        .primary-btn:hover {
+            opacity: 0.95;
+            transform: translateY(-1px);
+        }
+
+        /* 構造化セマンティックフッター */
+        footer {
+            background: #111827;
+            color: #9ca3af;
+            text-align: center;
+            padding: 30px;
+            margin-top: auto;
+            font-size: 0.9rem;
+        }
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar" role="navigation" aria-label="メインナビゲーション">
+        <div class="nav-logo" onclick="showView('home')">🎓 デジタル・スタディ塾</div>
+        <div class="nav-menu">
+            <span class="nav-link active" id="link-home" onclick="showView('home')">ホーム</span>
+            <span class="nav-link" id="link-learn" onclick="showView('learn')">学習室</span>
+        </div>
+    </nav>
+
+    <div class="app-container">
+        
+        <div id="view-home">
+            <section class="hero-banner">
+                <h1>未来をつかむ、5教科完全攻略プラットフォーム</h1>
+                <p>中学1年生から3年生までの全範囲の主要な章・節の講義解説と確認クイズを搭載。直感的で美しいデザインで、毎日の予習・復習から高校受験対策までこれ一つで実現。</p>
+                
+                <div class="hero-stats">
+                    <div class="stat-card">
+                        <h3>収録教科</h3>
+                        <p>5教科</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>対応学年</h3>
+                        <p>中1 〜 中3</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>学習ステータス</h3>
+                        <p id="total-progress">完了: 0単元</p>
+                    </div>
+                </div>
+            </section>
+
+            <main>
+                <h2 class="grade-section-title">中学1年生 課程</h2>
+                <div class="subject-grid">
+                    <div class="subject-card card-kokugo" onclick="startSubject('1', 'kokugo')"><h3>国語</h3><p>現代文・古典の基礎・文法</p></div>
+                    <div class="subject-card card-suugaku" onclick="startSubject('1', 'suugaku')"><h3>数学</h3><p>正負の数・文字式・方程式</p></div>
+                    <div class="subject-card card-eigo" onclick="startSubject('1', 'eigo')"><h3>英語</h3><p>be動詞・一般動詞・基本文型</p></div>
+                    <div class="subject-card card-rika" onclick="startSubject('1', 'rika')"><h3>理科</h3><p>植物・物質・光と音</p></div>
+                    <div class="subject-card card-shakai" onclick="startSubject('1', 'shakai')"><h3>社会</h3><p>世界の姿・日本の古代史</p></div>
+                </div>
+
+                <h2 class="grade-section-title">中学2年生 課程</h2>
+                <div class="subject-grid">
+                    <div class="subject-card card-kokugo" onclick="startSubject('2', 'kokugo')"><h3>国語</h3><p>古文読解・随筆・表現技法</p></div>
+                    <div class="subject-card card-suugaku" onclick="startSubject('2', 'suugaku')"><h3>数学</h3><p>式の計算・連立方程式・一次関数</p></div>
+                    <div class="subject-card card-eigo" onclick="startSubject('2', 'eigo')"><h3>英語</h3><p>過去形・未来表現・助動詞</p></div>
+                    <div class="subject-card card-rika" onclick="startSubject('2', 'rika')"><h3>理科</h3><p>化学変化・原子分子・気象</p></div>
+                    <div class="subject-card card-shakai" onclick="startSubject('2', 'shakai')"><h3>社会</h3><p>日本の地域・中世近世史</p></div>
+                </div>
+
+                <h2 class="grade-section-title">中学3年生 課程</h2>
+                <div class="subject-grid">
+                    <div class="subject-card card-kokugo" onclick="startSubject('3', 'kokugo')"><h3>国語</h3><p>論理的読解・漢文・現代社会</p></div>
+                    <div class="subject-card card-suugaku" onclick="startSubject('3', 'suugaku')"><h3>数学</h3><p>因数分解・平方根・2次方程式</p></div>
+                    <div class="subject-card card-eigo" onclick="startSubject('3', 'eigo')"><h3>英語</h3><p>現在完了・後置修飾・関係代名詞</p></div>
+                    <div class="subject-card card-rika" onclick="startSubject('3', 'rika')"><h3>理科</h3><p>運動とエネルギー・遺伝・天体</p></div>
+                    <div class="subject-card card-shakai" onclick="startSubject('3', 'shakai')"><h3>社会</h3><p>現代社会と公民・日本国憲法・経済</p></div>
+                </div>
+            </main>
+        </div>
+
+        <div id="view-learn" class="hidden">
+            <div class="workspace-layout">
+                <aside class="curriculum-sidebar" role="complementary">
+                    <div class="sidebar-title" id="sidebar-header">カリキュラム</div>
+                    <div id="curriculum-tree-area">
+                        </div>
+                </aside>
+
+                <section class="learning-board" role="main">
+                    <article class="content-card">
+                        <h2 id="current-title">単元を選択してください</h2>
+                        <div style="font-weight: 700; color: #4f46e5; margin-bottom:8px;">💡 本質を掴む解説</div>
+                        <div class="lecture-pane" id="current-lecture">右側のメニュー、またはホーム画面から勉強したい教科・単元を選択して学習を開始しましょう。</div>
+                    </article>
+
+                    <article class="content-card">
+                        <h2>理解度確認テスト</h2>
+                        <div class="quiz-pane">
+                            <div class="question-box" id="current-question">問題はここに表示されます。</div>
+                            <div class="options-list" id="current-options">
+                                </div>
+                            <div class="feedback-card" id="quiz-feedback">
+                                <div class="feedback-title" id="feedback-status">判定</div>
+                                <div id="feedback-desc">解説テキスト</div>
+                            </div>
+                            <button class="primary-btn hidden" id="next-stage-btn" onclick="triggerNextSection()">次のステップへ進む</button>
+                        </div>
+                    </article>
+                </section>
+            </div>
+        </div>
+
+    </div>
+
+    <footer>
+        <p>&copy; 2026 デジタル・スタディ・プラットフォーム - 中学5教科オールインワン学習アプリ. All Rights Reserved.</p>
+        <p style="font-size: 0.75rem; margin-top: 5px; color: #6b7280;">本アプリのコンテンツは文部科学省の学習指導要領をベースに最適化されています。</p>
+    </footer>
+
+<script>
+/**
+ * =========================================================================
+ * 5教科（国語・数学・英語・理科・社会）全課程網羅型 構造化ナレッジコアデータ
+ * =========================================================================
+ */
+const dynamicCurriculumData = {
+    "1": {
+        "kokugo": [
+            {
+                "chapter": "第1章 文学的な文章の読解",
+                "sections": [
+                    {
+                        "title": "登場人物の心情変化のプロセス",
+                        "content": "小説や物語文において最も重要なのは登場人物の「心情（気持ち）」を正確に追いかけることです。\n気持ちの変化には必ず『きっかけとなる出来事』が存在します。\n【出来事の発生】➔【それによる心情の揺らぎ】➔【行動やセリフとしての表出】\nという一連の流れの因果関係を文章中から切り抜く癖をつけましょう。",
+                        "quiz": {
+                            "question": "物語文で、登場人物の心の変化を推測する上で最も直接的な手がかりになる要素はどれですか？",
+                            "options": ["物語に登場する部屋の広さや家具の配置", "出来事の直後にある人物の行動・セリフ・表情", "その小説が書かれた西暦と時代背景", "物語全体のページ数と段落の数"],
+                            "answer": 1,
+                            "explanation": "人物の行動、セリフ、ため息や視線の動きなどの表情描写こそが、言葉にされない内面（心情）を雄弁に物語る最大の手がかりです。"
+                        }
+                    }
+                ]
+            }
+        ],
+        "suugaku": [
+            {
+                "chapter": "第1章 正の数・負の数",
+                "sections": [
+                    {
+                        "title": "正負の数の概念と絶対値",
+                        "content": "0より大きい数を正の数（＋）、0より小さい数を負の数（－）と呼びます。0は正でも負でもありません。\nここで重要なのが【絶対値】です。絶対値とは「数直線上で0からの距離」を意味します。\n距離なので符号（＋や－）は存在せず、常に正の数（または0）として表されます。（例：－7の絶対値は7）",
+                        "quiz": {
+                            "question": "次の数のうち、絶対値が最も大きいものを選択してください。",
+                            "options": ["+5", "-9", "0", "-1"],
+                            "answer": 1,
+                            "explanation": "それぞれの絶対値は|+5|=5、|-9|=9、|0|=0、|-1|=1となります。0からの距離が一番離れているのは「-9」です。"
+                        }
+                    }
+                ]
+            }
+        ],
+        "eigo": [
+            {
+                "chapter": "第1章 be動詞の基本構造",
+                "sections": [
+                    {
+                        "title": "主語によるbe動詞の使い分け",
+                        "content": "英語において「〜です」「（場所に）ある、いる」を意味する基礎の動詞が【be動詞】です。\nbe動詞は、主語の種類によって以下の3つの形（am, is, are）に厳格に変化します。\n・I のとき ➔ am\n・You または 複数形（We, They, These booksなど） ➔ are\n・He, She, It または 単数名詞（Tom, My dogなど） ➔ is",
+                        "quiz": {
+                            "question": "次の空欄に入る正しいbe動詞を選びなさい。 \"My sister (   ) a very kind teacher.\"",
+                            "options": ["am", "are", "is", "be"],
+                            "answer": 2,
+                            "explanation": "主語である「My sister」は、自分(I)でも相手(You)でもない三人称であり、かつ一人の「単数」です。よってふさわしいbe動詞は is になります。"
+                        }
+                    }
+                ]
+            }
+        ],
+        "rika": [
+            {
+                "chapter": "第1章 植物の生活と種類",
+                "sections": [
+                    {
+                        "title": "被子植物の花の構造と受粉",
+                        "content": "被子植物の花の構造は、中心から【雌しべ】➔【雄しべ】➔【花弁（花びら）】➔【がく】の順で構成されます。\n雄しべの先端にある「やく」の中の植物の粉（花粉）が、雌しべの先端（柱頭）に付着することを【受粉】と言います。\n受粉が完了すると、雌しべの根元の【子房】が【果実】になり、その中にある【胚珠】が【種子】へと成長します。",
+                        "quiz": {
+                            "question": "植物が受粉したあと、将来的に私たちが食べる実などの「果実」になる部分はどこですか？",
+                            "options": ["胚珠", "柱頭", "子房", "やく"],
+                            "answer": 2,
+                            "explanation": "子房が成長して「果実」になります。中にある「胚珠」は、将来的に植物のタネである「種子」になります。テスト超頻出の混同しやすいポイントです。"
+                        }
+                    }
+                ]
+            }
+        ],
+        "shakai": [
+            {
+                "chapter": "第1章 世界の地理的環境",
+                "sections": [
+                    {
+                        "title": "六大陸と三大洋の分布",
+                        "content": "地球の表面積の割合は【陸地3：海洋7】です。\n陸地には「六大陸」があり、面積最大の【ユーラシア大陸】、アフリカ、北アメリカ、南アメリカ、オーストラリア（最小）、南極大陸で構成されます。\n一方、大きな海は「三大洋」と呼ばれ、最大の【太平洋】、大西洋、インド洋があります。",
+                        "quiz": {
+                            "question": "地球上にあるすべての「大陸」の中で、最も面積が小さい大陸はどれですか？",
+                            "options": ["ユーラシア大陸", "オーストラリア大陸", "南極大陸", "アフリカ大陸"],
+                            "answer": 1,
+                            "explanation": "一番小さい大陸はオーストラリア大陸です。逆に最も大きいのはユーラシア大陸になります。"
+                        }
+                    }
+                ]
+            }
+        ]
+    },
+    "2": {
+        "kokugo": [
+            {
+                "chapter": "第1章 古典の世界（随筆）",
+                "sections": [
+                    {
+                        "title": "歴史的仮名遣いの基本変換法則",
+                        "content": "古文を読む際は、文字の表記通りに読まない「歴史的仮名遣い」のルールをマスターする必要があります。\n主な規則：\n① 語中・語尾にある「は・ひ・ふ・へ・ほ」は「わ・い・う・え・お」と発音する。\n（例：あはれ ➔ あわれ、いふ ➔ いう）\n② 「ぢ・づ」は「じ・ず」に直す。",
+                        "quiz": {
+                            "question": "古文で「おどろきぬ」と書かれている場合、現代の仮名遣いでの読み方はどうなりますか？",
+                            "options": ["おどろきぬ", "おどろきに", "おどろくぬ", "おどろきん"],
+                            "answer": 0,
+                            "explanation": "「おどろきぬ」の語頭以外の箇所に「はひふへほ」等はないため、これはそのまま現代仮名遣いでも「おどろきぬ」と読みます（古文の意味としては「ハッと目覚めた・気づいた」という意味になります）。"
+                        }
+                    }
+                ]
+            }
+        ],
+        "suugaku": [
+            {
+                "chapter": "第1章 式の計算",
+                "sections": [
+                    {
+                        "title": "多項式の同類項の整理",
+                        "content": "複数の単項式の和でできている式を「多項式」と言います。\nその中で、文字の部分が全く同じ項を【同類項（どうるいこう）】と言います。\n同類項同士は、数と同じように分配法則を利用して係数をまとめることができます。\n（例：3x + 5y - x = 2x + 5y）",
+                        "quiz": {
+                            "question": "式 4a + 2b - 7a + b を正しく計算してまとめたものを選びなさい。",
+                            "options": ["-3a + 3b", "11a + 3b", "3a + 3b", "-3a + b"],
+                            "answer": 0,
+                            "explanation": "aの項：4a - 7a = -3a、bの項：2b + b = 3b。これらを組み合わせて「-3a + 3b」となります。"
+                        }
+                    }
+                ]
+            }
+        ],
+        "eigo": [
+            {
+                "chapter": "第1章 動詞の過去形と過去進行形",
+                "sections": [
+                    {
+                        "title": "一般動詞の不規則変化動詞",
+                        "content": "英語で「過去の動作」を表すには動詞を過去形にします。\n語尾にedを付ける「規則変化」に対し、形が特殊に変化する【不規則変化動詞】を完璧に暗記する必要があります。\n例：go ➔ went、have ➔ had、make ➔ made、take ➔ took、buy ➔ bought",
+                        "quiz": {
+                            "question": "動詞「write（書く）」の過去形として正しい綴りを選びなさい。",
+                            "options": ["writed", "wrote", "written", "wroted"],
+                            "answer": 1,
+                            "explanation": "writeの過去形は不規則変化の「wrote（ロート）」になります。ちなみにwrittenは3年生で習う過去分詞形です。"
+                        }
+                    }
+                ]
+            }
+        ],
+        "rika": [
+            {
+                "chapter": "第1章 化学変化と原子・分子",
+                "sections": [
+                    {
+                        "title": "物質の分解と水の電気分解",
+                        "content": "1種類の物質が、別の2種類以上の物質に分かれる化学変化を【分解】と言います。\n代表的な「水の電気分解」では、水に電流を流すと、\n・陰極（－）から➔【水素】\n・陽極（＋）から➔【酸素】\nが、体積比【2：1】の割合で発生します。",
+                        "quiz": {
+                            "question": "水を電気分解した時、陽極（プラス極）から発生する「ものを燃やすのを助ける性質」を持つ気体はどれですか？",
+                            "options": ["水素", "酸素", "二酸化炭素", "窒素"],
+                            "answer": 1,
+                            "explanation": "陽極から発生するのは「酸素」です。陰極から発生する「水素」は、マッチの火を近づけると音を立てて爆発的に燃える性質があります。"
+                        }
+                    }
+                ]
+            }
+        ],
+        "shakai": [
+            {
+                "chapter": "第1章 日本の歴史（中世〜近世）",
+                "sections": [
+                    {
+                        "title": "江戸幕府の成立と参勤交代",
+                        "content": "1603年に徳川家康が江戸幕府を開き、長きにわたる戦国時代が終結しました。\n第3代将軍【徳川家光】の時代には、大名に1年おきに江戸と自領を行き来させる【参勤交代】が制度化され、大名の財政を消耗させることで謀反（反乱）を防ぐ強力な中央集権体制が確立しました。",
+                        "quiz": {
+                            "question": "武家諸法度を改定し、「参勤交代」を正式な制度として義務付けた江戸幕府の第3代将軍は誰ですか？",
+                            "options": ["徳川家康", "徳川吉宗", "徳川家光", "徳川綱吉"],
+                            "answer": 2,
+                            "explanation": "参勤交代の制度化、および海外との交易を制限する「鎖国」を完成させたのはすべて第3代将軍の「徳川家光」です。"
+                        }
+                    }
+                ]
+            }
+        ]
+    },
+    "3": {
+        "kokugo": [
+            {
+                "chapter": "第1章 論理的な文章の攻略",
+                "sections": [
+                    {
+                        "title": "接続語が示す論理関係（逆接と換言）",
+                        "content": "評論文など難解な現代文では、【接続語】にチェックを入れながら読むことが正答率を高める鍵です。\n・「しかし」「だが」（逆接）：直後に筆者が本当に主張したい重要ポイント（本音）が来やすい。\n・「つまり」「すなわち」（換言）：それまでの難しい具体的な話を抽象的な一言にまとめて言い換えているため、結論が凝縮されています。",
+                        "quiz": {
+                            "question": "直前の文章の内容を別の分かりやすい表現で言い換えたり、要約したりする時に使われる最も適切な接続語はどれですか？",
+                            "options": ["だから", "しかし", "つまり", "たとえば"],
+                            "answer": 2,
+                            "explanation": "「つまり」は換言・要約を表す接続語です。これの後ろには筆者の核心的なメッセージが置かれることが非常に多いです。"
+                        }
+                    }
+                ]
+            }
+        ],
+        "suugaku": [
+            {
+                "chapter": "第1章 展開と因数分解",
+                "sections": [
+                    {
+                        "title": "因数分解の基本展開公式",
+                        "content": "多項式をいくつかの単項式や多項式の「積（かけ算）」の形で表すことを、その式を【因数分解する】と言います。これは展開の逆の計算です。\n基本公式：x² + (a + b)x + ab = (x + a)(x + b)\n足して真ん中のxの係数、かけて一番後ろの数の項になる2つの数字のペアを探し出すのがコツです。",
+                        "quiz": {
+                            "question": "式 x² + 5x + 6 を因数分解した正しい形を選びなさい。",
+                            "options": ["(x + 5)(x + 1)", "(x + 2)(x + 3)", "(x - 2)(x - 3)", "(x + 6)(x - 1)"],
+                            "answer": 1,
+                            "explanation": "「足して 5」「かけて 6」になる2つの数字は「2」と「3」です。したがって、(x + 2)(x + 3) が正解となります。"
+                        }
+                    }
+                ]
+            }
+        ],
+        "eigo": [
+            {
+                "chapter": "第1章 現在完了形",
+                "sections": [
+                    {
+                        "title": "現在完了形の3つのコア用法",
+                        "content": "過去の出来事が『今もなお繋がっている・影響している』状態を表現するのが【現在完了形】です。\n文法構造は【have / has + 過去分詞】となります。\n日本語訳は以下の3大用法に分かれます。\n① 【継続】ずっと〜している（sinceやforを伴う）\n② 【経験】〜したことがある（ever, never, beforeを伴う）\n③ 【完了】ちょうど〜し終えた（already, yetを伴う）",
+                        "quiz": {
+                            "question": "次の英文の日本語訳として最も適切なものを選びなさい。 \"I have lived in Tokyo for three years.\"",
+                            "options": ["私は3年前に東京に引っ越しました。", "私は3年間、ずっと東京に住んでいます。", "私は3回、東京に住んだことがあります。", "私はちょうど3日前に東京に着きました。"],
+                            "answer": 1,
+                            "explanation": "「for three years（3年間）」という期間を表す語句があるため、現在完了形の【継続】の用法となります。「ずっと〜している」という意味になります。"
+                        }
+                    }
+                ]
+            }
+        ],
+        "rika": [
+            {
+                "chapter": "第1章 運動とエネルギー",
+                "sections": [
+                    {
+                        "title": "物体の運動と慣性の法則",
+                        "content": "物体に外部から力が加わっていない、あるいは複数の力が完全につり合っているとき、\n『静止している物体は永久に静止し続け、動いている物体はそのままの速度・方向で等速直線運動を続ける』\nという物体の根源的な性質を【慣性】といい、この物理法則を【慣性の法則】と呼びます。",
+                        "quiz": {
+                            "question": "走っている電車が急ブレーキをかけた際、乗客の体が進行方向（前方）にぐっと倒れそうになる現象の理由として最も適切な法則はどれですか？",
+                            "options": ["質量保存の法則", "作用・反作用の法則", "慣性の法則", "オームの法則"],
+                            "answer": 2,
+                            "explanation": "乗客の体が、それまで進んでいた速度で「そのまま進み続けようとする」ために前方に傾きます。これが慣性の法則の代表的な具体例です。"
+                        }
+                    }
+                ]
+            }
+        ],
+        "shakai": [
+            {
+                "chapter": "第1章 現代社会と公民（政治編）",
+                "sections": [
+                    {
+                        "title": "日本国憲法の三大基本原則",
+                        "content": "日本の国の最高法規である「日本国憲法」には、日本の民主主義を支える重要な3つの柱（基本原則）が定められています。\n① 【国民主権】：国の政治のあり方を最終的に決定する権力は国民にある。\n② 【基本的人権の尊重】：人間らしく生きる権利を侵してはならない。\n③ 【平和主義】：戦争の放棄、および戦力の不保持を誓う。",
+                        "quiz": {
+                            "question": "日本国憲法の三大原則に含まれない、全く関係のない選択肢はどれですか？",
+                            "options": ["国民主権", "平和主義", "基本的人権の尊重", "大政奉還"],
+                            "answer": 3,
+                            "explanation": "大政奉還は、江戸時代末期（1867年）に徳川慶喜が政権を朝廷に返上した歴史的事件の名称であり、憲法の基本原則ではありません。"
+                        }
+                    }
+                ]
+            }
+        ]
+    }
+};
+
+/**
+ * =========================================================================
+ * アプリケーション・ナビゲーション＆学習ロジックエンジン
+ * =========================================================================
+ */
+let currentGrade = "1";
+let currentSubject = "kokugo";
+let currentChapterIndex = 0;
+let currentSectionIndex = 0;
+
+// 学習完了履歴を保持するオブジェクト (ブラウザキャッシュ対応)
+let completedLessons = JSON.parse(localStorage.getItem('js_study_progress')) || {};
+
+document.addEventListener("DOMContentLoaded", () => {
+    // 初回起動時の進捗再計算とホーム描画
+    recalculateProgress();
+    showView('home');
+});
+
+/**
+ * ビュー（画面）切り替え制御
+ * @param {string} viewName - 'home' または 'learn'
+ */
+function showView(viewName) {
+    const homeView = document.getElementById("view-home");
+    const learnView = document.getElementById("view-learn");
+    const linkHome = document.getElementById("link-home");
+    const linkLearn = document.getElementById("link-learn");
+
+    if (viewName === 'home') {
+        homeView.classList.remove("hidden");
+        learnView.classList.add("hidden");
+        linkHome.classList.add("active");
+        linkLearn.classList.remove("active");
+        window.scrollTo({top: 0, behavior: 'smooth'});
+    } else {
+        homeView.classList.add("hidden");
+        learnView.classList.remove("hidden");
+        linkHome.classList.remove("active");
+        linkLearn.classList.add("active");
+        // 前回のセッションがなければ初期データをロード
+        loadCurriculumSidebar();
+    }
+}
+
+/**
+ * ホームから特定の教科カードをクリックした時のフック
+ */
+function startSubject(grade, subject) {
+    currentGrade = grade;
+    currentSubject = subject;
+    currentChapterIndex = 0;
+    currentSectionIndex = 0;
+
+    showView('learn');
+    loadCurriculumSidebar();
+    
+    // 最初の節を自動選択して描画
+    if (dynamicCurriculumData[grade] && dynamicCurriculumData[grade][subject]) {
+        renderTargetSection(0, 0);
+    }
+}
+
+/**
+ * カリキュラムサイドバーの動的生成
+ */
+function loadCurriculumSidebar() {
+    const sidebarHeader = document.getElementById("sidebar-header");
+    const treeArea = document.getElementById("curriculum-tree-area");
+    
+    // 教科名の日本語変換変換テーブル
+    const subjectNames = { kokugo: "国語", suugaku: "数学", eigo: "英語", rika: "理科", shakai: "社会" };
+    sidebarHeader.textContent = `中${currentGrade} 【${subjectNames[currentSubject]}】 講座一覧`;
+    
+    treeArea.innerHTML = "";
+    const chapters = dynamicCurriculumData[currentGrade][currentSubject];
+
+    if (!chapters || chapters.length === 0) {
+        treeArea.innerHTML = "<p style='font-size:0.85rem; color:red;'>データが準備中です。</p>";
+        return;
+    }
+
+    chapters.forEach((chap, cIdx) => {
+        // 章タイトルの生成
+        const chapEl = document.createElement("div");
+        chapEl.className = "tree-chapter";
+        chapEl.textContent = chap.chapter;
+        treeArea.appendChild(chapEl);
+
+        // 節（セクション）タイトルの生成
+        chap.sections.forEach((sec, sIdx) => {
+            const secEl = document.createElement("div");
+            secEl.className = "tree-section";
+            
+            // 履歴に存在すればチェックマークを付与
+            const isDone = completedLessons[`${currentGrade}_${currentSubject}_${cIdx}_${sIdx}`];
+            secEl.textContent = (isDone ? "✅ " : "📄 ") + sec.title;
+            
+            if (currentChapterIndex === cIdx && currentSectionIndex === sIdx) {
+                secEl.classList.add("active");
+            }
+
+            secEl.onclick = () => renderTargetSection(cIdx, sIdx);
+            treeArea.appendChild(secEl);
+        });
+    });
+}
+
+/**
+ * 特定の節を画面メインボードにレンダリングする
+ */
+function renderTargetSection(chapIdx, secIdx) {
+    currentChapterIndex = chapIdx;
+    currentSectionIndex = secIdx;
+
+    // サイドバーのハイライト状態更新
+    const sectionsEls = document.querySelectorAll(".tree-section");
+    sectionsEls.forEach(el => el.classList.remove("active"));
+    
+    loadCurriculumSidebar(); // チェックマークリフレッシュを兼ねて再ロード
+
+    const sectionData = dynamicCurriculumData[currentGrade][currentSubject][chapIdx].sections[secIdx];
+    
+    document.getElementById("current-title").textContent = sectionData.title;
+    document.getElementById("current-lecture").textContent = sectionData.content;
+
+    // クイズボードの生成
+    const quiz = sectionData.quiz;
+    document.getElementById("current-question").textContent = quiz.question;
+    
+    const optionsArea = document.getElementById("current-options");
+    optionsArea.innerHTML = "";
+    
+    document.getElementById("quiz-feedback").style.display = "none";
+    document.getElementById("next-stage-btn").classList.add("hidden");
+
+    quiz.options.forEach((optionText, index) => {
+        const btn = document.createElement("button");
+        btn.className = "opt-button";
+        btn.textContent = `${index + 1}. ${optionText}`;
+        btn.onclick = () => verifyAnswer(index, btn, quiz);
+        optionsArea.appendChild(btn);
+    });
+}
+
+/**
+ * クイズの正誤判定
+ */
+function verifyAnswer(selectedIndex, clickedButton, quizData) {
+    const buttons = document.querySelectorAll(".opt-button");
+    // 全ボタンのロック（2重回答防止）
+    buttons.forEach(b => b.disabled = true);
+
+    const feedbackCard = document.getElementById("quiz-feedback");
+    const statusText = document.getElementById("feedback-status");
+    const descText = document.getElementById("feedback-desc");
+
+    const progressKey = `${currentGrade}_${currentSubject}_${currentChapterIndex}_${currentSectionIndex}`;
+
+    if (selectedIndex === quizData.answer) {
+        clickedButton.classList.add("correct");
+        statusText.textContent = "🎉 🎉 正解です！完璧！";
+        feedbackCard.className = "feedback-card pass";
+        
+        // 進捗をマーク
+        completedLessons[progressKey] = true;
+        localStorage.setItem('js_study_progress', JSON.stringify(completedLessons));
+        recalculateProgress();
+    } else {
+        clickedButton.classList.add("incorrect");
+        buttons[quizData.answer].classList.add("correct"); // 正解を提示
+        statusText.textContent = "🤔 不正解（要確認単元）";
+        feedbackCard.className = "feedback-card fail";
+    }
+
+    descText.textContent = quizData.explanation;
+    feedbackCard.style.display = "block";
+    document.getElementById("next-stage-btn").classList.remove("hidden");
+}
+
+/**
+ * 全体の進捗状況の再集計
+ */
+function recalculateProgress() {
+    const totalDone = Object.keys(completedLessons).length;
+    document.getElementById("total-progress").textContent = `完了: ${totalDone} 単元`;
+}
+
+/**
+ * 次のステップへ進むボタンのロジック
+ */
+function triggerNextSection() {
+    const currentSubjectChapters = dynamicCurriculumData[currentGrade][currentSubject];
+    const currentChapter = currentSubjectChapters[currentChapterIndex];
+
+    // 同一章内に次の節があるか
+    if (currentSectionIndex + 1 < currentChapter.sections.length) {
+        renderTargetSection(currentChapterIndex, currentSectionIndex + 1);
+    } 
+    // 次の章があるか
+    else if (currentChapterIndex + 1 < currentSubjectChapters.length) {
+        renderTargetSection(currentChapterIndex + 1, 0);
+    } 
+    else {
+        alert("素晴らしい！この教科の現在の全カリキュラムをクリアしました！他の教科や学年も挑戦してみましょう。");
+        showView('home');
+    }
+}
+</script>
+</body>
+</html>
