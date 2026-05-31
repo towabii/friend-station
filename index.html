@@ -398,7 +398,14 @@
             <label style="font-size:13px;color:var(--text-sub);">自己紹介</label>
             <div style="display:flex;gap:12px;align-items:flex-start;"><textarea id="set-status" rows="3" style="margin:0;"></textarea><button type="button" onclick="updateProfile('status_message', id('set-status').value)">保存</button><span class="saved-check" id="sc-status">✔ 保存済</span></div>
             
-            <h3 style="margin-top:40px;margin-bottom:15px;border-bottom:1px solid var(--border);padding-bottom:10px;">セキュリティ</h3>
+            <h3 style="margin-top:40px;margin-bottom:15px;border-bottom:1px solid var(--border);padding-bottom:10px;">セキュリティとプライバシー</h3>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; font-size:15px;">
+                <span>友達リストを公開する</span>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <span class="saved-check" id="sc-friend-public">✔ 保存済</span>
+                    <label class="switch"><input type="checkbox" id="set-friend-public" onchange="updateProfile('is_friend_list_public', this.checked)"><span class="slider"></span></label>
+                </div>
+            </div>
             <form onsubmit="requestPwChange(event); return false;" id="form-pw-req" style="display:flex;gap:12px;margin-top:15px;"><input type="password" id="set-new-pw" placeholder="新しいパスワード" required style="margin:0;"><button type="submit">変更申請</button></form>
 
             <h3 style="margin-top:40px;margin-bottom:15px;border-bottom:1px solid var(--border);padding-bottom:10px;">データ移行 (預け入れ)</h3>
@@ -518,6 +525,11 @@
         <h2 id="mp-name" style="margin-bottom:8px;text-align:center;"></h2><p style="color:var(--text-sub);margin-bottom:20px;font-size:15px;text-align:center;">@<span id="mp-id"></span></p>
         <p id="mp-status" style="font-size:16px;word-break:break-word;margin-bottom:20px;line-height:1.5;text-align:center;padding:0 15px;"></p>
         <div id="mp-action-area" style="text-align:center; margin-bottom:10px; display:none; justify-content:center; gap:10px;"></div>
+        
+        <div id="mp-friends-area" style="margin-top: 15px; border-top: 1px solid var(--border); padding-top: 15px;">
+            <h4 style="margin-bottom: 10px; font-size: 14px; text-align: center; color:var(--text-sub);"><i class="fa-solid fa-user-group"></i> 友達リスト</h4>
+            <div id="mp-friends-list" style="display: flex; flex-direction: column; gap: 10px; max-height: 150px; overflow-y: auto;"></div>
+        </div>
     </div>
 </div>
 
@@ -671,7 +683,7 @@
     ];
 
     let BACKEND_URL = localStorage.getItem("working_url") || SERVER_URLS[0];
-    const API_BASE = "/edu-backend"; // ★API基本パス
+    const API_BASE = "/edu-backend";
 
     async function fetchWithTimeout(url, options, timeout = 3000) {
         const controller = new AbortController();
@@ -792,8 +804,6 @@
     function idbUpdateReaction(msgId, reactions) { if (!db) return; const tx = db.transaction('messages', 'readwrite'); const store = tx.objectStore('messages'); const req = store.get(msgId); req.onsuccess = () => { const m = req.result; if (m) { m.reactions = JSON.stringify(reactions); store.put(m); } }; }
     function idbUpdateMsgStatus(msgId, content, isDeleted, history) { if(!db) return; const tx = db.transaction('messages', 'readwrite'); const store = tx.objectStore('messages'); const req = store.get(msgId); req.onsuccess = () => { const m = req.result; if(m) { m.content = content; m.is_deleted = isDeleted; m.edit_history = history; store.put(m); } }; }
 
-    const USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
-    
     async function apiPost(path, body={}){ 
         if(!token) { logout(); return { ok: false, json: async () => ({}) }; }
         const h={"Authorization":`Bearer ${token}`, "Cache-Control": "no-cache", "bypass-tunnel-reminder": "true", "ngrok-skip-browser-warning": "true"}; 
@@ -911,7 +921,7 @@
     }
 
     function playSample(file) {
-        if (currentCallAudio && file.startsWith('call')) {
+        if (file.startsWith('call')) {
             stopCallSound();
             currentCallAudio = new Audio('./' + file);
             currentCallAudio.loop = true;
@@ -957,7 +967,6 @@
     }
 
     function openMediaModal(url, type = 'image') {
-        const modal = id('modal-media-view');
         const img = id('mv-img');
         const vid = id('mv-video');
         if (type === 'video') {
@@ -1086,6 +1095,7 @@
         id('set-notif-sound').value = localStorage.getItem('set-notif-sound') || 'tuuti1.mp3';
         id('set-call-sound-file').value = localStorage.getItem('set-call-sound-file') || 'call1.mp3';
         id('set-call-sound').checked = localStorage.getItem('set-call-sound') !== 'false';
+        id('set-friend-public').checked = myInfo.is_friend_list_public !== false;
 
         if(myInfo.icon_url){ const ic = myInfo.icon_url.startsWith('http')||myInfo.icon_url.startsWith('.')?myInfo.icon_url:BACKEND_URL+myInfo.icon_url; id('my-icon-set').src=ic; id('home-my-icon').src=ic; }
         QRCode.toCanvas(id('my-qr'),myInfo.username,{width:200, margin:2});
@@ -1151,7 +1161,6 @@
         });
 
         const showIncomingCallUI = d => {
-            console.log('showIncomingCallUI called with:', d);
             incomingData = d;
             rtcType = d.video ? 'video' : 'voice';
             id('caller-name').innerText = d.caller_name || '着信';
@@ -1162,10 +1171,9 @@
             playCallSound();
         };
         socket.on('incoming_call', showIncomingCallUI);
-        socket.on('call_received', showIncomingCallUI); // ★ 新規イベント？
+        socket.on('call_received', showIncomingCallUI);
 
         const showActiveCallUI = d => {
-            console.log('showActiveCallUI called with:', d);
             hide('modal-calling');
             hide('modal-incoming');
             callSession = d.session_id;
@@ -1173,7 +1181,7 @@
             setupPeer(d.answerer_id, true, d.icon_url, d.nickname);
         };
         socket.on('call_answered', showActiveCallUI);
-        socket.on('call_started', showActiveCallUI); // ★ 新規イベント？
+        socket.on('call_started', showActiveCallUI);
 
         socket.on('call_rejected', d => {
             hide('modal-calling');
@@ -1192,7 +1200,6 @@
 
         // Text Call Handlers
         const showIncomingTextCallUI = d => {
-            console.log('showIncomingTextCallUI called with:', d);
             incomingData={...d, type:'text'};
             rtcType='text';
             id('caller-name').innerText=`${d.caller_name}`;
@@ -1203,10 +1210,9 @@
             playCallSound();
         };
         socket.on('incoming_text_call', showIncomingTextCallUI);
-        socket.on('text_call_received', showIncomingTextCallUI); // ★ 新規イベント？
+        socket.on('text_call_received', showIncomingTextCallUI);
 
         socket.on('text_call_started', d => {
-            console.log('text_call_started called with:', d);
             hide('modal-calling');
             hide('modal-incoming');
             textCallSession = d.session_id;
@@ -1311,8 +1317,12 @@
         id('mp-name').innerText = nickname; id('mp-id').innerText = username; id('mp-status').innerText = status||'自己紹介はありません'; 
         
         const actArea = id('mp-action-area'); actArea.style.display = 'none'; actArea.innerHTML = '';
+        const friendsArea = id('mp-friends-area');
+        const friendsList = id('mp-friends-list');
+        friendsList.innerHTML = '<div class="loader" style="width:20px;height:20px;border-width:2px;margin: 10px auto;"></div>';
         
         if(uid && uid !== myInfo.id) {
+            friendsArea.style.display = 'block';
             const r = await apiGet('/edu/user/profile_status', {target_id: uid});
             if(r && r.ok) {
                 actArea.style.display = 'flex'; const d = await r.json();
@@ -1321,6 +1331,29 @@
                 else if(d.status === 'pending_received') { actArea.innerHTML = `<button type="button" class="success" onclick="acceptRequestFromProfile('${d.request_id}', '${uid}')"><i class="fa-solid fa-check"></i> 承認する</button>`; } 
                 else { actArea.innerHTML = `<button type="button" onclick="requestFriendFromProfile('${username}', '${uid}')"><i class="fa-solid fa-user-plus"></i> フレンド申請</button>`; }
             }
+
+            // 友達リストの取得
+            const fr = await apiGet('/edu/friends/user_friends', { target_id: uid });
+            if (fr && fr.ok) {
+                const fd = await fr.json();
+                if (fd.public === false) {
+                    friendsList.innerHTML = '<p style="text-align:center; color:var(--text-sub); font-size:13px; padding:10px 0;">非公開</p>';
+                } else if (fd.friends && fd.friends.length > 0) {
+                    friendsList.innerHTML = fd.friends.map(f => {
+                        const ic = f.icon_url && f.icon_url.trim() !== '' ? (f.icon_url.startsWith('http')||f.icon_url.startsWith('.')?f.icon_url:BACKEND_URL+f.icon_url) : './icon.jpeg';
+                        return `<div style="display:flex; align-items:center; gap:10px; padding:8px; cursor:pointer; border-radius:12px; transition:background 0.2s;" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background='transparent'" onclick="hide('modal-prof'); openProfileModal('${f.id}','${f.username}','${f.nickname}','${ic}','')">
+                            <img src="${ic}" onerror="this.src='./icon.jpeg'" style="width:36px;height:36px;border-radius:50%;object-fit:cover;">
+                            <span style="font-size:15px; font-weight:bold;">${f.nickname}</span>
+                        </div>`;
+                    }).join('');
+                } else {
+                    friendsList.innerHTML = '<p style="text-align:center; color:var(--text-sub); font-size:13px; padding:10px 0;">友達はいません</p>';
+                }
+            } else {
+                friendsList.innerHTML = '<p style="text-align:center; color:var(--text-sub); font-size:13px; padding:10px 0;">取得できませんでした</p>';
+            }
+        } else {
+            friendsArea.style.display = 'none';
         }
         show('modal-prof');
     }
@@ -1674,9 +1707,8 @@
     async function loadNotes(){ 
         const r=await apiGet('/edu/notes/list'); if(!r||!r.ok)return; const l=await r.json(); 
         const now = Date.now();
-        const EXPIRY_24H = 24 * 60 * 60 * 1000; // 24時間（ミリ秒）
+        const EXPIRY_24H = 24 * 60 * 60 * 1000;
         
-        // 24時間以内のノートのみをフィルタリング
         const validNotes = l.filter(n => {
             const createdAt = n.created_at ? new Date(n.created_at).getTime() : 0;
             return now - createdAt < EXPIRY_24H;
@@ -1755,7 +1787,7 @@
         isFirstLoadNotifs = false; l.forEach(n => prevNotifIds.add(n.id));
 
         id('ui-notifs').innerHTML=l.map(n=>{ 
-            let a=''; if(n.type==='friend_request'&&n.req_status==='pending') a=`<div style="margin-top:15px;"><button type="button" class="success" style="padding:10px 20px;border-radius:20px;font-size:14px;" onclick="acceptRequestFromProfile('${n.request_id}', '${n.sender_id}')">承認</button></div>`; 
+            let a=''; if(n.type==='friend_request'&&n.req_status==='pending') a=`<div style="margin-top:15px;"><button type="button" class="success" style="padding:10px 20px;border-radius:20px;font-size:14px;" onclick="acceptRequest('${n.request_id}', this)">承認</button></div>`; 
             let icon = n.type==='system' ? '<i class="fa-solid fa-bullhorn" style="color:var(--accent);margin-right:8px;"></i>' : '';
             return `<li style="padding:20px;border-bottom:1px solid var(--border);${n.is_read?'':'background:var(--bg-hover);border-radius:12px;'}"><div style="font-size:15px;line-height:1.5;white-space:pre-wrap;">${icon}${n.content}</div>${a}</li>`; 
         }).join(''); 
@@ -1763,7 +1795,7 @@
 
     async function acceptRequest(reqId, btn) {
         const r = await apiPost('/edu/friends/accept', {request_id: reqId});
-        if(r&&r.ok) { btn.outerHTML = '<span style="color:var(--text-sub);"><i class="fa-solid fa-check"></i> 承認済</span>'; showToast('承認しました'); }
+        if(r&&r.ok) { btn.outerHTML = '<span style="color:var(--text-sub);"><i class="fa-solid fa-check"></i> 承認済</span>'; showToast('承認しました'); loadNotifs(); updateUnreadBadge(); }
     }
     
     async function pushBackup(){ if(!(await showConfirm("ブラウザ内の全履歴をサーバーに預けますか？新端末で引き出せます。")))return; const msgs=await idbGetAllMsgs(); const res=await apiPost('/edu/backup/push',{data:JSON.stringify(msgs)}); if(res&&res.ok){ const d=await res.json(); id('transfer-code').innerText=d.code; showToast('コードを控えて新端末で入力してください'); } }
@@ -1772,9 +1804,12 @@
     async function updateProfile(key,val){ 
         if(key === 'username') { if(!/^[a-zA-Z0-9_\-\.\=]+$/.test(val)) { await showConfirm("ユーザーIDは半角英数字と一部記号 ( _ - . = ) のみ使用可能です。"); return; } }
         const r = await apiPost(`/edu/user/update_${key}`,{[key]:val}); 
-        if(!r||!r.ok){ if(r) {const d=await r.json(); showToast(d.error);} return; } 
+        if(!r||!r.ok){ 
+            if(key === 'is_friend_list_public') id('set-friend-public').checked = !val; 
+            if(r) {const d=await r.json(); showToast(d.error);} return; 
+        } 
         myInfo[key]=val; localStorage.setItem('myInfo',JSON.stringify(myInfo)); 
-        const sc=id('sc-'+(key==='username'?'id':key==='nickname'?'nick':'status')); 
+        const sc=id('sc-'+(key==='username'?'id':key==='nickname'?'nick':key==='status_message'?'status':key==='is_friend_list_public'?'friend-public':'')); 
         if(sc){sc.classList.add('show');setTimeout(()=>sc.classList.remove('show'),2000);} 
         if(key==='username'){id('my-id-disp').innerText=val; QRCode.toCanvas(id('my-qr'),val,{width:200, margin:2});} 
     }
@@ -1825,14 +1860,16 @@
             if (rtcType === 'text') {
                 if (isGroupCall && textCallSession) {
                     socket.emit('end_text_call', { room_id: currentRoom, session_id: textCallSession });
-                } else if (currentTarget) {
-                    socket.emit('end_text_call', { target_id: currentTarget });
+                } else {
+                    let targetId = currentTarget || (incomingData ? incomingData.caller_id : null);
+                    if (targetId) socket.emit('end_text_call', { target_id: targetId });
                 }
             } else if (rtcType === 'voice' || rtcType === 'video') {
                 if (isGroupCall && callSession) {
                     socket.emit('hang_up', { room_id: currentRoom, session_id: callSession });
-                } else if (currentTarget) {
-                    socket.emit('hang_up', { target_id: currentTarget, session_id: callSession });
+                } else {
+                    let targetId = currentTarget || (incomingData ? incomingData.caller_id : null) || Object.keys(peers)[0];
+                    if (targetId) socket.emit('hang_up', { target_id: targetId, session_id: callSession });
                 }
             }
             if(incomingData && !callSession && rtcType !== 'text') {
@@ -1949,7 +1986,6 @@
             show('video-overlay');
             callSession = incomingData.session_id;
             
-            // まずsetupPeerでofferを受け取る準備をしてからanswer_callを送る
             setupPeer(incomingData.caller_id, false, incomingData.icon_url, incomingData.caller_name);
             socket.emit('answer_call', { target_id: incomingData.caller_id, session_id: callSession, accept: true });
             
