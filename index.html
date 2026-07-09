@@ -161,8 +161,8 @@
 <div id="scr-main" class="hidden">
     <div class="sidebar">
         <div class="brand">Friend Station</div>
-        <button class="nav-btn active" id="nav-chat" onclick="switchNav('chat')"><i class="fa-solid fa-message"></i> <span>メッセージ</span></button>
-        <button class="nav-btn" id="nav-search" onclick="switchNav('search')"><i class="fa-solid fa-magnifying-glass"></i> <span>検索</span></button>
+        <button class="nav-btn active" id="nav-chat" onclick="switchNav(event,'chat')"><i class="fa-solid fa-message"></i> <span>メッセージ</span></button>
+        <button class="nav-btn" id="nav-search" onclick="switchNav(event,'search')"><i class="fa-solid fa-magnifying-glass"></i> <span>検索</span></button>
         <button class="nav-btn" id="nav-settings" onclick="switchMainPanel('settings')"><i class="fa-solid fa-gear"></i> <span>設定</span></button>
         <button class="nav-btn danger" onclick="logout()" style="margin-top:auto;color:#fff;"><i class="fa-solid fa-right-from-bracket"></i> <span>ログアウト</span></button>
     </div>
@@ -199,7 +199,6 @@
                 </div>
                 <div class="chat-box" id="ui-msgs"></div>
                 <div class="chat-input-area">
-                    <div id="typing-indicator" style="font-size:12px;color:var(--accent);height:14px;margin-bottom:2px;"></div>
                     <div class="chat-input-row">
                         <label style="cursor:pointer;font-size:22px;color:var(--text-sub);margin-top:5px;"><i class="fa-solid fa-image"></i><input type="file" id="msg-img" accept="image/*" class="hidden" onchange="sendImage(this)"></label>
                         <input type="text" id="msg-input" placeholder="メッセージを入力..." autocomplete="off">
@@ -218,6 +217,30 @@
             <p style="color:var(--text-sub);margin-bottom:20px;">ID: <strong id="my-id-disp" style="color:var(--text-main);"></strong></p>
             <div style="background:#fff;padding:10px;border-radius:10px;display:inline-block;margin-bottom:30px;"><canvas id="my-qr"></canvas></div>
             <div style="display:flex;gap:10px;margin-bottom:15px;"><input type="text" id="set-nick" placeholder="ニックネーム"><button onclick="updateProfile()">保存</button></div>
+            <div style="border:1px solid var(--border); border-radius:16px; padding:16px; background:var(--bg-panel); margin-top:20px;">
+                <h3 style="margin-bottom:12px; font-size:16px;">通知設定</h3>
+                <label style="display:block; margin-bottom:10px;">着信音
+                    <select id="settings-call-sound" style="margin-top:6px; width:100%; padding:10px; border-radius:10px; background:var(--bg-dark); color:var(--text-main); border:1px solid var(--border);">
+                        <option value="call1.mp3">call1.mp3</option>
+                        <option value="call2.mp3">call2.mp3</option>
+                        <option value="call3.mp3">call3.mp3</option>
+                    </select>
+                    <button type="button" onclick="testSound('call')" style="margin-top:8px; padding:8px 12px; font-size:13px;">着信音をテスト</button>
+                </label>
+                <label style="display:block; margin-bottom:10px;">通知音
+                    <select id="settings-notify-sound" style="margin-top:6px; width:100%; padding:10px; border-radius:10px; background:var(--bg-dark); color:var(--text-main); border:1px solid var(--border);">
+                        <option value="tuuti1.mp3">tuuti1.mp3</option>
+                        <option value="tuuti2.mp3">tuuti2.mp3</option>
+                        <option value="tuuti3.mp3">tuuti3.mp3</option>
+                    </select>
+                    <button type="button" onclick="testSound('notify')" style="margin-top:8px; padding:8px 12px; font-size:13px;">通知音をテスト</button>
+                </label>
+                <label style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+                    <input type="checkbox" id="settings-mute-mode">
+                    <span>消音モード</span>
+                </label>
+                <button type="button" onclick="saveSettings()" style="width:100%;">設定を保存</button>
+            </div>
         </div>
     </div>
 </div>
@@ -225,7 +248,7 @@
 <script type="module">
     // 🔥 Firebase設定 (リージョン付きURL)
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-    import { getDatabase, ref, set, get, update, onChildAdded, onChildChanged, remove, onDisconnect, onValue, goOffline, off } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+    import { getDatabase, ref, set, get, update, onChildAdded, remove, onDisconnect, onValue, goOffline, off, push } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyDVTNVO9gcXKQkauOF3NNZ36d2voyvGscA",
@@ -242,6 +265,92 @@
     let myInfo = JSON.parse(localStorage.getItem('myInfo'));
     let currentRoom = null; let onlineStatusCache = {}; let dbLocal = null;
     let allUsersCache = {}; let pendingListener = null;
+    let notificationCount = 0;
+    let titleBlinkTimer = null;
+
+    function getDefaultSettings() {
+        return { callSound: 'call1.mp3', notifySound: 'tuuti1.mp3', muteMode: false };
+    }
+
+    function getUserSettings() {
+        const base = myInfo?.settings || {};
+        return { ...getDefaultSettings(), ...base };
+    }
+
+    function applySettingsToUI() {
+        const settings = getUserSettings();
+        const callSelect = document.getElementById('settings-call-sound');
+        const notifySelect = document.getElementById('settings-notify-sound');
+        const muteCheck = document.getElementById('settings-mute-mode');
+        if (callSelect) callSelect.value = settings.callSound || 'call1.mp3';
+        if (notifySelect) notifySelect.value = settings.notifySound || 'tuuti1.mp3';
+        if (muteCheck) muteCheck.checked = !!settings.muteMode;
+    }
+
+    window.saveSettings = async () => {
+        const settings = {
+            callSound: document.getElementById('settings-call-sound')?.value || 'call1.mp3',
+            notifySound: document.getElementById('settings-notify-sound')?.value || 'tuuti1.mp3',
+            muteMode: !!document.getElementById('settings-mute-mode')?.checked
+        };
+        if (myInfo) {
+            myInfo.settings = settings;
+            localStorage.setItem('myInfo', JSON.stringify(myInfo));
+            await update(ref(dbFirebase, `users/${myInfo.id}`), { settings });
+        }
+        showToast('通知設定を保存しました');
+    };
+
+    function stopTitleBlink() {
+        if (titleBlinkTimer) {
+            clearInterval(titleBlinkTimer);
+            titleBlinkTimer = null;
+        }
+        document.title = 'Friend Station';
+        notificationCount = 0;
+    }
+
+    function startTitleBlink() {
+        if (document.hidden) {
+            notificationCount += 1;
+            if (!titleBlinkTimer) {
+                titleBlinkTimer = setInterval(() => {
+                    document.title = document.title === 'Friend Station' ? `新規通知(${notificationCount})` : 'Friend Station';
+                }, 700);
+            }
+        }
+    }
+
+    window.testSound = kind => {
+        const settings = getUserSettings();
+        const fileName = kind === 'call' ? settings.callSound : settings.notifySound;
+        const selectId = kind === 'call' ? 'settings-call-sound' : 'settings-notify-sound';
+        const select = document.getElementById(selectId);
+        if (select) {
+            const chosen = select.value;
+            const audio = new Audio(`./${chosen}`);
+            audio.volume = 0.5;
+            audio.play().catch(() => {});
+            return;
+        }
+        const audio = new Audio(`./${fileName}`);
+        audio.volume = 0.5;
+        audio.play().catch(() => {});
+    };
+
+    function playSound(kind) {
+        const settings = getUserSettings();
+        if (settings.muteMode) return;
+        const fileName = kind === 'call' ? settings.callSound : settings.notifySound;
+        const audio = new Audio(`./${fileName}`);
+        audio.volume = 0.5;
+        audio.play().catch(() => {});
+    }
+
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) stopTitleBlink();
+    });
+    window.addEventListener('focus', stopTitleBlink);
 
     // ★ 3時間放置で自動切断
     let idleTime = 0; const MAX_IDLE_TIME = 3 * 60 * 60 * 1000;
@@ -310,8 +419,8 @@
     window.showToast = msg => { const t = document.getElementById('toast'); t.innerText = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000); };
     window.toggleAuth = m => { document.getElementById('form-login').classList.toggle('hidden', m!=='login'); document.getElementById('form-reg').classList.toggle('hidden', m!=='reg'); if(m==='reg') nextStep(1); };
     window.nextStep = n => { document.querySelectorAll('.reg-step').forEach(el=>el.classList.add('hidden')); document.getElementById('step'+n).classList.remove('hidden'); };
-    window.switchNav = m => { 
-        document.querySelectorAll('.nav-btn').forEach(el=>el.classList.remove('active')); event.currentTarget.classList.add('active');
+    window.switchNav = (evt, m) => { 
+        document.querySelectorAll('.nav-btn').forEach(el=>el.classList.remove('active')); evt.currentTarget.classList.add('active');
         document.getElementById('panel-chat').classList.toggle('hidden', m!=='chat'); document.getElementById('panel-search').classList.toggle('hidden', m!=='search');
         switchMainPanel('chat');
     };
@@ -326,9 +435,9 @@
     function startPendingMonitor(uid) {
         document.getElementById('scr-auth').classList.add('hidden'); document.getElementById('scr-pending').classList.remove('hidden');
         const statusRef = ref(dbFirebase, `users/${uid}/status`);
-        pendingListener = onValue(statusRef, snap => {
+        const unsubscribe = onValue(statusRef, snap => {
             if(snap.val() === 'approved') {
-                off(statusRef, 'value', pendingListener);
+                unsubscribe();
                 get(ref(dbFirebase, `users/${uid}`)).then(uSnap => { myInfo = uSnap.val(); localStorage.setItem('myInfo', JSON.stringify(myInfo)); initApp(); });
             }
         });
@@ -366,16 +475,21 @@
 
     window.logout = () => { if(myInfo) remove(ref(dbFirebase, `presence/${myInfo.id}`)); localStorage.clear(); location.reload(); };
 
+    async function loadUsersOnce() {
+        const snap = await get(ref(dbFirebase, 'users'));
+        allUsersCache = snap.exists() ? snap.val() : {};
+    }
+
     async function initApp() {
         document.getElementById('scr-auth').classList.add('hidden'); document.getElementById('scr-pending').classList.add('hidden'); document.getElementById('scr-main').classList.remove('hidden');
         document.getElementById('my-id-disp').innerText = myInfo.username; document.getElementById('set-nick').value = myInfo.nickname;
         if(myInfo.icon) document.getElementById('my-icon-preview').src = myInfo.icon;
         QRCode.toCanvas(document.getElementById('my-qr'), myInfo.username, {width:200, margin:2});
+        applySettingsToUI();
         
-        await initDB(); 
-        
-        // オフライン検索のための全ユーザーキャッシュ
-        onValue(ref(dbFirebase, 'users'), snap => { allUsersCache = snap.val()||{}; loadChatList(); });
+        await initDB();
+        await loadUsersOnce();
+        loadChatList();
 
         // オンライン管理
         const myRef = ref(dbFirebase, `presence/${myInfo.id}`);
@@ -385,13 +499,16 @@
         // ★ メッセージ受信 (確実に処理)
         onChildAdded(ref(dbFirebase, `queue/${myInfo.id}`), async snap => {
             const msg = snap.val();
-            // P2P通信なので相手にとってのroomは自分になっているが、自分から見たroomは相手のIDにする
-            msg.room = msg.sender;
+            if(!msg || !msg.sender) { remove(snap.ref); return; }
+            if(msg.sender !== myInfo.id) {
+                playSound('notify');
+                if (document.hidden) startTitleBlink();
+            }
+            msg.room = msg.sender || msg.room || currentRoom;
             await saveLocalMsg(msg);
             if(currentRoom === msg.sender) {
                 displayMsg(msg);
-                // 開いていれば既読フラグを相手に返す
-                set(ref(dbFirebase, `read/${msg.sender}/${msg.id}`), true);
+                push(ref(dbFirebase, `read/${msg.sender}`), { msgId: msg.id, reader: myInfo.id, time: Date.now() });
                 updateLocalMsgField(msg.id, 'read', true);
             }
             remove(snap.ref);
@@ -399,28 +516,25 @@
 
         // 既読受信
         onChildAdded(ref(dbFirebase, `read/${myInfo.id}`), snap => {
-            const msgId = snap.key;
-            updateLocalMsgField(msgId, 'read', true).then(() => {
-                const el = document.getElementById(`rd-${msgId}`); if(el) el.innerText = '既読';
-            });
+            const data = snap.val();
+            if(data && data.msgId) {
+                updateLocalMsgField(data.msgId, 'read', true).then(() => {
+                    const el = document.getElementById(`rd-${data.msgId}`); if(el) el.innerText = '既読';
+                });
+            }
             remove(snap.ref);
         });
 
         // リアクション受信
         onChildAdded(ref(dbFirebase, `react/${myInfo.id}`), snap => {
-            const data = snap.val(); // {msgId, emoji}
-            updateLocalMsgField(data.msgId, 'reaction', data.emoji).then(() => {
-                const el = document.getElementById(`react-${data.msgId}`);
-                if(el) { el.innerText = data.emoji; el.style.display = 'block'; }
-            });
+            const data = snap.val();
+            if(data && data.msgId) {
+                updateLocalMsgField(data.msgId, 'reaction', data.emoji).then(() => {
+                    const el = document.getElementById(`react-${data.msgId}`);
+                    if(el) { el.innerText = data.emoji; el.style.display = 'block'; }
+                });
+            }
             remove(snap.ref);
-        });
-
-        // タイピング受信 (相手が入力中か)
-        onValue(ref(dbFirebase, `typing/${myInfo.id}`), snap => {
-            const typingData = snap.val();
-            if(currentRoom && typingData && typingData[currentRoom]) document.getElementById('typing-indicator').innerText = '入力中...';
-            else document.getElementById('typing-indicator').innerText = '';
         });
 
         // ★ WebRTC シグナリング受信 (着信)
@@ -428,6 +542,8 @@
             const data = snap.val();
             if(data.type === 'offer') {
                 callSession = data.session; isVideoCall = data.video;
+                playSound('call');
+                if (document.hidden) startTitleBlink();
                 document.getElementById('inc-name').innerText = allUsersCache[data.sender]?.nickname || '着信';
                 document.getElementById('inc-icon').src = allUsersCache[data.sender]?.icon || './icon.jpeg';
                 document.getElementById('inc-type').innerHTML = data.video ? '<i class="fa-solid fa-video"></i> ビデオ通話' : '<i class="fa-solid fa-phone"></i> 音声通話';
@@ -435,14 +551,26 @@
                 
                 peerConnection = new RTCPeerConnection(servers);
                 peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
-                peerConnection.onicecandidate = e => { if(e.candidate) set(ref(dbFirebase, `webrtc/${data.sender}/${Date.now()}`), {type:'candidate', candidate:e.candidate, sender:myInfo.id}); };
+                peerConnection.onicecandidate = e => {
+                    if(e && e.candidate && e.candidate.candidate) {
+                        set(ref(dbFirebase, `webrtc/${data.sender}/${Date.now()}`), {
+                            type: 'candidate',
+                            candidate: e.candidate.toJSON(),
+                            sender: myInfo.id
+                        });
+                    }
+                };
                 peerConnection.ontrack = e => { document.getElementById('remote-video').srcObject = e.streams[0]; };
                 
                 // 切断検知用
                 onValue(ref(dbFirebase, `webrtc_hangup/${callSession}`), hSnap => { if(hSnap.val()) endCall(); });
             } 
             else if(data.type === 'answer' && peerConnection) { peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp)); }
-            else if(data.type === 'candidate' && peerConnection) { peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate)); }
+            else if(data.type === 'candidate' && peerConnection) {
+                if(data.candidate && data.candidate.candidate) {
+                    peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate)).catch(e => console.error('ICE追加失敗:', e));
+                }
+            }
             remove(snap.ref);
         });
 
@@ -511,7 +639,7 @@
                 // 開いたときに未読があれば既読にする
                 if(!m.read && m.sender !== myInfo.id) {
                     m.read = true; store.put(m);
-                    set(ref(dbFirebase, `read/${m.sender}/${m.id}`), true);
+                    push(ref(dbFirebase, `read/${m.sender}`), { msgId: m.id, reader: myInfo.id, time: Date.now() });
                 }
             });
             loadChatList(); // バッジ消去
@@ -538,7 +666,7 @@
     // リアクション送信
     window.sendReact = (msgId, emoji) => {
         document.getElementById(`rmenu-${msgId}`).classList.add('hidden');
-        set(ref(dbFirebase, `react/${currentRoom}/${Date.now()}`), { msgId, emoji });
+        push(ref(dbFirebase, `react/${currentRoom}`), { msgId, emoji, sender: myInfo.id, time: Date.now() });
         updateLocalMsgField(msgId, 'reaction', emoji);
         const el = document.getElementById(`react-${msgId}`); if(el){ el.innerText=emoji; el.style.display='block'; }
     };
@@ -548,8 +676,7 @@
         const txt = document.getElementById('msg-input').value.trim(); if(!txt || !currentRoom) return;
         const msg = { id: Date.now().toString(), room: currentRoom, sender: myInfo.id, senderName: myInfo.nickname, text: txt, type: 'text', time: Date.now(), read: false };
         displayMsg(msg); saveLocalMsg(msg); document.getElementById('msg-input').value = '';
-        push(ref(dbFirebase, `queue/${currentRoom}`), msg); 
-        set(ref(dbFirebase, `typing/${currentRoom}/${myInfo.id}`), null);
+        push(ref(dbFirebase, `queue/${currentRoom}`), msg);
     };
 
     // 画像送信 (Base64化してP2P送信・IndexedDB保存)
@@ -563,14 +690,6 @@
         inp.value = '';
     };
 
-    // タイピング送信
-    let typingTimer;
-    document.getElementById('msg-input').oninput = () => {
-        if(!currentRoom) return;
-        set(ref(dbFirebase, `typing/${currentRoom}/${myInfo.id}`), true);
-        clearTimeout(typingTimer);
-        typingTimer = setTimeout(() => set(ref(dbFirebase, `typing/${currentRoom}/${myInfo.id}`), null), 2000);
-    };
     document.getElementById('msg-input').onkeydown = e => { if(e.key === 'Enter') document.getElementById('btn-send-msg').click(); };
 
     // ★ 通話機能 (WebRTC 発信)
@@ -586,7 +705,15 @@
         peerConnection = new RTCPeerConnection(servers);
         localStream.getTracks().forEach(t => peerConnection.addTrack(t, localStream));
         
-        peerConnection.onicecandidate = e => { if(e.candidate) set(ref(dbFirebase, `webrtc/${currentRoom}/${Date.now()}`), {type:'candidate', candidate:e.candidate, sender:myInfo.id}); };
+        peerConnection.onicecandidate = e => {
+            if(e && e.candidate && e.candidate.candidate) {
+                set(ref(dbFirebase, `webrtc/${currentRoom}/${Date.now()}`), {
+                    type: 'candidate',
+                    candidate: e.candidate.toJSON(),
+                    sender: myInfo.id
+                });
+            }
+        };
         peerConnection.ontrack = e => { document.getElementById('remote-video').srcObject = e.streams[0]; };
         
         const offer = await peerConnection.createOffer();
@@ -631,8 +758,9 @@
     };
     window.updateProfile = async () => {
         const nick = document.getElementById('set-nick').value;
-        await update(ref(dbFirebase, `users/${myInfo.id}`), { nickname: nick, icon: myInfo.icon || '' });
-        myInfo.nickname = nick; localStorage.setItem('myInfo', JSON.stringify(myInfo)); showToast('保存しました');
+        const settings = getUserSettings();
+        await update(ref(dbFirebase, `users/${myInfo.id}`), { nickname: nick, icon: myInfo.icon || '', settings });
+        myInfo.nickname = nick; myInfo.settings = settings; localStorage.setItem('myInfo', JSON.stringify(myInfo)); showToast('保存しました');
     };
 
     if(myInfo) { if(myInfo.status === 'pending') startPendingMonitor(myInfo.id); else initApp(); }
