@@ -338,7 +338,7 @@
                         <div>
                             <label style="font-size:12px; color:var(--text-sub);">音声通話着信音</label>
                             <div style="display:flex; gap:10px; margin-top:5px;">
-                                <select id="sel-call-sound" style="margin:0;"><option value="cool1">着信音 1</option><option value="cool2">着信音 2</option><option value="cool3">着信音 3</option></select>
+                                <select id="sel-call-sound" style="margin:0;"><option value="call1">着信音 1</option><option value="call2">着信音 2</option><option value="call3">着信音 3</option></select>
                                 <button class="sub-btn" onclick="testSound('call')"><i class="fa-solid fa-play"></i> テスト再生</button>
                             </div>
                         </div>
@@ -427,6 +427,8 @@
     setInterval(() => { idleTime += 60000; if(idleTime >= MAX_IDLE_TIME) { goOffline(dbFirebase); document.getElementById('modal-timeout').classList.remove('hidden'); } }, 60000);
 
     let peerConnection = null; let localStream = null; let callSession = null; let isVideoCall = false;
+    let incomingCallRingAudio = null; // 着信音再生用オブジェクト
+    let outgoingCallRingAudio = null; // 呼び出し音再生用オブジェクト
     const servers = { iceServers: [{urls:'stun:stun.l.google.com:19302'}] };
     const getEl = id => document.getElementById(id);
     const safeText = (id, value) => { const el = getEl(id); if (el) el.innerText = value; };
@@ -442,6 +444,18 @@
             document.title = "Friend Station";
             unreadTotal = 0;
         }
+    });
+
+    // 【修正】focus/blur イベントでもタブ状態を管理
+    window.addEventListener('focus', () => {
+        isTabActive = true;
+        clearInterval(blinkInterval);
+        document.title = "Friend Station";
+        unreadTotal = 0;
+    });
+
+    window.addEventListener('blur', () => {
+        isTabActive = false;
     });
 
     function triggerTitleBlink() {
@@ -567,13 +581,23 @@
         if (secEl) secEl.classList.remove("hidden");
     };
 
-    // 【新規機能7】通知音テスト再生
+    // 【修正1】通知音テスト再生 - すでに再生中の音がある場合は停止して最初から流す
+    let currentTestAudio = null;
     window.testSound = (type) => {
         const selectEl = getEl(type === "notif" ? "sel-notif-sound" : "sel-call-sound");
         if (!selectEl) return;
+        
+        // 既存の再生中の音を停止
+        if (currentTestAudio) {
+            try {
+                currentTestAudio.pause();
+                currentTestAudio.currentTime = 0;
+            } catch(e) {}
+        }
+        
         const fileBase = selectEl.value;
-        const audio = new Audio(`./${fileBase}.mp3`);
-        audio.play().catch(e => console.log("再生制限:", e));
+        currentTestAudio = new Audio(`./${fileBase}.mp3`);
+        currentTestAudio.play().catch(e => console.log("再生制限:", e));
     };
 
     function startPendingMonitor(uid) {
@@ -771,6 +795,15 @@
                 peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
                 peerConnection.onicecandidate = e => { if(e.candidate) set(ref(dbFirebase, `webrtc/${data.sender}/${Date.now()}`), {type:'candidate', candidate:e.candidate, sender:myInfo.id}); };
                 peerConnection.ontrack = e => { document.getElementById('remote-video').srcObject = e.streams[0]; };
+                
+                // 【修正2】着信音をループ再生
+                const callSoundSelect = getEl('sel-call-sound');
+                if (callSoundSelect) {
+                    const soundFile = callSoundSelect.value;
+                    incomingCallRingAudio = new Audio(`./${soundFile}.mp3`);
+                    incomingCallRingAudio.loop = true;
+                    incomingCallRingAudio.play().catch(e => console.log('着信音再生エラー:', e));
+                }
                 
                 if (firebaseUnsubscribes.hangup) { firebaseUnsubscribes.hangup(); }
                 firebaseUnsubscribes.hangup = onValue(ref(dbFirebase, `webrtc_hangup/${callSession}`), hSnap => { if(hSnap.val()) endCall(); });
@@ -1004,6 +1037,17 @@
         if(!isTabActive) {
             unreadTotal++;
             triggerTitleBlink();
+            // 【修正1】タブがバックグラウンド時にメッセージ通知音を再生
+            const notifSoundSelect = getEl('sel-notif-sound');
+            if (notifSoundSelect) {
+                const soundFile = notifSoundSelect.value;
+                try {
+                    const audio = new Audio(`./${soundFile}.mp3`);
+                    audio.play().catch(e => console.log('通知音再生エラー:', e));
+                } catch(e) {
+                    console.log('通知音再生失敗:', e);
+                }
+            }
         }
     }
 
@@ -1473,12 +1517,31 @@
         await peerConnection.setLocalDescription(offer);
         set(ref(dbFirebase, `webrtc/${currentRoom}/${Date.now()}`), { type: 'offer', sdp: offer, sender: myInfo.id, video: video, session: callSession });
         
+        // 【修正3】呼び出し音をループ再生
+        const callSoundSelect = getEl('sel-call-sound');
+        if (callSoundSelect) {
+            const soundFile = callSoundSelect.value;
+            outgoingCallRingAudio = new Audio(`./${soundFile}.mp3`);
+            outgoingCallRingAudio.loop = true;
+            outgoingCallRingAudio.play().catch(e => console.log('呼び出し音再生エラー:', e));
+        }
+        
         if (firebaseUnsubscribes.hangup) { firebaseUnsubscribes.hangup(); }
         firebaseUnsubscribes.hangup = onValue(ref(dbFirebase, `webrtc_hangup/${callSession}`), snap => { if(snap.val()) endCall(); });
     };
 
     window.answerCall = async (accept) => {
         document.getElementById('modal-incoming').classList.add('hidden');
+        
+        // 【修正2】着信音を停止
+        if (incomingCallRingAudio) {
+            try {
+                incomingCallRingAudio.pause();
+                incomingCallRingAudio.currentTime = 0;
+                incomingCallRingAudio = null;
+            } catch(e) {}
+        }
+        
         if(!accept) { set(ref(dbFirebase, `webrtc_hangup/${callSession}`), true); return; }
         
         document.getElementById('video-overlay').classList.remove('hidden');
@@ -1495,6 +1558,27 @@
 
     window.endCall = () => {
         if(callSession) set(ref(dbFirebase, `webrtc_hangup/${callSession}`), true);
+        
+        // 【修正4】すべての音声、ストリーム、Audioオブジェクトをクレンジング
+        // 着信音を停止
+        if (incomingCallRingAudio) {
+            try {
+                incomingCallRingAudio.pause();
+                incomingCallRingAudio.currentTime = 0;
+            } catch(e) {}
+            incomingCallRingAudio = null;
+        }
+        
+        // 呼び出し音を停止
+        if (outgoingCallRingAudio) {
+            try {
+                outgoingCallRingAudio.pause();
+                outgoingCallRingAudio.currentTime = 0;
+            } catch(e) {}
+            outgoingCallRingAudio = null;
+        }
+        
+        // RTCPeerConnectionとストリームをクローズ
         document.getElementById('video-overlay').classList.add('hidden');
         if(peerConnection) { try{ peerConnection.close(); }catch(e){} peerConnection = null; }
         if(localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
