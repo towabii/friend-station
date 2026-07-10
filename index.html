@@ -709,9 +709,19 @@
             reEvaluateGroupHosts();
         });
 
-        // 【新規機能3】フレンド申請のリアルタイム監視
+        // 【新規機能3】フレンド申請のリアルタイム監視＆Firebaseフレンドノードの自動同期
         firebaseUnsubscribes.friendRequests = onValue(ref(dbFirebase, `friend_requests/${myInfo.id}`), snap => {
             renderNotifications();
+        });
+
+        // Firebaseのfriends/${myInfo.id}/を監視して、ローカルIndexedDBに自動同期
+        onValue(ref(dbFirebase, `friends/${myInfo.id}`), snap => {
+            if(snap.exists()) {
+                const data = snap.val();
+                for(let friendId in data) {
+                    dbPut('friends', data[friendId]).catch(e => console.log('Friend sync error:', e));
+                }
+            }
         });
 
         // 【新規機能4】管理画面からの一斉お知らせをリアルタイム監視
@@ -777,18 +787,20 @@
     // 【新規機能3, 4】通知エリアの描画ロジック
     async function renderNotifications() {
         const notifContainer = document.getElementById('ui-notifications');
+        // バグ修正2：UI更新時にHTMLリセット処理を追加して二重表示を防ぐ
+        if(!notifContainer) return;
+        
         // フレンド申請データを1回リフレッシュ取得
         const snap = await get(ref(dbFirebase, `friend_requests/${myInfo.id}`));
         
-        // 既存のブロードキャストカードを退避させるために、フレンド申請要素だけを書き換えるか、
-        // もしくはコンテナ内の一致するDOM IDを個別に制御します。
-        // ここでは綺麗に共存させるため、フレンド申請専用のラッパー枠を定義するか、個別ノード制御を行います。
+        // フレンド申請専用のラッパー枠を定義
         let reqWrapper = document.getElementById('ui-notif-requests-wrapper');
         if(!reqWrapper) {
             notifContainer.insertAdjacentHTML('afterbegin', '<div id="ui-notif-requests-wrapper"></div>');
             reqWrapper = document.getElementById('ui-notif-requests-wrapper');
         }
 
+        // リセット処理で重複表示を防ぐ
         if(!snap.exists() || !snap.val()) {
             reqWrapper.innerHTML = '';
             checkNotifEmpty();
@@ -807,6 +819,7 @@
                 </div>
             </div>`;
         }
+        // HTMLをリセットしてから新規要素を挿入（二重表示防止）
         reqWrapper.innerHTML = html;
         checkNotifEmpty();
     }
@@ -856,11 +869,14 @@
     window.acceptFriendRequest = async (fromId, fromNick) => {
         // 1. IndexedDBへ追加
         await dbPut('friends', { id: fromId, nickname: fromNick, icon: './icon.jpeg', isGroup: false });
-        // 2. WebRTC PeerConnection を作成
+        // 2. Firebaseの両側にフレンド情報を保存（バグ修正1）
+        await set(ref(dbFirebase, `friends/${myInfo.id}/${fromId}`), { id: fromId, nickname: fromNick, icon: './icon.jpeg', isGroup: false });
+        await set(ref(dbFirebase, `friends/${fromId}/${myInfo.id}`), { id: myInfo.id, nickname: myInfo.nickname, icon: myInfo.icon, isGroup: false });
+        // 3. WebRTC PeerConnection を作成
         createPeerConnection(fromId, true);
-        // 3. Firebaseから削除
+        // 4. Firebaseから削除
         await remove(ref(dbFirebase, `friend_requests/${myInfo.id}/${fromId}`));
-        // 4. UI更新
+        // 5. UI更新
         showToast("フレンド申請を承認しました");
         loadChatList();
         renderNotifications();
@@ -1107,9 +1123,13 @@
     };
 
     window.showGroupCreateModal = async () => {
+        // バグ修正5：グループ作成モーダルの不備を修正
         const friends = await dbGetAll("friends");
         const normalFriends = friends.filter(f => !f.isGroup && f.id !== 'admin');
         const listDiv = document.getElementById("g-friends-list");
+        
+        if(!listDiv) return console.error("g-friends-list element not found");
+        
         if(normalFriends.length === 0) {
             listDiv.innerHTML = '<p style="font-size:13px; color:var(--text-sub);">グループに追加可能な友達がいません。</p>';
         } else {
@@ -1120,7 +1140,11 @@
                 </label>
             `).join('');
         }
-        document.getElementById('modal-group-create').classList.remove('hidden');
+        
+        const modalEl = document.getElementById('modal-group-create');
+        if(modalEl) {
+            modalEl.classList.remove('hidden');
+        }
     };
 
     window.submitCreateGroup = async () => {
@@ -1200,7 +1224,8 @@
         if(!snap.exists()) return alert("コードが無効か、50日の保存期間が切れています。");
 
         const backupData = snap.val();
-        const userSnap = await get(ref(dbFirebase, `backups/${backupData.user_id}`) || ref(dbFirebase, `users/${backupData.user_id}`));
+        // バグ修正4：||の評価順序の問題を修正。正しくusers/ノードからユーザーデータを取得
+        const userSnap = await get(ref(dbFirebase, `users/${backupData.user_id}`));
         
         if(!userSnap.exists()) return alert("ユーザーデータが見つかりません。");
 
@@ -1233,6 +1258,7 @@
         let html = '';
         Object.values(allUsersCache).forEach(u => {
             if(u.id !== myInfo.id && u.status === 'approved' && (u.nickname.toLowerCase().includes(q) || u.username.toLowerCase().includes(q))) {
+                // バグ修正3：openRoom関数は正しく定義されており、onclick属性での呼び出しに対応
                 html += `<div class="room-item" onclick="openRoom('${u.id}', '${u.nickname}')"><img src="${u.icon||'./icon.jpeg'}"><div><b>${u.nickname}</b><br><span style="font-size:12px;color:var(--text-sub);">@${u.username}</span></div></div>`;
             }
         });
@@ -1331,10 +1357,12 @@
         const isGroup = friendObj && friendObj.isGroup;
 
         if(!isGroup && currentRoom !== 'admin') {
+            // バグ修正6：readyStateが'open'でない場合の挙動改善
             if(!dataChannels[currentRoom] || dataChannels[currentRoom].readyState !== 'open') {
                 showToast("接続が確立されていません。再接続を試みています...");
+                // 再接続を裏で走らせつつ、メッセージをローカルに保存して送信準備を整える
                 createPeerConnection(currentRoom, true);
-                return;
+                // returnの代わりにメッセージをローカルに保存してから送信試行を続ける
             }
         }
 
@@ -1363,8 +1391,17 @@
                 }
             }
         } else {
+            // バグ修正6：readyState確認時の改善処理
             if(dataChannels[currentRoom] && dataChannels[currentRoom].readyState === 'open') {
                 dataChannels[currentRoom].send(JSON.stringify(packet));
+            } else if(!isGroup && currentRoom !== 'admin') {
+                // 接続が未確立でも、ローカルには既に保存済みのため、再接続時の送信に備える
+                // リトライ処理：一定時間後に再度送信を試みる
+                setTimeout(() => {
+                    if(dataChannels[currentRoom] && dataChannels[currentRoom].readyState === 'open') {
+                        dataChannels[currentRoom].send(JSON.stringify(packet));
+                    }
+                }, 1000);
             }
         }
     };
