@@ -174,7 +174,6 @@
     <h2>Friend Station</h2>
     <div id="auth-msg" style="color:var(--danger); margin-bottom:10px; text-align:center; display:none;"></div>
     
-    <!-- 【修正4】ボタンを type="button" に変更し、リロードを完全に防止 -->
     <form id="form-login" onsubmit="return false;">
         <input type="text" id="l-user" placeholder="ユーザーID" required>
         <input type="password" id="l-pass" placeholder="パスワード" required>
@@ -388,7 +387,8 @@
         webrtcP2p: null,
         webrtcCall: null,
         friendRequests: null,
-        broadcasts: null
+        broadcasts: null,
+        offlineMsgs: null
     };
 
     let peerConnections = {}; 
@@ -592,7 +592,6 @@
         });
     }
 
-    // 【修正4】フォーム送信イベントをボタンのonclickに変更しリロードを完全に防ぐ
     document.getElementById('btn-submit-login').onclick = async (e) => {
         e.preventDefault();
         const lUser = document.getElementById('l-user');
@@ -724,6 +723,39 @@
             }
         });
 
+        // オフライン時のストア＆フォワード用キューの監視
+        firebaseUnsubscribes.offlineMsgs = onChildAdded(ref(dbFirebase, `offline_msgs/${myInfo.id}`), async snap => {
+            const packet = snap.val();
+            if(packet) {
+                const blocked = await dbGet("blocked_users", packet.sender);
+                if(!blocked) {
+                    if(packet.type === 'relay') {
+                        const orig = packet.original;
+                        const gId = packet.groupId;
+                        if (orig.type === 'react') {
+                            if (currentRoom === gId) {
+                                updateLocalMsgField(orig.msgId, 'reaction', orig.emoji);
+                                const el = document.getElementById(`react-${orig.msgId}`);
+                                if(el){ el.innerText=orig.emoji; el.style.display='block'; }
+                            }
+                        } else {
+                            await handleIncomingMessagePacket(orig, gId);
+                        }
+                    } else if(packet.type === 'react') {
+                        const targetRoom = packet.groupId ? packet.groupId : packet.sender;
+                        if(currentRoom === targetRoom) {
+                            updateLocalMsgField(packet.msgId, 'reaction', packet.emoji);
+                            const el = document.getElementById(`react-${packet.msgId}`);
+                            if(el){ el.innerText=packet.emoji; el.style.display='block'; }
+                        }
+                    } else {
+                        await handleIncomingMessagePacket(packet, packet.groupId || packet.sender);
+                    }
+                }
+                remove(snap.ref);
+            }
+        });
+
         firebaseUnsubscribes.webrtcP2p = onChildAdded(ref(dbFirebase, `webrtc_p2p/${myInfo.id}`), async snap => {
             const data = snap.val();
             if(!data) return;
@@ -762,7 +794,6 @@
                 let callerName = allUsersCache[data.sender]?.nickname;
                 let callerIcon = allUsersCache[data.sender]?.icon;
 
-                // 【修正3】キャッシュ未取得時のフォールバック処理
                 if (!callerName || !callerIcon) {
                     const fallbackSnap = await get(ref(dbFirebase, `users/${data.sender}`));
                     if (fallbackSnap.exists()) {
@@ -909,7 +940,10 @@
         for(let f of friends) {
             const blocked = await dbGet("blocked_users", f.id);
             if(blocked) continue;
-            createPeerConnection(f.id, true);
+            // 修正箇所：ID比較によりGlare（シグナリング衝突）を回避
+            if (myInfo.id > f.id && !f.isGroup && f.id !== 'admin') {
+                createPeerConnection(f.id, true);
+            }
         }
     }
 
@@ -921,7 +955,7 @@
 
         pc.onicecandidate = e => {
             if(e.candidate) {
-                set(ref(dbFirebase, `webrtc_p2p/${targetId}/${Date.now()}`), {
+                push(ref(dbFirebase, `webrtc_p2p/${targetId}`), {
                     type: 'candidate',
                     sender: myInfo.id,
                     candidate: e.candidate.toJSON()
@@ -946,7 +980,7 @@
             setupDataChannel(targetId, dc);
             pc.createOffer().then(async offer => {
                 await pc.setLocalDescription(offer);
-                set(ref(dbFirebase, `webrtc_p2p/${targetId}/${Date.now()}`), {
+                push(ref(dbFirebase, `webrtc_p2p/${targetId}`), {
                     type: 'offer',
                     sender: myInfo.id,
                     sdp: offer.sdp
@@ -965,7 +999,7 @@
         await pc.setRemoteDescription(new RTCSessionDescription({type:'offer', sdp: sdp}));
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
-        set(ref(dbFirebase, `webrtc_p2p/${senderId}/${Date.now()}`), {
+        push(ref(dbFirebase, `webrtc_p2p/${senderId}`), {
             type: 'answer',
             sender: myInfo.id,
             sdp: answer.sdp
@@ -986,7 +1020,6 @@
                     await handleIncomingMessagePacket(packet, targetId);
                 }
             } else if(packet.type === 'relay') {
-                // 【修正2】リアクションとメッセージのリレー再転送を正しく処理
                 const orig = packet.original;
                 const gId = packet.groupId;
                 
@@ -1032,7 +1065,6 @@
         dc.onclose = () => { updateOnlineBadges(); };
     }
 
-    // 【修正1】関数の定義にはすでにasyncが付与されており構文エラーは起きません
     async function handleIncomingMessagePacket(packet, roomId) {
         const msg = { id: packet.id, room: roomId, sender: packet.sender, senderName: packet.senderName, text: packet.text, type: packet.type, time: packet.time, read: false };
         await saveLocalMsg(msg);
@@ -1078,7 +1110,15 @@
         const tx = dbLocal.transaction('msgs', 'readonly');
         tx.objectStore('msgs').getAll().onsuccess = async e => {
             const msgs = e.target.result; const lastMsgs = {};
-            msgs.forEach(m => { lastMsgs[m.room] = m; });
+            localUnreadCounts = {}; 
+            msgs.forEach(m => { 
+                if (!lastMsgs[m.room] || m.time > lastMsgs[m.room].time) {
+                    lastMsgs[m.room] = m; 
+                }
+                if (!m.read && m.sender !== myInfo.id) {
+                    localUnreadCounts[m.room] = (localUnreadCounts[m.room] || 0) + 1;
+                }
+            });
             
             const friendsList = await dbGetAll("friends");
             const blockedList = await dbGetAll("blocked_users");
@@ -1216,11 +1256,11 @@
         
         await dbPut("friends", groupObj);
         
+        const updates = {};
         members.forEach(mId => {
-            if(mId !== myInfo.id && dataChannels[mId] && dataChannels[mId].readyState === 'open') {
-                dataChannels[mId].send(JSON.stringify({ type: 'system_group_create', groupObj }));
-            }
+            updates[`friends/${mId}/${groupId}`] = groupObj;
         });
+        await update(ref(dbFirebase), updates);
 
         document.getElementById('modal-group-create').classList.add('hidden');
         document.getElementById("g-name").value = "";
@@ -1390,7 +1430,6 @@
         document.getElementById('ui-msgs').scrollTop = document.getElementById('ui-msgs').scrollHeight;
     }
 
-    // 【修正2】グループチャットでのリアクションリレー機能を実装
     window.sendReact = async (msgId, emoji) => {
         document.getElementById(`rmenu-${msgId}`).classList.add('hidden');
         updateLocalMsgField(msgId, 'reaction', emoji);
@@ -1398,27 +1437,35 @@
         
         const friendObj = await dbGet("friends", currentRoom);
         const isGroup = friendObj && friendObj.isGroup;
-        const packet = { type: 'react', msgId, emoji };
+        const packet = { type: 'react', msgId, emoji, sender: myInfo.id };
 
         if(isGroup) {
             packet.groupId = currentRoom;
             const hostId = groupHostsCache[currentRoom];
             if(hostId === myInfo.id) {
                 friendObj.members.forEach(mId => {
-                    if(mId !== myInfo.id && dataChannels[mId] && dataChannels[mId].readyState === 'open') {
-                        dataChannels[mId].send(JSON.stringify(packet));
+                    if(mId !== myInfo.id) {
+                        if (dataChannels[mId] && dataChannels[mId].readyState === 'open') {
+                            dataChannels[mId].send(JSON.stringify(packet));
+                        } else {
+                            push(ref(dbFirebase, `offline_msgs/${mId}`), packet);
+                        }
                     }
                 });
             } else {
                 if(dataChannels[hostId] && dataChannels[hostId].readyState === 'open') {
                     dataChannels[hostId].send(JSON.stringify({ type: 'relay', groupId: currentRoom, original: packet }));
                 } else {
-                    showToast("グループのホストへ接続できません。");
+                    push(ref(dbFirebase, `offline_msgs/${hostId}`), { type: 'relay', groupId: currentRoom, original: packet });
                 }
             }
         } else {
             if(dataChannels[currentRoom] && dataChannels[currentRoom].readyState === 'open') {
                 dataChannels[currentRoom].send(JSON.stringify(packet));
+            } else if (!isGroup && currentRoom !== 'admin') {
+                push(ref(dbFirebase, `offline_msgs/${currentRoom}`), packet);
+            } else if (currentRoom === 'admin') {
+                push(ref(dbFirebase, `admin_msgs/${myInfo.id}`), packet);
             }
         }
     };
@@ -1449,26 +1496,28 @@
             const hostId = groupHostsCache[currentRoom];
             if(hostId === myInfo.id) {
                 friendObj.members.forEach(mId => {
-                    if(mId !== myInfo.id && dataChannels[mId] && dataChannels[mId].readyState === 'open') {
-                        dataChannels[mId].send(JSON.stringify(packet));
+                    if(mId !== myInfo.id) {
+                        if(dataChannels[mId] && dataChannels[mId].readyState === 'open') {
+                            dataChannels[mId].send(JSON.stringify(packet));
+                        } else {
+                            push(ref(dbFirebase, `offline_msgs/${mId}`), packet);
+                        }
                     }
                 });
             } else {
                 if(dataChannels[hostId] && dataChannels[hostId].readyState === 'open') {
                     dataChannels[hostId].send(JSON.stringify({ type: 'relay', groupId: currentRoom, original: packet }));
                 } else {
-                    showToast("グループのホストへ接続できません。");
+                    push(ref(dbFirebase, `offline_msgs/${hostId}`), { type: 'relay', groupId: currentRoom, original: packet });
                 }
             }
         } else {
             if(dataChannels[currentRoom] && dataChannels[currentRoom].readyState === 'open') {
                 dataChannels[currentRoom].send(JSON.stringify(packet));
             } else if(!isGroup && currentRoom !== 'admin') {
-                setTimeout(() => {
-                    if(dataChannels[currentRoom] && dataChannels[currentRoom].readyState === 'open') {
-                        dataChannels[currentRoom].send(JSON.stringify(packet));
-                    }
-                }, 1000);
+                push(ref(dbFirebase, `offline_msgs/${currentRoom}`), packet);
+            } else if(currentRoom === 'admin') {
+                push(ref(dbFirebase, `admin_msgs/${myInfo.id}`), packet);
             }
         }
     };
@@ -1484,7 +1533,6 @@
                 if(!dataChannels[currentRoom] || dataChannels[currentRoom].readyState !== 'open') {
                     showToast("接続が確立されていません。再接続を試みています...");
                     createPeerConnection(currentRoom, true);
-                    return;
                 }
             }
 
@@ -1500,18 +1548,28 @@
                 const hostId = groupHostsCache[currentRoom];
                 if(hostId === myInfo.id) {
                     friendObj.members.forEach(mId => {
-                        if(mId !== myInfo.id && dataChannels[mId] && dataChannels[mId].readyState === 'open') {
-                            dataChannels[mId].send(JSON.stringify(packet));
+                        if(mId !== myInfo.id) {
+                            if(dataChannels[mId] && dataChannels[mId].readyState === 'open') {
+                                dataChannels[mId].send(JSON.stringify(packet));
+                            } else {
+                                push(ref(dbFirebase, `offline_msgs/${mId}`), packet);
+                            }
                         }
                     });
                 } else {
                     if(dataChannels[hostId] && dataChannels[hostId].readyState === 'open') {
                         dataChannels[hostId].send(JSON.stringify({ type: 'relay', groupId: currentRoom, original: packet }));
+                    } else {
+                        push(ref(dbFirebase, `offline_msgs/${hostId}`), { type: 'relay', groupId: currentRoom, original: packet });
                     }
                 }
             } else {
                 if(dataChannels[currentRoom] && dataChannels[currentRoom].readyState === 'open') {
                     dataChannels[currentRoom].send(JSON.stringify(packet));
+                } else if (!isGroup && currentRoom !== 'admin') {
+                    push(ref(dbFirebase, `offline_msgs/${currentRoom}`), packet);
+                } else if (currentRoom === 'admin') {
+                    push(ref(dbFirebase, `admin_msgs/${myInfo.id}`), packet);
                 }
             }
         });
