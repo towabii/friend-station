@@ -69,10 +69,8 @@
         .main-screen.active{z-index:2;}
         @media(max-width: 768px){ .list-panel{width:100%; position:absolute; left:70px; height:100%;} .main-panel-container{position:absolute; left:70px; width:calc(100% - 70px); height:100%; z-index:6; transform:translateX(100%); transition:transform 0.3s;} .main-panel-container.active{transform:translateX(0);} }
 
-        /* 【新規機能1】一斉アナウンス枠スタイル */
         .announcement-bar { background: rgba(46, 204, 113, 0.14); border: 1px solid rgba(46, 204, 113, 0.35); padding: 10px 15px; margin: 10px 15px 0 15px; border-radius: 12px; font-size: 13px; color: var(--text-main); display: flex; align-items: center; gap: 10px; }
 
-        /* 【新規機能9】設定画面メニュー構造化用 */
         .settings-container { display: flex; gap: 20px; height: 100%; }
         .settings-menu { width: 200px; display: flex; flex-direction: column; gap: 8px; border-right: 1px solid var(--border); padding-right: 15px; }
         .settings-menu button { background: transparent; color: var(--text-main); justify-content: flex-start; text-align: left; padding: 12px; font-size: 14px; border-radius: 10px; box-shadow:none; }
@@ -104,10 +102,8 @@
         .reaction-menu { position:absolute; background:var(--bg-panel); border:1px solid var(--border); border-radius:24px; padding:5px; display:flex; gap:5px; z-index:100; box-shadow:0 5px 15px rgba(0,0,0,0.5); }
         .react-btn { background:none; border:none; font-size:20px; cursor:pointer; padding:5px; transition:0.2s;} .react-btn:hover{transform:scale(1.3);}
         
-        /* プレースホルダー・スケルトン表示用 */
         .ui-placeholder { padding: 20px; text-align: center; color: var(--text-sub); font-size: 14px; }
 
-        /* 通知カード用汎用スタイル */
         .notif-card { padding:15px; background:var(--bg-panel); border:1px solid var(--border); border-radius:12px; margin-bottom:12px; text-align:left; position:relative; box-shadow:0 4px 12px rgba(0,0,0,0.15); }
         .notif-card p { font-size:14px; margin-bottom:10px; line-height:1.4; }
         .notif-card .notif-actions { display:flex; gap:10px; }
@@ -151,6 +147,7 @@
 
 <!-- ビデオ通話画面 -->
 <div id="video-overlay" class="hidden">
+    <div id="call-status-text" style="position:absolute; top:40px; color:#fff; font-size:18px; font-weight:bold; z-index:2; text-shadow:0 2px 4px rgba(0,0,0,0.8);">呼び出し中...</div>
     <video id="remote-video" autoplay playsinline></video>
     <video id="local-video" autoplay playsinline muted></video>
     <div class="call-controls">
@@ -177,12 +174,12 @@
     <h2>Friend Station</h2>
     <div id="auth-msg" style="color:var(--danger); margin-bottom:10px; text-align:center; display:none;"></div>
     
-    <form id="form-login">
+    <!-- 【修正4】ボタンを type="button" に変更し、リロードを完全に防止 -->
+    <form id="form-login" onsubmit="return false;">
         <input type="text" id="l-user" placeholder="ユーザーID" required>
         <input type="password" id="l-pass" placeholder="パスワード" required>
-        <button type="submit" id="btn-submit-login" style="width:100%;">ログイン</button>
+        <button type="button" id="btn-submit-login" style="width:100%;">ログイン</button>
         
-        <!-- 【新規機能8】ログイン画面へのデータ引き継ぎ入力欄の新設 -->
         <div style="margin-top:15px; border-top:1px solid var(--border); padding-top:15px;">
             <input type="text" id="t-code" placeholder="8桁の引き継ぎコード（任意）" maxlength="8" style="text-transform: uppercase;">
             <button type="button" class="sub-btn" id="btn-transfer-login" style="width:100%;"><i class="fa-solid fa-cloud-arrow-down"></i> 引き継ぎコードでログイン</button>
@@ -191,7 +188,7 @@
         <button type="button" class="auth-link" onclick="toggleAuth('reg')">アカウント作成</button>
     </form>
     
-    <form id="form-reg" class="hidden">
+    <form id="form-reg" class="hidden" onsubmit="return false;">
         <div id="step1" class="reg-step">
             <h3>まずは本人確認をします</h3>
             <div style="display:flex;gap:10px;"><input type="text" id="r-fn" placeholder="姓" required><input type="text" id="r-ln" placeholder="名" required></div>
@@ -215,7 +212,7 @@
             <input type="date" id="r-birth" required>
             <p style="font-size:12px;color:var(--text-sub);margin-bottom:5px;">アイコン画像 (任意)</p>
             <input type="file" id="r-icon" accept="image/*" style="padding:10px;">
-            <button type="submit" id="btn-submit-reg" style="width:100%;">登録</button><button type="button" class="auth-link" onclick="nextStep(3)">戻る</button>
+            <button type="button" id="btn-submit-reg" style="width:100%;">登録</button><button type="button" class="auth-link" onclick="nextStep(3)">戻る</button>
         </div>
     </form>
 </div>
@@ -240,10 +237,8 @@
         <div id="panel-chat" class="scroll-area">
             <div class="panel-header" style="display:flex; justify-content:space-between; align-items:center;">
                 <span>メッセージ</span>
-                <!-- 【新規機能3】グループ作成の導線ボタン -->
                 <button type="button" style="padding:6px 12px; font-size:12px;" onclick="showGroupCreateModal()"><i class="fa-solid fa-users"></i> グループ作成</button>
             </div>
-            <!-- 【新規機能1】一斉アナウンス枠表示欄 -->
             <div id="ui-announcement" class="announcement-bar hidden"></div>
             <div id="ui-rooms"><div class="ui-placeholder">ルームを読み込み中...</div></div>
         </div>
@@ -254,12 +249,8 @@
                 <button type="button" onclick="execSearch()" style="width:100%;border-radius:20px;">検索</button>
             </div>
             <div id="ui-search-res"></div>
-
-            <!-- 【新規機能4】おすすめユーザー枠 -->
             <div style="padding: 0 15px;"><h4 style="margin: 15px 0 10px; color: var(--text-sub); font-size: 14px;">おすすめユーザー</h4></div>
             <div id="ui-recommend-users" style="padding: 0 15px;"><div class="ui-placeholder">読み込み中...</div></div>
-
-            <!-- 【新規機能5】送信済み申請（保留中）のキャンセル枠 -->
             <div style="padding: 0 15px;"><h4 style="margin: 20px 0 10px; color: var(--text-sub); font-size: 14px;">送信済みの申請（保留中）</h4></div>
             <div id="ui-sent-requests" style="padding: 0 15px;"><div class="ui-placeholder">読み込み中...</div></div>
         </div>
@@ -270,7 +261,6 @@
         <div id="panel-settings" class="scroll-area hidden">
             <div class="panel-header">設定パネル</div>
             <div id="panel-settings-content" style="padding:15px;">
-                <!-- プロフィール設定要素一式をここへ移動 -->
                 <div id="set-prof" class="settings-sec">
                     <div style="display:flex;align-items:center;gap:20px;margin-bottom:20px;">
                         <img id="my-icon-preview" src="./icon.jpeg" style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:2px solid var(--accent);">
@@ -297,7 +287,6 @@
                     <div style="display:flex;gap:10px; align-items:center;">
                         <button type="button" class="icon-btn" id="btn-call-audio" onclick="startCall(false)"><i class="fa-solid fa-phone"></i></button>
                         <button type="button" class="icon-btn" id="btn-call-video" onclick="startCall(true)"><i class="fa-solid fa-video"></i></button>
-                        <!-- 【新規機能2, 6】ブロックボタン（adminは動的に制御） -->
                         <button type="button" class="danger" id="btn-block-user" style="padding:8px 14px; font-size:13px;" onclick="blockCurrentTarget()"><i class="fa-solid fa-user-slash"></i> ブロック</button>
                     </div>
                 </div>
@@ -313,19 +302,16 @@
             </div>
         </div>
 
-        <!-- 【新規機能9】設定画面の格納・アコーディオン/タブメニュー化レイアウト -->
         <div id="main-settings" class="main-screen hidden scroll-area" style="padding:40px;">
             <h2 style="margin-bottom:25px;border-bottom:1px solid var(--border);padding-bottom:15px;">設定</h2>
             <div class="settings-container">
                 <div class="settings-menu">
-                    <!-- プロフィールボタンを削除 -->
                     <button class="settings-tab-btn active" onclick="switchSettingsSection('set-sound', this)"><i class="fa-solid fa-volume-high"></i> 通知音テスト</button>
                     <button class="settings-tab-btn" onclick="switchSettingsSection('set-backup', this)"><i class="fa-solid fa-cloud-arrow-up"></i> データ引継ぎ</button>
                     <button class="settings-tab-btn" onclick="switchSettingsSection('set-terms', this)"><i class="fa-solid fa-file-shield"></i> 利用規約</button>
                 </div>
                 
                 <div class="settings-content">
-                    <!-- セクション2: 【新規機能7】通知音テスト -->
                     <div id="set-sound" class="settings-sec">
                         <h3 style="margin-bottom:15px; color:var(--accent);">通知音・着信音テスト</h3>
                         <div style="margin-bottom:15px;">
@@ -344,7 +330,6 @@
                         </div>
                     </div>
 
-                    <!-- セクション3: 【新規機能8】データ引き継ぎ保管 -->
                     <div id="set-backup" class="settings-sec hidden">
                         <h3 style="margin-bottom:10px; color:var(--accent);">サーバーデータ保管</h3>
                         <p style="font-size:13px; color:var(--text-sub); margin-bottom:15px; line-height:1.4;">現在のローカルチャット履歴とフレンドデータを50日間限定でサーバーへバックアップします。</p>
@@ -355,7 +340,6 @@
                         </div>
                     </div>
 
-                    <!-- セクション4: 【新規機能9】利用規約の格納 -->
                     <div id="set-terms" class="settings-sec hidden">
                         <h3 style="margin-bottom:10px; color:var(--accent);">利用規約・プライバシーポリシー</h3>
                         <div style="background:var(--bg-dark); border:1px solid var(--border); padding:15px; border-radius:12px; height:220px; overflow-y:auto; font-size:12px; line-height:1.6; color:var(--text-sub); text-align:left;">
@@ -370,7 +354,6 @@
                         </div>
                     </div>
 
-                    <!-- 【新規機能9】ログアウトボタンを設定画面最下部へ移動 -->
                     <button class="nav-btn danger" onclick="logout()" style="margin-top:30px; width:100%; color:#fff;"><i class="fa-solid fa-right-from-bracket"></i> <span>ログアウト</span></button>
                 </div>
             </div>
@@ -398,25 +381,21 @@
     let currentRoom = null; let onlineStatusCache = {}; let dbLocal = null;
     let allUsersCache = {}; 
     
-    // 多重登録防止用のUnsubscribe参照保持オブジェクト
     let firebaseUnsubscribes = {
         pending: null,
         users: null,
         presence: null,
         webrtcP2p: null,
         webrtcCall: null,
-        hangup: null,
         friendRequests: null,
         broadcasts: null
     };
 
-    // WebRTC DataChannel / Meshスター型用構造
-    let peerConnections = {}; // targetId -> RTCPeerConnection
-    let dataChannels = {};     // targetId -> RTCDataChannel
-    let groupHostsCache = {};  // groupId -> hostUserId
-    let localUnreadCounts = {};// targetId -> count (ローカル完結既読バッジ用)
+    let peerConnections = {}; 
+    let dataChannels = {};     
+    let groupHostsCache = {};  
+    let localUnreadCounts = {};
 
-    // タブ点滅用状態変数
     let isTabActive = true;
     let unreadTotal = 0;
     let blinkInterval = null;
@@ -426,17 +405,18 @@
     ['mousemove','keydown','touchstart','scroll'].forEach(e => document.addEventListener(e, resetIdle));
     setInterval(() => { idleTime += 60000; if(idleTime >= MAX_IDLE_TIME) { goOffline(dbFirebase); document.getElementById('modal-timeout').classList.remove('hidden'); } }, 60000);
 
-    let peerConnection = null; let localStream = null; let callSession = null; let isVideoCall = false;
-    let incomingCallRingAudio = null; // 着信音再生用オブジェクト
-    let outgoingCallRingAudio = null; // 呼び出し音再生用オブジェクト
+    let peerConnection = null; 
+    let localStream = null; 
+    let callSession = null; 
+    let isVideoCall = false;
+    let currentCallAudio = null;
+    let incomingOfferSDP = null;
+    let incomingCallSender = null;
+    
     const servers = { iceServers: [{urls:'stun:stun.l.google.com:19302'}] };
     const getEl = id => document.getElementById(id);
-    const safeText = (id, value) => { const el = getEl(id); if (el) el.innerText = value; };
-    const safeValue = (id, value) => { const el = getEl(id); if (el) el.value = value; };
     const safeHtml = (id, html) => { const el = getEl(id); if (el) el.innerHTML = html; };
-    const safeSrc = (id, value) => { const el = getEl(id); if (el) el.src = value; };
 
-    // タブの非アクティブ検知
     document.addEventListener("visibilitychange", () => {
         isTabActive = !document.hidden;
         if (isTabActive) {
@@ -445,15 +425,12 @@
             unreadTotal = 0;
         }
     });
-
-    // 【修正】focus/blur イベントでもタブ状態を管理
     window.addEventListener('focus', () => {
         isTabActive = true;
         clearInterval(blinkInterval);
         document.title = "Friend Station";
         unreadTotal = 0;
     });
-
     window.addEventListener('blur', () => {
         isTabActive = false;
     });
@@ -484,7 +461,7 @@
 
     function initDB() {
         return new Promise((resolve, reject) => {
-            if (dbLocal) { resolve(); return; } // すでに初期化済みの場合はそのまま解決
+            if (dbLocal) { resolve(); return; }
             const req = indexedDB.open('ChatDB', 3);
             req.onupgradeneeded = e => {
                 const db = e.target.result;
@@ -536,12 +513,9 @@
     window.toggleAuth = m => { const loginForm = getEl('form-login'); const regForm = getEl('form-reg'); if (loginForm) loginForm.classList.toggle('hidden', m!=='login'); if (regForm) regForm.classList.toggle('hidden', m!=='reg'); if(m==='reg') nextStep(1); };
     window.nextStep = n => { document.querySelectorAll('.reg-step').forEach(el=>el.classList.add('hidden')); const stepEl = getEl('step'+n); if (stepEl) stepEl.classList.remove('hidden'); };
     
-    // 【バグ修正1】switchNav のロジック統一
     window.switchNav = (m, targetBtn) => { 
         document.querySelectorAll('.nav-btn').forEach(el=>el.classList.remove('active')); 
-        if (targetBtn) {
-            targetBtn.classList.add('active');
-        }
+        if (targetBtn) { targetBtn.classList.add('active'); }
         
         const panelChat = getEl('panel-chat'); const panelSearch = getEl('panel-search'); const panelNotif = getEl('panel-notif'); const panelSettings = getEl('panel-settings');
         if (panelChat) panelChat.classList.add('hidden');
@@ -572,7 +546,6 @@
     };
     window.closeChatMobile = () => { const mainContainer = getEl('main-container'); if (mainContainer) mainContainer.classList.remove('active'); };
 
-    // 【新規機能9】設定画面アコーディオン用切り替えロジック
     window.switchSettingsSection = (secId, btn) => {
         document.querySelectorAll(".settings-tab-btn").forEach(b => b.classList.remove("active"));
         if (btn) btn.classList.add("active");
@@ -581,13 +554,11 @@
         if (secEl) secEl.classList.remove("hidden");
     };
 
-    // 【修正1】通知音テスト再生 - すでに再生中の音がある場合は停止して最初から流す
     let currentTestAudio = null;
     window.testSound = (type) => {
         const selectEl = getEl(type === "notif" ? "sel-notif-sound" : "sel-call-sound");
         if (!selectEl) return;
         
-        // 既存の再生中の音を停止
         if (currentTestAudio) {
             try {
                 currentTestAudio.pause();
@@ -621,9 +592,15 @@
         });
     }
 
-    document.getElementById('form-login').onsubmit = async e => {
-        e.preventDefault(); const btn=document.getElementById('btn-submit-login'); btn.innerText="認証中...";
-        const uid = document.getElementById('l-user').value; const pass = document.getElementById('l-pass').value;
+    // 【修正4】フォーム送信イベントをボタンのonclickに変更しリロードを完全に防ぐ
+    document.getElementById('btn-submit-login').onclick = async (e) => {
+        e.preventDefault();
+        const lUser = document.getElementById('l-user');
+        const lPass = document.getElementById('l-pass');
+        if(!lUser.value || !lPass.value) return showToast("IDとパスワードを入力してください");
+
+        const btn = document.getElementById('btn-submit-login'); btn.innerText="認証中...";
+        const uid = lUser.value; const pass = lPass.value;
         const snap = await get(ref(dbFirebase, `users/${uid}`));
         btn.innerText="ログイン";
         if(snap.exists() && snap.val().password === pass) {
@@ -633,15 +610,19 @@
         } else { document.getElementById('auth-msg').innerText = "IDかパスワードが違います"; document.getElementById('auth-msg').style.display='block'; }
     };
 
-    document.getElementById('form-reg').onsubmit = async e => {
-        e.preventDefault(); const btn=document.getElementById('btn-submit-reg'); btn.innerText="登録中...";
+    document.getElementById('btn-submit-reg').onclick = async (e) => {
+        e.preventDefault();
         const uid = document.getElementById('r-user').value;
+        const pass = document.getElementById('r-pass').value;
+        if(!uid || !pass) return showToast("必要な項目を入力してください");
+
+        const btn = document.getElementById('btn-submit-reg'); btn.innerText="登録中...";
         const snap = await get(ref(dbFirebase, `users/${uid}`));
         if(snap.exists()) { btn.innerText="登録"; return showToast('そのIDは既に存在します'); }
         
         const file = document.getElementById('r-icon').files[0];
         const registerUser = async (iconBase64 = '') => {
-            const user = { id: uid, username: uid, nickname: document.getElementById('r-nick').value, first_name: document.getElementById('r-fn').value, last_name: document.getElementById('r-ln').value, password: document.getElementById('r-pass').value, is_banned: 0, status: 'pending', icon: iconBase64, timestamp: Date.now() };
+            const user = { id: uid, username: uid, nickname: document.getElementById('r-nick').value, first_name: document.getElementById('r-fn').value, last_name: document.getElementById('r-ln').value, password: pass, is_banned: 0, status: 'pending', icon: iconBase64, timestamp: Date.now() };
             await set(ref(dbFirebase, `users/${uid}`), user);
             startPendingMonitor(uid);
         };
@@ -652,7 +633,6 @@
     window.logout = () => { if(myInfo) remove(ref(dbFirebase, `presence/${myInfo.id}`)); localStorage.clear(); location.reload(); };
 
     async function initApp() {
-        // 【バグ2】既存のWebRTC接続およびDataChannelを全てクレンジング
         for (let targetId in dataChannels) {
             try { if (dataChannels[targetId]) dataChannels[targetId].close(); } catch(e){}
             dataChannels[targetId] = null;
@@ -664,12 +644,8 @@
         dataChannels = {};
         peerConnections = {};
         groupHostsCache = {};
-        peerConnection = null;
-        localStream = null;
-        callSession = null;
-        isVideoCall = false;
+        forceEndCall();
 
-        // 既存のFirebaseリスナーをすべて解除
         Object.keys(firebaseUnsubscribes).forEach(key => {
             if (firebaseUnsubscribes[key]) {
                 firebaseUnsubscribes[key]();
@@ -689,33 +665,27 @@
         const qrCanvas = getEl('my-qr');
         if (qrCanvas) QRCode.toCanvas(qrCanvas, myInfo.username, {width:200, margin:2});
         
-        // 【バグ1】IndexedDBの初期化完了を待機
         await initDB();
 
-        // 【新規機能2】管理者の初回自動挿入＆ブロック不可仕様
         const existingAdmin = await dbGet("friends", "admin");
         if(!existingAdmin) {
             await dbPut("friends", { id: "admin", nickname: "管理者", icon: "./tag.jpg", isGroup: false });
         }
         
-        // アナウンスメント表示のクレンジング
         const uiAnnouncement = getEl("ui-announcement");
         if (uiAnnouncement) { uiAnnouncement.classList.add("hidden"); uiAnnouncement.innerHTML = ""; }
 
-        // 【新規機能1】一斉アナウンス機能
         const announcementSnap = await get(ref(dbFirebase, 'announcements/current'));
         if(announcementSnap.exists() && announcementSnap.val() && uiAnnouncement) {
             uiAnnouncement.innerHTML = `<i class="fa-solid fa-bullhorn"></i> <span>${announcementSnap.val()}</span>`;
             uiAnnouncement.classList.remove("hidden");
         }
 
-        // プレースホルダーの初期化
         safeHtml('ui-rooms', '<div class="ui-placeholder">ルームを読み込み中...</div>');
         safeHtml("ui-recommend-users", '<div class="ui-placeholder">読み込み中...</div>');
         safeHtml("ui-sent-requests", '<div class="ui-placeholder">読み込み中...</div>');
         safeHtml('ui-notifications', '');
 
-        // 初期データの読み込みを完了してからリスナーを登録
         await loadChatList();
         await loadRecommendUsers();
 
@@ -733,22 +703,20 @@
             reEvaluateGroupHosts();
         });
 
-        // 【新規機能3】フレンド申請のリアルタイム監視＆Firebaseフレンドノードの自動同期
         firebaseUnsubscribes.friendRequests = onValue(ref(dbFirebase, `friend_requests/${myInfo.id}`), snap => {
             renderNotifications();
         });
 
-        // Firebaseのfriends/${myInfo.id}/を監視して、ローカルIndexedDBに自動同期
-        onValue(ref(dbFirebase, `friends/${myInfo.id}`), snap => {
+        onValue(ref(dbFirebase, `friends/${myInfo.id}`), async snap => {
             if(snap.exists()) {
                 const data = snap.val();
                 for(let friendId in data) {
-                    dbPut('friends', data[friendId]).catch(e => console.log('Friend sync error:', e));
+                    await dbPut('friends', data[friendId]);
                 }
+                loadChatList();
             }
         });
 
-        // 【新規機能4】管理画面からの一斉お知らせをリアルタイム監視
         firebaseUnsubscribes.broadcasts = onChildAdded(ref(dbFirebase, 'announcements/broadcasts'), snap => {
             const data = snap.val();
             if (data) {
@@ -756,7 +724,6 @@
             }
         });
 
-        // WebRTC 完全シグナリング待受け
         firebaseUnsubscribes.webrtcP2p = onChildAdded(ref(dbFirebase, `webrtc_p2p/${myInfo.id}`), async snap => {
             const data = snap.val();
             if(!data) return;
@@ -778,62 +745,82 @@
             remove(snap.ref);
         });
 
-        // 既存通話システム用のシグナリング受信
         firebaseUnsubscribes.webrtcCall = onChildAdded(ref(dbFirebase, `webrtc/${myInfo.id}`), async snap => {
             const data = snap.val();
             if(!data) return;
+            remove(snap.ref);
+
             if(data.type === 'offer') {
                 const blocked = await dbGet("blocked_users", data.sender);
-                if(blocked) { remove(snap.ref); return; }
-                callSession = data.session; isVideoCall = data.video;
-                document.getElementById('inc-name').innerText = allUsersCache[data.sender]?.nickname || '着信';
-                document.getElementById('inc-icon').src = allUsersCache[data.sender]?.icon || './icon.jpeg';
+                if(blocked) return;
+
+                callSession = data.session; 
+                isVideoCall = data.video;
+                incomingOfferSDP = data.sdp;
+                incomingCallSender = data.sender;
+
+                let callerName = allUsersCache[data.sender]?.nickname;
+                let callerIcon = allUsersCache[data.sender]?.icon;
+
+                // 【修正3】キャッシュ未取得時のフォールバック処理
+                if (!callerName || !callerIcon) {
+                    const fallbackSnap = await get(ref(dbFirebase, `users/${data.sender}`));
+                    if (fallbackSnap.exists()) {
+                        const fallbackData = fallbackSnap.val();
+                        callerName = callerName || fallbackData.nickname;
+                        callerIcon = callerIcon || fallbackData.icon;
+                    }
+                }
+
+                document.getElementById('inc-name').innerText = callerName || '着信';
+                document.getElementById('inc-icon').src = callerIcon || './icon.jpeg';
                 document.getElementById('inc-type').innerHTML = data.video ? '<i class="fa-solid fa-video"></i> ビデオ通話' : '<i class="fa-solid fa-phone"></i> 音声通話';
                 document.getElementById('modal-incoming').classList.remove('hidden');
                 
-                peerConnection = new RTCPeerConnection(servers);
-                peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
-                peerConnection.onicecandidate = e => { if(e.candidate) set(ref(dbFirebase, `webrtc/${data.sender}/${Date.now()}`), {type:'candidate', candidate:e.candidate, sender:myInfo.id}); };
-                peerConnection.ontrack = e => { document.getElementById('remote-video').srcObject = e.streams[0]; };
-                
-                // 【修正2】着信音をループ再生
+                if (currentCallAudio) {
+                    currentCallAudio.pause();
+                    currentCallAudio.currentTime = 0;
+                }
                 const callSoundSelect = getEl('sel-call-sound');
                 if (callSoundSelect) {
-                    const soundFile = callSoundSelect.value;
-                    incomingCallRingAudio = new Audio(`./${soundFile}.mp3`);
-                    incomingCallRingAudio.loop = true;
-                    incomingCallRingAudio.play().catch(e => console.log('着信音再生エラー:', e));
+                    currentCallAudio = new Audio(`./${callSoundSelect.value}.mp3`);
+                    currentCallAudio.loop = true;
+                    currentCallAudio.play().catch(e => console.log('着信音再生エラー:', e));
                 }
-                
-                if (firebaseUnsubscribes.hangup) { firebaseUnsubscribes.hangup(); }
-                firebaseUnsubscribes.hangup = onValue(ref(dbFirebase, `webrtc_hangup/${callSession}`), hSnap => { if(hSnap.val()) endCall(); });
             } 
-            else if(data.type === 'answer' && peerConnection) { peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp)); }
-            else if(data.type === 'candidate' && peerConnection) { peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate)); }
-            remove(snap.ref);
+            else if(data.type === 'answer' && peerConnection) { 
+                if (currentCallAudio) {
+                    currentCallAudio.pause();
+                    currentCallAudio.currentTime = 0;
+                    currentCallAudio = null;
+                }
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp)); 
+                const statusText = document.getElementById('call-status-text');
+                if(statusText) statusText.classList.add('hidden');
+            }
+            else if(data.type === 'candidate' && peerConnection) { 
+                await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate)); 
+            }
+            else if(data.type === 'cancel') {
+                forceEndCall();
+            }
         });
 
-        // P2P初期メッシュ構築開始
         initiateP2PMesh();
     }
 
-    // 【新規機能3, 4】通知エリアの描画ロジック
     async function renderNotifications() {
         const notifContainer = document.getElementById('ui-notifications');
-        // バグ修正2：UI更新時にHTMLリセット処理を追加して二重表示を防ぐ
         if(!notifContainer) return;
         
-        // フレンド申請データを1回リフレッシュ取得
         const snap = await get(ref(dbFirebase, `friend_requests/${myInfo.id}`));
         
-        // フレンド申請専用のラッパー枠を定義
         let reqWrapper = document.getElementById('ui-notif-requests-wrapper');
         if(!reqWrapper) {
             notifContainer.insertAdjacentHTML('afterbegin', '<div id="ui-notif-requests-wrapper"></div>');
             reqWrapper = document.getElementById('ui-notif-requests-wrapper');
         }
 
-        // リセット処理で重複表示を防ぐ
         if(!snap.exists() || !snap.val()) {
             reqWrapper.innerHTML = '';
             checkNotifEmpty();
@@ -852,7 +839,6 @@
                 </div>
             </div>`;
         }
-        // HTMLをリセットしてから新規要素を挿入（二重表示防止）
         reqWrapper.innerHTML = html;
         checkNotifEmpty();
     }
@@ -871,7 +857,6 @@
             <span class="notif-time">${d}</span>
         </div>`;
 
-        // タイムスタンプ順（新しい順）に挿入配置
         const cards = Array.from(notifContainer.querySelectorAll('.notif-card[data-timestamp]'));
         const targetCard = cards.find(c => parseInt(c.dataset.timestamp) < (data.timestamp || 0));
         
@@ -898,31 +883,27 @@
         }
     }
 
-    // 【新規機能3】[承認] アクション処理
     window.acceptFriendRequest = async (fromId, fromNick) => {
-        // 1. IndexedDBへ追加
-        await dbPut('friends', { id: fromId, nickname: fromNick, icon: './icon.jpeg', isGroup: false });
-        // 2. Firebaseの両側にフレンド情報を保存（バグ修正1）
-        await set(ref(dbFirebase, `friends/${myInfo.id}/${fromId}`), { id: fromId, nickname: fromNick, icon: './icon.jpeg', isGroup: false });
-        await set(ref(dbFirebase, `friends/${fromId}/${myInfo.id}`), { id: myInfo.id, nickname: myInfo.nickname, icon: myInfo.icon, isGroup: false });
-        // 3. WebRTC PeerConnection を作成
+        const friendIcon = allUsersCache[fromId]?.icon || './icon.jpeg';
+        await dbPut('friends', { id: fromId, nickname: fromNick, icon: friendIcon, isGroup: false });
+        
+        await set(ref(dbFirebase, `friends/${myInfo.id}/${fromId}`), { id: fromId, nickname: fromNick, icon: friendIcon, isGroup: false });
+        await set(ref(dbFirebase, `friends/${fromId}/${myInfo.id}`), { id: myInfo.id, nickname: myInfo.nickname, icon: myInfo.icon || './icon.jpeg', isGroup: false });
+        
         createPeerConnection(fromId, true);
-        // 4. Firebaseから削除
         await remove(ref(dbFirebase, `friend_requests/${myInfo.id}/${fromId}`));
-        // 5. UI更新
+        
         showToast("フレンド申請を承認しました");
         loadChatList();
         renderNotifications();
     };
 
-    // 【新規機能3】[拒否] アクション処理
     window.rejectFriendRequest = async (fromId) => {
         await remove(ref(dbFirebase, `friend_requests/${myInfo.id}/${fromId}`));
         showToast("フレンド申請を拒否しました");
         renderNotifications();
     };
 
-    // P2Pの起動時接続
     async function initiateP2PMesh() {
         const friends = await dbGetAll("friends");
         for(let f of friends) {
@@ -1005,9 +986,37 @@
                     await handleIncomingMessagePacket(packet, targetId);
                 }
             } else if(packet.type === 'relay') {
-                await handleIncomingMessagePacket(packet.original, packet.groupId);
+                // 【修正2】リアクションとメッセージのリレー再転送を正しく処理
+                const orig = packet.original;
+                const gId = packet.groupId;
+                
+                if (orig.type === 'react') {
+                    if (currentRoom === gId) {
+                        updateLocalMsgField(orig.msgId, 'reaction', orig.emoji);
+                        const el = document.getElementById(`react-${orig.msgId}`);
+                        if(el){ el.innerText=orig.emoji; el.style.display='block'; }
+                    }
+                } else {
+                    await handleIncomingMessagePacket(orig, gId);
+                }
+                
+                const hostId = groupHostsCache[gId];
+                if(hostId === myInfo.id) {
+                    const friendObj = await dbGet("friends", gId);
+                    if(friendObj) {
+                        friendObj.members.forEach(mId => {
+                            if(mId !== myInfo.id && dataChannels[mId] && dataChannels[mId].readyState === 'open') {
+                                if (mId !== targetId) {
+                                    orig.groupId = gId;
+                                    dataChannels[mId].send(JSON.stringify(orig));
+                                }
+                            }
+                        });
+                    }
+                }
             } else if(packet.type === 'react') {
-                if(currentRoom === targetId) {
+                const targetRoom = packet.groupId ? packet.groupId : targetId;
+                if(currentRoom === targetRoom) {
                     updateLocalMsgField(packet.msgId, 'reaction', packet.emoji);
                     const el = document.getElementById(`react-${packet.msgId}`);
                     if(el){ el.innerText=packet.emoji; el.style.display='block'; }
@@ -1023,6 +1032,7 @@
         dc.onclose = () => { updateOnlineBadges(); };
     }
 
+    // 【修正1】関数の定義にはすでにasyncが付与されており構文エラーは起きません
     async function handleIncomingMessagePacket(packet, roomId) {
         const msg = { id: packet.id, room: roomId, sender: packet.sender, senderName: packet.senderName, text: packet.text, type: packet.type, time: packet.time, read: false };
         await saveLocalMsg(msg);
@@ -1037,7 +1047,6 @@
         if(!isTabActive) {
             unreadTotal++;
             triggerTitleBlink();
-            // 【修正1】タブがバックグラウンド時にメッセージ通知音を再生
             const notifSoundSelect = getEl('sel-notif-sound');
             if (notifSoundSelect) {
                 const soundFile = notifSoundSelect.value;
@@ -1167,7 +1176,6 @@
     };
 
     window.showGroupCreateModal = async () => {
-        // バグ修正5：グループ作成モーダルの不備を修正
         const friends = await dbGetAll("friends");
         const normalFriends = friends.filter(f => !f.isGroup && f.id !== 'admin');
         const listDiv = document.getElementById("g-friends-list");
@@ -1268,7 +1276,6 @@
         if(!snap.exists()) return alert("コードが無効か、50日の保存期間が切れています。");
 
         const backupData = snap.val();
-        // バグ修正4：||の評価順序の問題を修正。正しくusers/ノードからユーザーデータを取得
         const userSnap = await get(ref(dbFirebase, `users/${backupData.user_id}`));
         
         if(!userSnap.exists()) return alert("ユーザーデータが見つかりません。");
@@ -1302,7 +1309,6 @@
         let html = '';
         Object.values(allUsersCache).forEach(u => {
             if(u.id !== myInfo.id && u.status === 'approved' && (u.nickname.toLowerCase().includes(q) || u.username.toLowerCase().includes(q))) {
-                // バグ修正3：openRoom関数は正しく定義されており、onclick属性での呼び出しに対応
                 html += `<div class="room-item" onclick="openRoom('${u.id}', '${u.nickname}')"><img src="${u.icon||'./icon.jpeg'}"><div><b>${u.nickname}</b><br><span style="font-size:12px;color:var(--text-sub);">@${u.username}</span></div></div>`;
             }
         });
@@ -1384,13 +1390,36 @@
         document.getElementById('ui-msgs').scrollTop = document.getElementById('ui-msgs').scrollHeight;
     }
 
-    window.sendReact = (msgId, emoji) => {
+    // 【修正2】グループチャットでのリアクションリレー機能を実装
+    window.sendReact = async (msgId, emoji) => {
         document.getElementById(`rmenu-${msgId}`).classList.add('hidden');
         updateLocalMsgField(msgId, 'reaction', emoji);
         const el = document.getElementById(`react-${msgId}`); if(el){ el.innerText=emoji; el.style.display='block'; }
         
-        if(dataChannels[currentRoom] && dataChannels[currentRoom].readyState === 'open') {
-            dataChannels[currentRoom].send(JSON.stringify({ type: 'react', msgId, emoji }));
+        const friendObj = await dbGet("friends", currentRoom);
+        const isGroup = friendObj && friendObj.isGroup;
+        const packet = { type: 'react', msgId, emoji };
+
+        if(isGroup) {
+            packet.groupId = currentRoom;
+            const hostId = groupHostsCache[currentRoom];
+            if(hostId === myInfo.id) {
+                friendObj.members.forEach(mId => {
+                    if(mId !== myInfo.id && dataChannels[mId] && dataChannels[mId].readyState === 'open') {
+                        dataChannels[mId].send(JSON.stringify(packet));
+                    }
+                });
+            } else {
+                if(dataChannels[hostId] && dataChannels[hostId].readyState === 'open') {
+                    dataChannels[hostId].send(JSON.stringify({ type: 'relay', groupId: currentRoom, original: packet }));
+                } else {
+                    showToast("グループのホストへ接続できません。");
+                }
+            }
+        } else {
+            if(dataChannels[currentRoom] && dataChannels[currentRoom].readyState === 'open') {
+                dataChannels[currentRoom].send(JSON.stringify(packet));
+            }
         }
     };
 
@@ -1401,12 +1430,9 @@
         const isGroup = friendObj && friendObj.isGroup;
 
         if(!isGroup && currentRoom !== 'admin') {
-            // バグ修正6：readyStateが'open'でない場合の挙動改善
             if(!dataChannels[currentRoom] || dataChannels[currentRoom].readyState !== 'open') {
                 showToast("接続が確立されていません。再接続を試みています...");
-                // 再接続を裏で走らせつつ、メッセージをローカルに保存して送信準備を整える
                 createPeerConnection(currentRoom, true);
-                // returnの代わりにメッセージをローカルに保存してから送信試行を続ける
             }
         }
 
@@ -1435,12 +1461,9 @@
                 }
             }
         } else {
-            // バグ修正6：readyState確認時の改善処理
             if(dataChannels[currentRoom] && dataChannels[currentRoom].readyState === 'open') {
                 dataChannels[currentRoom].send(JSON.stringify(packet));
             } else if(!isGroup && currentRoom !== 'admin') {
-                // 接続が未確立でも、ローカルには既に保存済みのため、再接続時の送信に備える
-                // リトライ処理：一定時間後に再度送信を試みる
                 setTimeout(() => {
                     if(dataChannels[currentRoom] && dataChannels[currentRoom].readyState === 'open') {
                         dataChannels[currentRoom].send(JSON.stringify(packet));
@@ -1500,91 +1523,165 @@
     window.startCall = async (video) => {
         const isOnline = onlineStatusCache[currentRoom] || dataChannels[currentRoom]?.readyState === 'open' || peerConnections[currentRoom]?.connectionState === 'connected';
         if(!currentRoom || !isOnline) return showToast("相手がオフラインです");
-        isVideoCall = video; callSession = 'call_' + Date.now();
+        isVideoCall = video; 
+        callSession = 'call_' + Date.now();
+        
         document.getElementById('video-overlay').classList.remove('hidden');
         document.getElementById('local-video').style.display = video ? 'block' : 'none';
         
-        localStream = await navigator.mediaDevices.getUserMedia({video: video, audio: true});
-        document.getElementById('local-video').srcObject = localStream;
+        const statusText = document.getElementById('call-status-text');
+        if(statusText) {
+            statusText.innerText = "呼び出し中...";
+            statusText.classList.remove('hidden');
+        }
+        
+        try {
+            localStream = await navigator.mediaDevices.getUserMedia({video: video, audio: true});
+            document.getElementById('local-video').srcObject = localStream;
+        } catch(e) {
+            showToast("カメラ・マイクへのアクセスに失敗しました");
+            document.getElementById('video-overlay').classList.add('hidden');
+            return;
+        }
+        
+        if (currentCallAudio) {
+            currentCallAudio.pause();
+            currentCallAudio.currentTime = 0;
+        }
+        const callSoundSelect = getEl('sel-call-sound');
+        if (callSoundSelect) {
+            currentCallAudio = new Audio(`./${callSoundSelect.value}.mp3`);
+            currentCallAudio.loop = true;
+            currentCallAudio.play().catch(e => console.log('呼び出し音再生エラー:', e));
+        }
         
         peerConnection = new RTCPeerConnection(servers);
         localStream.getTracks().forEach(t => peerConnection.addTrack(t, localStream));
         
-        peerConnection.onicecandidate = e => { if(e.candidate) set(ref(dbFirebase, `webrtc/${currentRoom}/${Date.now()}`), {type:'candidate', candidate:e.candidate, sender:myInfo.id}); };
-        peerConnection.ontrack = e => { document.getElementById('remote-video').srcObject = e.streams[0]; };
+        peerConnection.onicecandidate = e => { 
+            if(e.candidate) {
+                push(ref(dbFirebase, `webrtc/${currentRoom}`), {
+                    type: 'candidate', 
+                    candidate: e.candidate.toJSON(), 
+                    sender: myInfo.id
+                });
+            } 
+        };
+        peerConnection.ontrack = e => { 
+            document.getElementById('remote-video').srcObject = e.streams[0]; 
+        };
         
         const offer = await peerConnection.createOffer();
         await peerConnection.setLocalDescription(offer);
-        set(ref(dbFirebase, `webrtc/${currentRoom}/${Date.now()}`), { type: 'offer', sdp: offer, sender: myInfo.id, video: video, session: callSession });
         
-        // 【修正3】呼び出し音をループ再生
-        const callSoundSelect = getEl('sel-call-sound');
-        if (callSoundSelect) {
-            const soundFile = callSoundSelect.value;
-            outgoingCallRingAudio = new Audio(`./${soundFile}.mp3`);
-            outgoingCallRingAudio.loop = true;
-            outgoingCallRingAudio.play().catch(e => console.log('呼び出し音再生エラー:', e));
-        }
-        
-        if (firebaseUnsubscribes.hangup) { firebaseUnsubscribes.hangup(); }
-        firebaseUnsubscribes.hangup = onValue(ref(dbFirebase, `webrtc_hangup/${callSession}`), snap => { if(snap.val()) endCall(); });
+        push(ref(dbFirebase, `webrtc/${currentRoom}`), { 
+            type: 'offer', 
+            sdp: offer, 
+            sender: myInfo.id, 
+            video: video, 
+            session: callSession 
+        });
     };
 
     window.answerCall = async (accept) => {
         document.getElementById('modal-incoming').classList.add('hidden');
         
-        // 【修正2】着信音を停止
-        if (incomingCallRingAudio) {
-            try {
-                incomingCallRingAudio.pause();
-                incomingCallRingAudio.currentTime = 0;
-                incomingCallRingAudio = null;
-            } catch(e) {}
+        if (currentCallAudio) {
+            currentCallAudio.pause();
+            currentCallAudio.currentTime = 0;
+            currentCallAudio = null;
         }
         
-        if(!accept) { set(ref(dbFirebase, `webrtc_hangup/${callSession}`), true); return; }
+        if(!accept) { 
+            if (incomingCallSender) {
+                push(ref(dbFirebase, `webrtc/${incomingCallSender}`), { type: 'cancel', sender: myInfo.id });
+            }
+            forceEndCall();
+            return; 
+        }
         
         document.getElementById('video-overlay').classList.remove('hidden');
         document.getElementById('local-video').style.display = isVideoCall ? 'block' : 'none';
         
-        localStream = await navigator.mediaDevices.getUserMedia({video: isVideoCall, audio: true});
-        document.getElementById('local-video').srcObject = localStream;
+        const statusText = document.getElementById('call-status-text');
+        if(statusText) statusText.classList.add('hidden');
+        
+        try {
+            localStream = await navigator.mediaDevices.getUserMedia({video: isVideoCall, audio: true});
+            document.getElementById('local-video').srcObject = localStream;
+        } catch(e) {
+            showToast("カメラ・マイクへのアクセスに失敗しました");
+            if (incomingCallSender) {
+                push(ref(dbFirebase, `webrtc/${incomingCallSender}`), { type: 'cancel', sender: myInfo.id });
+            }
+            forceEndCall();
+            return;
+        }
+        
+        peerConnection = new RTCPeerConnection(servers);
         localStream.getTracks().forEach(t => peerConnection.addTrack(t, localStream));
         
+        peerConnection.onicecandidate = e => { 
+            if(e.candidate) {
+                push(ref(dbFirebase, `webrtc/${incomingCallSender}`), {
+                    type: 'candidate', 
+                    candidate: e.candidate.toJSON(), 
+                    sender: myInfo.id
+                });
+            }
+        };
+        peerConnection.ontrack = e => { 
+            document.getElementById('remote-video').srcObject = e.streams[0]; 
+        };
+        
+        await peerConnection.setRemoteDescription(new RTCSessionDescription(incomingOfferSDP));
         const answer = await peerConnection.createAnswer();
         await peerConnection.setLocalDescription(answer);
-        set(ref(dbFirebase, `webrtc/${currentRoom}/${Date.now()}`), { type: 'answer', sdp: answer, sender: myInfo.id });
+        
+        push(ref(dbFirebase, `webrtc/${incomingCallSender}`), { 
+            type: 'answer', 
+            sdp: answer, 
+            sender: myInfo.id 
+        });
+        
+        currentRoom = incomingCallSender;
     };
 
     window.endCall = () => {
-        if(callSession) set(ref(dbFirebase, `webrtc_hangup/${callSession}`), true);
-        
-        // 【修正4】すべての音声、ストリーム、Audioオブジェクトをクレンジング
-        // 着信音を停止
-        if (incomingCallRingAudio) {
-            try {
-                incomingCallRingAudio.pause();
-                incomingCallRingAudio.currentTime = 0;
-            } catch(e) {}
-            incomingCallRingAudio = null;
+        const target = currentRoom || incomingCallSender;
+        if (target) {
+            push(ref(dbFirebase, `webrtc/${target}`), { type: 'cancel', sender: myInfo.id });
         }
-        
-        // 呼び出し音を停止
-        if (outgoingCallRingAudio) {
-            try {
-                outgoingCallRingAudio.pause();
-                outgoingCallRingAudio.currentTime = 0;
-            } catch(e) {}
-            outgoingCallRingAudio = null;
-        }
-        
-        // RTCPeerConnectionとストリームをクローズ
-        document.getElementById('video-overlay').classList.add('hidden');
-        if(peerConnection) { try{ peerConnection.close(); }catch(e){} peerConnection = null; }
-        if(localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
-        document.getElementById('remote-video').srcObject = null;
-        callSession = null;
+        forceEndCall();
     };
+
+    function forceEndCall() {
+        if (currentCallAudio) {
+            try {
+                currentCallAudio.pause();
+                currentCallAudio.currentTime = 0;
+            } catch(e) {}
+            currentCallAudio = null;
+        }
+        
+        document.getElementById('video-overlay').classList.add('hidden');
+        document.getElementById('modal-incoming').classList.add('hidden');
+        
+        if(peerConnection) { 
+            try{ peerConnection.close(); }catch(e){} 
+            peerConnection = null; 
+        }
+        if(localStream) { 
+            localStream.getTracks().forEach(t => t.stop()); 
+            localStream = null; 
+        }
+        document.getElementById('remote-video').srcObject = null;
+        document.getElementById('local-video').srcObject = null;
+        callSession = null;
+        incomingOfferSDP = null;
+        incomingCallSender = null;
+    }
+
     window.toggleMic = () => { const t = localStream?.getAudioTracks()[0]; if(t) { t.enabled = !t.enabled; document.getElementById('btn-mic').classList.toggle('danger', !t.enabled); } };
     window.toggleCam = () => { const t = localStream?.getVideoTracks()[0]; if(t) { t.enabled = !t.enabled; document.getElementById('btn-cam').classList.toggle('danger', !t.enabled); } };
 
