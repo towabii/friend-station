@@ -174,6 +174,7 @@
     <h2>Friend Station</h2>
     <div id="auth-msg" style="color:var(--danger); margin-bottom:10px; text-align:center; display:none;"></div>
     
+    <!-- 【修正4】ボタンを type="button" に変更し、リロードを完全に防止 -->
     <form id="form-login" onsubmit="return false;">
         <input type="text" id="l-user" placeholder="ユーザーID" required>
         <input type="password" id="l-pass" placeholder="パスワード" required>
@@ -364,6 +365,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
     import { getDatabase, ref, set, get, update, push, onChildAdded, remove, onDisconnect, onValue, goOffline } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
+    // 【重要セキュリティ制限】本アプリはフロントエンドのみで動作するため、Firebase Realtime Database の Security Rules（セキュリティルール）にて、各ユーザーが「自分のデータ」および「自分が所属するグループのデータ」のみを読み書きできるように厳格に制限してください。また、GCPコンソール側で本APIキーに対しHTTPリファラ（ドメイン制限）を必ず設定してください。
     const firebaseConfig = {
         apiKey: "AIzaSyDVTNVO9gcXKQkauOF3NNZ36d2voyvGscA",
         authDomain: "study-station-8f0aa.firebaseapp.com",
@@ -585,7 +587,15 @@
                 remove(statusRef);
                 get(ref(dbFirebase, `users/${uid}`)).then(uSnap => { 
                     myInfo = uSnap.val(); 
-                    localStorage.setItem('myInfo', JSON.stringify(myInfo)); 
+                    try {
+                        localStorage.setItem('myInfo', JSON.stringify(myInfo));
+                    } catch (e) {
+                        if (e.name === 'QuotaExceededError') {
+                            myInfo.icon = '';
+                            localStorage.setItem('myInfo', JSON.stringify(myInfo));
+                            showToast("容量制限に達したため、過去のアイコン写真を自動削除してデータを保護しました。");
+                        }
+                    } 
                     location.reload(); 
                 });
             }
@@ -605,7 +615,19 @@
         if(snap.exists() && snap.val().password === pass) {
             if(snap.val().is_banned) return showToast('アカウントが停止されています');
             if(snap.val().status === 'pending') startPendingMonitor(uid);
-            else { myInfo = snap.val(); localStorage.setItem('myInfo', JSON.stringify(myInfo)); initApp(); }
+            else { 
+                myInfo = snap.val(); 
+                try {
+                    localStorage.setItem('myInfo', JSON.stringify(myInfo));
+                } catch (e) {
+                    if (e.name === 'QuotaExceededError') {
+                        myInfo.icon = '';
+                        localStorage.setItem('myInfo', JSON.stringify(myInfo));
+                        showToast("容量制限に達したため、過去のアイコン写真を自動削除してデータを保護しました。");
+                    }
+                }
+                initApp(); 
+            }
         } else { document.getElementById('auth-msg').innerText = "IDかパスワードが違います"; document.getElementById('auth-msg').style.display='block'; }
     };
 
@@ -632,6 +654,8 @@
     window.logout = () => { if(myInfo) remove(ref(dbFirebase, `presence/${myInfo.id}`)); localStorage.clear(); location.reload(); };
 
     async function initApp() {
+        const appLaunchTime = Date.now();
+
         for (let targetId in dataChannels) {
             try { if (dataChannels[targetId]) dataChannels[targetId].close(); } catch(e){}
             dataChannels[targetId] = null;
@@ -723,10 +747,13 @@
             }
         });
 
-        // オフライン時のストア＆フォワード用キューの監視
         firebaseUnsubscribes.offlineMsgs = onChildAdded(ref(dbFirebase, `offline_msgs/${myInfo.id}`), async snap => {
             const packet = snap.val();
             if(packet) {
+                if ((packet.time || packet.timestamp) && (packet.time || packet.timestamp) < appLaunchTime) {
+                    remove(snap.ref);
+                    return;
+                }
                 const blocked = await dbGet("blocked_users", packet.sender);
                 if(!blocked) {
                     if(packet.type === 'relay') {
@@ -759,6 +786,10 @@
         firebaseUnsubscribes.webrtcP2p = onChildAdded(ref(dbFirebase, `webrtc_p2p/${myInfo.id}`), async snap => {
             const data = snap.val();
             if(!data) return;
+            if ((data.time || data.timestamp) && (data.time || data.timestamp) < appLaunchTime) {
+                remove(snap.ref);
+                return;
+            }
 
             const blocked = await dbGet("blocked_users", data.sender);
             if(blocked) { remove(snap.ref); return; }
@@ -780,6 +811,10 @@
         firebaseUnsubscribes.webrtcCall = onChildAdded(ref(dbFirebase, `webrtc/${myInfo.id}`), async snap => {
             const data = snap.val();
             if(!data) return;
+            if ((data.time || data.timestamp) && (data.time || data.timestamp) < appLaunchTime) {
+                remove(snap.ref);
+                return;
+            }
             remove(snap.ref);
 
             if(data.type === 'offer') {
@@ -940,7 +975,6 @@
         for(let f of friends) {
             const blocked = await dbGet("blocked_users", f.id);
             if(blocked) continue;
-            // 修正箇所：ID比較によりGlare（シグナリング衝突）を回避
             if (myInfo.id > f.id && !f.isGroup && f.id !== 'admin') {
                 createPeerConnection(f.id, true);
             }
@@ -948,7 +982,20 @@
     }
 
     function createPeerConnection(targetId, isOfferor) {
-        if(peerConnections[targetId]) return;
+        if(peerConnections[targetId]) {
+            const state = peerConnections[targetId].connectionState;
+            const dcReady = dataChannels[targetId] && dataChannels[targetId].readyState === 'open';
+            if (state === 'failed' || state === 'closed' || !dcReady) {
+                try { peerConnections[targetId].close(); } catch(e){}
+                delete peerConnections[targetId];
+                if (dataChannels[targetId]) {
+                    try { dataChannels[targetId].close(); } catch(e){}
+                    delete dataChannels[targetId];
+                }
+            } else {
+                return;
+            }
+        }
 
         const pc = new RTCPeerConnection(servers);
         peerConnections[targetId] = pc;
@@ -1038,10 +1085,12 @@
                     const friendObj = await dbGet("friends", gId);
                     if(friendObj) {
                         friendObj.members.forEach(mId => {
-                            if(mId !== myInfo.id && dataChannels[mId] && dataChannels[mId].readyState === 'open') {
-                                if (mId !== targetId) {
-                                    orig.groupId = gId;
+                            if (mId !== myInfo.id && mId !== orig.sender) {
+                                orig.groupId = gId;
+                                if (dataChannels[mId] && dataChannels[mId].readyState === 'open') {
                                     dataChannels[mId].send(JSON.stringify(orig));
+                                } else {
+                                    push(ref(dbFirebase, 'offline_msgs/' + mId), orig);
                                 }
                             }
                         });
@@ -1332,7 +1381,15 @@
             }
 
             myInfo = userSnap.val();
-            localStorage.setItem('myInfo', JSON.stringify(myInfo));
+            try {
+                localStorage.setItem('myInfo', JSON.stringify(myInfo));
+            } catch (e) {
+                if (e.name === 'QuotaExceededError') {
+                    myInfo.icon = '';
+                    localStorage.setItem('myInfo', JSON.stringify(myInfo));
+                    showToast("容量制限に達したため、過去のアイコン写真を自動削除してデータを保護しました。");
+                }
+            }
 
             await remove(ref(dbFirebase, `backups/${code}`));
 
@@ -1747,7 +1804,15 @@
         const file = inp.files[0]; if(!file) return;
         resizeImage(file, 150, async base64 => {
             myInfo.icon = base64;
-            localStorage.setItem('myInfo', JSON.stringify(myInfo));
+            try {
+                localStorage.setItem('myInfo', JSON.stringify(myInfo));
+            } catch (e) {
+                if (e.name === 'QuotaExceededError') {
+                    myInfo.icon = '';
+                    localStorage.setItem('myInfo', JSON.stringify(myInfo));
+                    showToast("容量制限に達したため、過去のアイコン写真を自動削除してデータを保護しました。");
+                }
+            }
             document.getElementById('my-icon-preview').src = base64;
             await update(ref(dbFirebase, `users/${myInfo.id}`), { icon: base64 });
             showToast("アイコンを更新しました");
@@ -1758,7 +1823,15 @@
         const nick = document.getElementById('set-nick').value.trim();
         if(!nick) return;
         myInfo.nickname = nick;
-        localStorage.setItem('myInfo', JSON.stringify(myInfo));
+        try {
+            localStorage.setItem('myInfo', JSON.stringify(myInfo));
+        } catch (e) {
+            if (e.name === 'QuotaExceededError') {
+                myInfo.icon = '';
+                localStorage.setItem('myInfo', JSON.stringify(myInfo));
+                showToast("容量制限に達したため、過去のアイコン写真を自動削除してデータを保護しました。");
+            }
+        }
         await update(ref(dbFirebase, `users/${myInfo.id}`), { nickname: nick });
         showToast("プロフィール設定を保存しました");
     };
