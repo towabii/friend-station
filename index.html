@@ -174,7 +174,6 @@
     <h2>Friend Station</h2>
     <div id="auth-msg" style="color:var(--danger); margin-bottom:10px; text-align:center; display:none;"></div>
     
-    <!-- 【修正4】ボタンを type="button" に変更し、リロードを完全に防止 -->
     <form id="form-login" onsubmit="return false;">
         <input type="text" id="l-user" placeholder="ユーザーID" required>
         <input type="password" id="l-pass" placeholder="パスワード" required>
@@ -709,13 +708,14 @@
         safeHtml("ui-sent-requests", '<div class="ui-placeholder">読み込み中...</div>');
         safeHtml('ui-notifications', '');
 
+        // 【修正1】 usersの監視をやめて、1回だけ取得する
+        const usersSnap = await get(ref(dbFirebase, 'users'));
+        if(usersSnap.exists()){
+            allUsersCache = usersSnap.val()||{};
+        }
+
         await loadChatList();
         await loadRecommendUsers();
-
-        firebaseUnsubscribes.users = onValue(ref(dbFirebase, 'users'), snap => { 
-            allUsersCache = snap.val()||{}; 
-            loadChatList(); 
-        });
 
         const myRef = ref(dbFirebase, `presence/${myInfo.id}`);
         onDisconnect(myRef).remove(); set(myRef, true);
@@ -871,8 +871,8 @@
                 forceEndCall();
             }
         });
-
-        initiateP2PMesh();
+        
+        // 【修正2】 initiateP2PMesh() は呼び出さない（オンデマンド接続へ変更）
     }
 
     async function renderNotifications() {
@@ -969,17 +969,6 @@
         showToast("フレンド申請を拒否しました");
         renderNotifications();
     };
-
-    async function initiateP2PMesh() {
-        const friends = await dbGetAll("friends");
-        for(let f of friends) {
-            const blocked = await dbGet("blocked_users", f.id);
-            if(blocked) continue;
-            if (myInfo.id > f.id && !f.isGroup && f.id !== 'admin') {
-                createPeerConnection(f.id, true);
-            }
-        }
-    }
 
     function createPeerConnection(targetId, isOfferor) {
         if(peerConnections[targetId]) {
@@ -1401,8 +1390,13 @@
         }
     };
 
-    window.execSearch = () => {
+    // 【修正1】 usersの監視をやめて検索時のみ最新のユーザー一覧を取得する（通信量節約）
+    window.execSearch = async () => {
         const q = document.getElementById('s-query').value.toLowerCase(); if(!q) return;
+        
+        const snap = await get(ref(dbFirebase, 'users'));
+        if(snap.exists()) allUsersCache = snap.val();
+
         let html = '';
         Object.values(allUsersCache).forEach(u => {
             if(u.id !== myInfo.id && u.status === 'approved' && (u.nickname.toLowerCase().includes(q) || u.username.toLowerCase().includes(q))) {
@@ -1467,6 +1461,14 @@
             };
         } else {
             updateOnlineBadges();
+        }
+
+        // 【修正2】 チャットルームを開いた相手とだけP2P接続を試みる（オンデマンド接続）
+        if(uid !== 'admin' && !uid.startsWith('group_')) {
+            const friendObj = await dbGet("friends", uid);
+            if(friendObj && !dataChannels[uid]) {
+                createPeerConnection(uid, true);
+            }
         }
     };
 
