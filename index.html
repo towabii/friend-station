@@ -750,18 +750,14 @@
         firebaseUnsubscribes.offlineMsgs = onChildAdded(ref(dbFirebase, `offline_msgs/${myInfo.id}`), async snap => {
             const packet = snap.val();
             if(packet) {
-                if ((packet.time || packet.timestamp) && (packet.time || packet.timestamp) < appLaunchTime) {
-                    remove(snap.ref);
-                    return;
-                }
                 const blocked = await dbGet("blocked_users", packet.sender);
                 if(!blocked) {
                     if(packet.type === 'relay') {
                         const orig = packet.original;
                         const gId = packet.groupId;
                         if (orig.type === 'react') {
+                            updateLocalMsgField(orig.msgId, 'reaction', orig.emoji);
                             if (currentRoom === gId) {
-                                updateLocalMsgField(orig.msgId, 'reaction', orig.emoji);
                                 const el = document.getElementById(`react-${orig.msgId}`);
                                 if(el){ el.innerText=orig.emoji; el.style.display='block'; }
                             }
@@ -770,8 +766,8 @@
                         }
                     } else if(packet.type === 'react') {
                         const targetRoom = packet.groupId ? packet.groupId : packet.sender;
+                        updateLocalMsgField(packet.msgId, 'reaction', packet.emoji);
                         if(currentRoom === targetRoom) {
-                            updateLocalMsgField(packet.msgId, 'reaction', packet.emoji);
                             const el = document.getElementById(`react-${packet.msgId}`);
                             if(el){ el.innerText=packet.emoji; el.style.display='block'; }
                         }
@@ -1060,8 +1056,8 @@
                 const gId = packet.groupId;
                 
                 if (orig.type === 'react') {
+                    updateLocalMsgField(orig.msgId, 'reaction', orig.emoji);
                     if (currentRoom === gId) {
-                        updateLocalMsgField(orig.msgId, 'reaction', orig.emoji);
                         const el = document.getElementById(`react-${orig.msgId}`);
                         if(el){ el.innerText=orig.emoji; el.style.display='block'; }
                     }
@@ -1087,8 +1083,8 @@
                 }
             } else if(packet.type === 'react') {
                 const targetRoom = packet.groupId ? packet.groupId : targetId;
+                updateLocalMsgField(packet.msgId, 'reaction', packet.emoji);
                 if(currentRoom === targetRoom) {
-                    updateLocalMsgField(packet.msgId, 'reaction', packet.emoji);
                     const el = document.getElementById(`react-${packet.msgId}`);
                     if(el){ el.innerText=packet.emoji; el.style.display='block'; }
                 }
@@ -1431,7 +1427,8 @@
 
     window.openRoom = async (uid, uname) => {
         currentRoom = uid; document.getElementById('chat-title').innerText = uname; 
-        document.getElementById('chat-target-icon').src = allUsersCache[uid]?.icon || './icon.jpeg'; 
+        const friendObj = await dbGet("friends", uid);
+        document.getElementById('chat-target-icon').src = allUsersCache[uid]?.icon || friendObj?.icon || './icon.jpeg'; 
         
         if(uid === 'admin') {
             document.getElementById("btn-block-user").classList.add("hidden");
@@ -1465,7 +1462,6 @@
 
         // 【修正2】 チャットルームを開いた相手とだけP2P接続を試みる（オンデマンド接続）
         if(uid !== 'admin' && !uid.startsWith('group_')) {
-            const friendObj = await dbGet("friends", uid);
             if(friendObj && !dataChannels[uid]) {
                 createPeerConnection(uid, true);
             }
