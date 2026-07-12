@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>メンテナンス中</title>
+    <style>
+        :root {
+            --bg-color: #eef2f5; /* 背景色 */
+            --card-bg: #ffffff;
+            --primary-red: #d32f2f; /* アクセントカラー（赤） */
+            --text-main: #333333;
+            --text-sub: #666666;
+            --news-bg: #e3f2fd;
+            --news-border: #90caf9;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding-top: 50px; /* 上部のティッカー分 */
+            overflow: hidden; /* 画面全体のスクロールを禁止 */
+        }
+
+        /* --- 1. 上部固定ティッカー --- */
+        .ticker-wrap {
+            position: fixed;
+            top: 0; left: 0; width: 100%;
+            background-color: var(--primary-red);
+            color: white;
+            height: 40px;
+            line-height: 40px;
+            overflow: hidden;
+            z-index: 2000;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .ticker {
+            display: inline-block;
+            white-space: nowrap;
+            padding-left: 100%;
+            animation: ticker 30s linear infinite;
+        }
+        .ticker-item {
+            display: inline-block;
+            padding: 0 2rem;
+            font-weight: bold;
+            font-size: 0.95rem;
+        }
+        @keyframes ticker {
+            0% { transform: translate3d(0, 0, 0); }
+            100% { transform: translate3d(-100%, 0, 0); }
+        }
+
+        /* --- 2. 右上固定ステータス（時計＆カウントダウン） --- */
+        .top-status-pill {
+            position: fixed;
+            top: 50px; /* ティッカーの下 */
+            right: 15px;
+            background: rgba(0, 0, 0, 0.85);
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 0 0 8px 8px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            z-index: 1500;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            font-family: monospace; /* 数字の幅を揃える */
+        }
+        .status-row { display: flex; align-items: center; margin-bottom: 2px; }
+        .status-row:last-child { margin-bottom: 0; color: #ff8a80; } /* カウントダウンは少し赤く */
+        .status-icon { margin-right: 6px; width: 14px; height: 14px; }
+
+        /* --- 3. メインカード --- */
+        .container {
+            background: var(--card-bg);
+            width: 95%;
+            max-width: 700px;
+            height: 85vh; /* 画面の85%の高さ */
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            display: flex;
+            flex-direction: column; /* 中身を縦並びに */
+            border-top: 5px solid var(--primary-red);
+            position: relative;
+        }
+
+        /* スクロールエリア（中身が増えてもここでスクロール） */
+        .scrollable-content {
+            flex: 1; /* 残りの高さを全部使う */
+            overflow-y: auto; /* 縦スクロール許可 */
+            padding: 2rem;
+        }
+
+        /* 固定フッターエリア（バーとボタン） */
+        .fixed-footer {
+            padding: 1rem 2rem;
+            background: #fff;
+            border-top: 1px solid #eee;
+            border-radius: 0 0 10px 10px;
+        }
+
+        /* デザインパーツ */
+        .site-name {
+            font-size: 1.2rem; font-weight: bold; color: var(--text-sub);
+            text-align: center; margin-bottom: 1.5rem; border-bottom: 2px solid #f5f5f5; padding-bottom: 1rem;
+        }
+
+        .icon-wrapper {
+            margin: 0 auto 1rem;
+            width: 64px; height: 64px;
+            background: #ffebee; border-radius: 50%;
+            color: var(--primary-red);
+            display: flex; justify-content: center; align-items: center;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(211, 47, 47, 0.4); }
+            70% { box-shadow: 0 0 0 15px rgba(211, 47, 47, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(211, 47, 47, 0); }
+        }
+
+        h1 { font-size: 1.5rem; color: #2c3e50; text-align: center; margin-bottom: 0.5rem; }
+        p.desc { text-align: center; font-size: 0.9rem; color: #666; margin-bottom: 1.5rem; }
+
+        /* 情報グリッド */
+        .info-grid {
+            display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 1.5rem;
+        }
+        .info-item { background: #f9f9f9; padding: 10px; border-radius: 6px; font-size: 0.9rem; }
+        .info-label { display: block; font-size: 0.75rem; color: #888; margin-bottom: 3px; }
+        .info-val { font-weight: bold; color: #333; }
+
+        /* 待機人数エリア */
+        .queue-box {
+            background: #fffdeb; border: 1px solid #fff59d;
+            border-radius: 6px; padding: 12px; margin-bottom: 1.5rem;
+        }
+        .queue-head {
+            font-size: 0.85rem; font-weight: bold; color: #f57f17;
+            display: flex; justify-content: space-between; margin-bottom: 8px;
+        }
+        .queue-total { font-size: 1.1rem; color: #bf360c; }
+        .region-list {
+            list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 5px;
+        }
+        .region-li {
+            font-size: 0.8rem; border-bottom: 1px dashed #ddd;
+            display: flex; justify-content: space-between; padding: 2px 0;
+        }
+
+        /* ニュースエリア */
+        .news-box {
+            background: var(--news-bg); border: 1px solid var(--news-border);
+            border-radius: 6px; padding: 12px; margin-bottom: 1rem;
+        }
+        .news-head {
+            color: #1565c0; font-weight: bold; font-size: 0.95rem; margin-bottom: 8px;
+            display: flex; align-items: center;
+        }
+        .news-list { list-style: none; padding: 0; }
+        .news-li {
+            font-size: 0.9rem; margin-bottom: 6px; padding-left: 12px; position: relative; line-height: 1.4;
+        }
+        .news-li::before {
+            content: "▶"; position: absolute; left: 0; top: 1px; font-size: 0.7rem; color: #1565c0;
+        }
+
+        /* 更新バー */
+        .progress-wrap {
+            margin-bottom: 15px; text-align: center;
+        }
+        .progress-text { font-size: 0.75rem; color: #888; margin-bottom: 4px; }
+        .progress-bg { width: 100%; height: 6px; background: #eee; border-radius: 3px; overflow: hidden; }
+        .progress-bar { width: 100%; height: 100%; background: var(--primary-red); transform-origin: left; transition: width 1s linear; }
+
+        /* ボタン */
+        .btn {
+            display: flex; justify-content: center; align-items: center;
+            width: 100%; padding: 14px; background: #333; color: #fff;
+            text-decoration: none; border-radius: 6px; font-weight: bold; transition: 0.3s;
+        }
+        .btn:hover { background: #555; }
+        .btn svg { margin-right: 8px; width: 18px; height: 18px; }
+
+        /* スマホ調整 */
+        @media (max-width: 600px) {
+            .container { width: 100%; height: 100vh; border-radius: 0; }
+            .info-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 1. 流れる文字 -->
+    <div class="ticker-wrap">
+        <div class="ticker" id="ticker-content">
+            <!-- JSで挿入 -->
+        </div>
+    </div>
+
+    <!-- 2. 右上の時計＆カウントダウン -->
+    <div class="top-status-pill">
+        <div class="status-row">
+            <svg class="status-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            <span id="clock-display">00:00:00</span>
+        </div>
+        <div class="status-row">
+            <svg class="status-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 4v6h-6"></path><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+            <span id="countdown-display">あと --秒</span>
+        </div>
+    </div>
+
+    <!-- 3. メインコンテナ -->
+    <div class="container">
+        <!-- スクロールする部分 -->
+        <div class="scrollable-content">
+            <div class="site-name" id="site-name-area"></div>
+
+            <div class="icon-wrapper">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+            </div>
+
+            <h1>システム緊急メンテナンス</h1>
+            <p class="desc">現在、重大な不具合により緊急メンテナンスを実施中です。</p>
+
+            <!-- 障害・担当者情報 -->
+            <div class="info-grid">
+                <div class="info-item">
+                    <span class="info-label">復旧目処</span>
+                    <span class="info-val" style="color:#d32f2f;">目処なし(全システム)</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">対応担当者</span>
+                    <span class="info-val" id="admin-name"></span>
+                </div>
+            </div>
+
+            <!-- ゲームニュース (ご要望の箇所) -->
+            <div class="news-box">
+                <div class="news-head">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="margin-right:5px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                    最新ゲームニュース
+                </div>
+                <ul class="news-list" id="news-list">
+                    <!-- JSで挿入 -->
+                </ul>
+            </div>
+
+            <!-- 待機人数 -->
+            <div class="queue-box">
+                <div class="queue-head">
+                    アクセス待機状況 (リアルタイム)
+                    <span class="queue-total"><span id="total-val">0</span>人</span>
+                </div>
+                <ul class="region-list" id="region-list">
+                    <!-- JSで挿入 -->
+                </ul>
+            </div>
+        </div>
+
+        <!-- 固定フッター (バーとボタン) -->
+        <div class="fixed-footer">
+            <!-- 更新バー -->
+            <div class="progress-wrap">
+                <div class="progress-text">自動更新まで</div>
+                <div class="progress-bg">
+                    <div class="progress-bar" id="progress-bar"></div>
+                </div>
+            </div>
+
+            <a href="https://forms.gle/oVnf5Eokshvbq92F9" class="btn" target="_blank" rel="noopener noreferrer">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                お問い合わせフォーム
+            </a>
+        </div>
+    </div>
+
+    <!-- ▼▼▼ 設定とロジック ▼▼▼ -->
+    <script>
+        // ==========================================
+        //  【設定エリア】 ここを変更してください
+        // ==========================================
+        const CONFIG = {
+            siteName: "とわの作った楽しいやつ",
+            adminName: "とわ",
+            reloadSeconds: 60, // 自動更新秒数
+            tickerText: "電波工事中です。",
+            news: [
+                "Friend Stationのバージョン1を公開",
+                "TOWAY",
+                "TOWAY"
+            ]
+        };
+
+        // ==========================================
+        //  プログラム本体
+        // ==========================================
+
+        // 1. テキスト等の反映
+        document.getElementById('site-name-area').textContent = CONFIG.siteName;
+        document.getElementById('admin-name').textContent = CONFIG.adminName;
+
+        // ティッカー（ループ用に3回繰り返す）
+        const tickDiv = document.getElementById('ticker-content');
+        const itemHtml = `<span class="ticker-item">${CONFIG.tickerText}</span>`;
+        tickDiv.innerHTML = itemHtml + itemHtml + itemHtml;
+
+        // ニュースリスト生成
+        const newsUl = document.getElementById('news-list');
+        let newsHtml = "";
+        CONFIG.news.forEach(text => {
+            newsHtml += `<li class="news-li">${text}</li>`;
+        });
+        newsUl.innerHTML = newsHtml;
+
+        // 2. 待機人数シミュレーション (指定条件に対応)
+        function getRandom(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+        
+        const regions = [
+            { name: "沖縄県", min: 2, max: 2 }, // 指定: 23-26
+            { name: "福岡県", min: 5, max: 6 },
+            { name: "長野県", min: 2, max: 9 }
+        ];
+
+        let total = 0;
+        let regionHtml = "";
+        regions.forEach(r => {
+            const val = getRandom(r.min, r.max);
+            total += val;
+            regionHtml += `<li class="region-li"><span>${r.name}</span><span>${val}人</span></li>`;
+        });
+        document.getElementById('region-list').innerHTML = regionHtml;
+        document.getElementById('total-val').textContent = total;
+
+        // 3. 時計 & カウントダウン & バー処理
+        let timeLeft = CONFIG.reloadSeconds;
+        const clockEl = document.getElementById('clock-display');
+        const countEl = document.getElementById('countdown-display');
+        const barEl = document.getElementById('progress-bar');
+
+        function updateClock() {
+            const now = new Date();
+            const h = now.getHours().toString().padStart(2, '0');
+            const m = now.getMinutes().toString().padStart(2, '0');
+            const s = now.getSeconds().toString().padStart(2, '0');
+            clockEl.textContent = `${h}:${m}:${s}`;
+        }
+
+        // 毎秒実行する処理
+        const timer = setInterval(() => {
+            // 時計更新
+            updateClock();
+
+            // カウントダウン処理
+            timeLeft--;
+            countEl.textContent = `あと ${timeLeft}秒`;
+
+            // バーの幅を更新
+            const percent = (timeLeft / CONFIG.reloadSeconds) * 100;
+            barEl.style.width = percent + "%";
+
+            if (timeLeft <= 0) {
+                clearInterval(timer);
+                window.location.reload();
+            }
+        }, 1000);
+
+        // 初期実行
+        updateClock();
+        countEl.textContent = `あと ${timeLeft}秒`;
+        
+    </script>
+</body>
+</html>
