@@ -23,24 +23,25 @@
         *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
         body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:linear-gradient(135deg, #06080d 0%, var(--bg-dark) 100%);color:var(--text-main);height:100vh;overflow:hidden;display:flex;}
         .hidden{display:none!important;}
+        ::-webkit-scrollbar { width: 7px; height: 7px; } ::-webkit-scrollbar-thumb { background: #394556; border-radius: 999px; } ::-webkit-scrollbar-track { background: transparent; }
+
         input, select, textarea{width:100%;padding:14px 16px;border:1px solid var(--border);border-radius:14px;background:rgba(255,255,255,0.03);color:var(--text-main);outline:none;font-size:15px;transition:0.25s ease;font-family:inherit;}
         input:focus, select:focus, textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(46,204,113,0.16);}
         textarea{resize:vertical;min-height:90px;}
         button{padding:12px 18px;border:none;border-radius:14px;background:var(--accent);color:#fff;cursor:pointer;font-weight:600;font-size:15px;transition:0.2s ease;box-shadow:0 8px 20px rgba(46,204,113,0.18);}
         button:hover{transform:translateY(-1px);filter:brightness(1.05);}
-        button:disabled{opacity:0.45;cursor:not-allowed;transform:none;filter:none;}
+        button:disabled{opacity:0.45;cursor:not-allowed;}
         button.danger{background:var(--danger);box-shadow:0 8px 20px rgba(231,76,60,0.2);}
         button.success{background:var(--success);}
-        button.warn-btn{background:var(--warn);color:#1a1a1a;}
         button.sub-btn{background:var(--bg-hover);color:var(--text-main);border:1px solid var(--border);box-shadow:none;}
         button.icon-only{padding:8px 12px;}
+        
         .toast{position:fixed;top:10px;left:50%;transform:translateX(-50%);background:var(--text-main);color:var(--bg-dark);padding:12px 24px;border-radius:999px;z-index:10000;font-weight:bold;font-size:14px;opacity:0;transition:0.3s;pointer-events:none;box-shadow:var(--shadow);max-width:80vw;text-align:center;}
         .toast.show{opacity:1;top:30px;}
 
         #scr-auth{width:100%;max-width:420px;margin:auto;background:var(--bg-panel);padding:40px 30px;border-radius:24px;border:1px solid var(--border);box-shadow:var(--shadow);}
         #scr-auth h2{text-align:center;margin-bottom:8px;font-size:2.2em;color:var(--accent);font-family:cursive;}
         #scr-auth p{margin-bottom:20px;}
-        #scr-auth input{margin-bottom:14px;}
 
         #scr-main{display:flex;width:100%;height:100%;position:relative;}
         .sidebar{width:250px;background:rgba(8,11,16,0.95);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:20px;gap:6px;z-index:10;overflow-y:auto;}
@@ -54,6 +55,7 @@
         .conn-pill{display:flex;align-items:center;gap:8px;font-size:13px;padding:6px 14px;border-radius:999px;background:var(--bg-hover);border:1px solid var(--border);}
         .conn-dot{width:9px;height:9px;border-radius:50%;background:var(--danger);}
         .conn-dot.on{background:var(--accent);box-shadow:0 0 8px var(--accent);}
+        
         .content-area{flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:20px;}
         .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;}
         .stat-card{background:var(--bg-panel);border:1px solid var(--border);border-radius:16px;padding:18px;box-shadow:0 8px 24px rgba(0,0,0,0.16);}
@@ -61,9 +63,10 @@
         .stat-card .value{font-size:26px;font-weight:bold;color:var(--accent);}
         .stat-card.d-warn .value{color:var(--warn);}
         .stat-card.d-danger .value{color:var(--danger);}
-        .panel{background:var(--bg-panel);border:1px solid var(--border);border-radius:18px;padding:18px;box-shadow:0 8px 24px rgba(0,0,0,0.16);}
+        
+        .panel{background:var(--bg-panel);border:1px solid var(--border);border-radius:18px;padding:18px;box-shadow:0 8px 24px rgba(0,0,0,0.16); display:flex; flex-direction:column;}
         .panel-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;}
-        .panel-header h3{font-size:17px;}
+        
         table{width:100%;border-collapse:collapse;font-size:14px;}
         th,td{padding:12px 10px;border-bottom:1px solid var(--border);text-align:left;vertical-align:middle;}
         th{color:var(--text-sub);font-size:11px;text-transform:uppercase;letter-spacing:0.04em;}
@@ -73,98 +76,82 @@
         .badge.warn{background:rgba(241,196,15,0.2);color:#f1c40f;}
         .badge.danger{background:rgba(231,76,60,0.2);color:var(--danger);}
         .small{font-size:12px;color:var(--text-sub);}
-        .muted{color:var(--text-sub);}
         .row-flex{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
         .avatar{width:34px;height:34px;border-radius:50%;object-fit:cover;background:var(--bg-hover);flex-shrink:0;}
-        .avatar.lg{width:64px;height:64px;}
         .user-cell{display:flex;align-items:center;gap:10px;}
-        .checkbox-cell{width:36px;}
 
-        /* modal */
-        .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:5000;padding:20px;}
-        .modal{background:var(--bg-panel);border:1px solid var(--border);border-radius:20px;padding:26px;width:100%;max-width:480px;box-shadow:var(--shadow);max-height:88vh;overflow-y:auto;}
-        .modal h3{margin-bottom:16px;}
-        .modal .modal-actions{display:flex;gap:10px;margin-top:18px;}
-        .profile-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px;font-size:13px;}
-        .profile-grid .k{color:var(--text-sub);}
-        .profile-grid .v{font-weight:600;}
-
-        /* chat */
+        /* モーダル */
+        .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:5000;padding:20px;backdrop-filter:blur(5px);}
+        .modal{background:var(--bg-panel);border:1px solid var(--border);border-radius:20px;padding:26px;width:100%;max-width:480px;box-shadow:var(--shadow);}
+        
+        /* チャット (Inboxモデル完全対応) */
         .chat-wrap{display:flex;gap:16px;height:calc(100vh - 220px);min-height:420px;}
-        .chat-user-list{width:250px;flex-shrink:0;background:var(--bg-panel);border:1px solid var(--border);border-radius:16px;overflow-y:auto;padding:8px;}
-        .chat-user-item{display:flex;align-items:center;gap:10px;padding:10px;border-radius:12px;cursor:pointer;position:relative;}
+        .chat-user-list{width:250px;flex-shrink:0;background:var(--bg-dark);border:1px solid var(--border);border-radius:16px;overflow-y:auto;padding:8px;}
+        .chat-user-item{display:flex;align-items:center;gap:10px;padding:10px;border-radius:12px;cursor:pointer;position:relative; transition:0.2s;}
         .chat-user-item:hover,.chat-user-item.active{background:var(--bg-hover);}
-        .chat-user-item .unread{position:absolute;right:8px;top:8px;background:var(--danger);color:#fff;font-size:11px;padding:1px 7px;border-radius:999px;}
-        .chat-window{flex:1;display:flex;flex-direction:column;background:var(--bg-panel);border:1px solid var(--border);border-radius:16px;overflow:hidden;}
+        .chat-user-item .unread{position:absolute;right:8px;top:8px;background:var(--danger);color:#fff;font-size:11px;padding:2px 7px;border-radius:999px;}
+        
+        .chat-window{flex:1;display:flex;flex-direction:column;background:linear-gradient(180deg, rgba(8,11,16,0.96) 0%, rgba(10,13,19,0.98) 100%);border:1px solid var(--border);border-radius:16px;overflow:hidden;}
         .chat-msgs{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;}
-        .chat-msg{max-width:70%;padding:10px 14px;border-radius:16px;font-size:14px;line-height:1.5;word-break:break-word;}
-        .chat-msg.other{align-self:flex-start;background:var(--bg-hover);border-bottom-left-radius:4px;}
-        .chat-msg.own{align-self:flex-end;background:rgba(46,204,113,0.22);border:1px solid rgba(46,204,113,0.3);border-bottom-right-radius:4px;}
-        .chat-msg img{max-width:220px;border-radius:10px;display:block;margin-top:4px;}
-        .chat-msg .meta{font-size:10px;color:var(--text-sub);margin-top:4px;}
-        .chat-input-bar{display:flex;gap:8px;padding:12px;border-top:1px solid var(--border);align-items:center;}
-        .chat-input-bar input{flex:1;margin-bottom:0;}
+        .msg-wrap{display:flex;flex-direction:column;max-width:75%;position:relative;} 
+        .my-msg{align-self:flex-end;} .other-msg{align-self:flex-start;}
+        .msg{padding:12px 16px;border-radius:16px;font-size:15px;line-height:1.45;word-break:break-word;position:relative;box-shadow:0 4px 12px rgba(0,0,0,0.16);} 
+        .my-msg .msg{background:var(--accent);color:#fff;border-bottom-right-radius:4px;} .other-msg .msg{background:var(--bg-panel);border:1px solid var(--border);border-bottom-left-radius:4px;}
+        .msg img{max-width:200px;border-radius:8px;margin-top:8px;}
+        .msg-info{font-size:11px;color:var(--text-sub);margin-top:4px;display:flex;gap:5px;align-items:center;justify-content:flex-end;}
+        .reactions{position:absolute;bottom:-10px;right:10px;background:var(--bg-panel);border:1px solid var(--border);border-radius:12px;padding:2px 6px;font-size:12px;display:none;z-index:3;}
+        .reaction-menu { position:absolute; background:var(--bg-panel); border:1px solid var(--border); border-radius:24px; padding:5px; display:flex; gap:5px; z-index:100; box-shadow:0 5px 15px rgba(0,0,0,0.5); }
+        .react-btn { background:none; border:none; font-size:20px; cursor:pointer; padding:5px; transition:0.2s;} .react-btn:hover{transform:scale(1.3);}
+        
+        .chat-input-bar{display:flex;gap:10px;padding:15px;border-top:1px solid var(--border);align-items:center;background:rgba(8,11,16,0.9);}
+        .chat-input-bar input{flex:1;margin:0;border-radius:999px;background:rgba(255,255,255,0.05);}
         .chat-empty{display:flex;flex:1;align-items:center;justify-content:center;color:var(--text-sub);font-size:14px;flex-direction:column;gap:10px;}
-
-        .log-box{background:#000;border:1px solid var(--border);border-radius:14px;padding:16px;height:340px;overflow-y:auto;font-size:12.5px;line-height:1.7;color:var(--text-sub);}
-        .log-box div{padding-bottom:6px;margin-bottom:6px;border-bottom:1px solid rgba(255,255,255,0.06);}
-        .log-box div:last-child{border:none;margin:0;padding:0;}
-
-        .preview-box{border:1px dashed var(--border);border-radius:14px;padding:14px;background:rgba(255,255,255,0.02);}
-        .preview-box .p-title{color:var(--accent);font-weight:bold;margin-bottom:4px;}
-
+        
         @media (max-width: 900px){
             body{flex-direction:column;}
             .sidebar{width:100%;flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:flex-start;padding:12px;}
             .brand{margin-bottom:0;width:100%;}
             .nav-btn{padding:9px 12px;font-size:13px;}
             .chat-wrap{flex-direction:column;height:auto;}
-            .chat-user-list{width:100%;max-height:180px;}
-            .chat-window{min-height:360px;}
-            .profile-grid{grid-template-columns:1fr;}
+            .chat-user-list{width:100%;max-height:150px;}
+            .chat-window{min-height:400px;}
         }
     </style>
 </head>
 <body>
 <div id="toast" class="toast"></div>
 
-<!-- ============ ログイン画面 ============ -->
-<!-- 注記: これはクライアントサイドのみの簡易ゲートです。真のアクセス制御は
-     Firebase Realtime Database の Security Rules 側で行ってください。 -->
+<!-- ログイン画面 -->
 <div id="scr-auth">
     <h2>Friend Station Admin</h2>
     <p class="small" style="text-align:center;">管理者用ダッシュボード</p>
-    <input type="password" id="admin-pass" placeholder="パスワードを入力" autocomplete="current-password">
+    <input type="password" id="admin-pass" placeholder="パスワードを入力 (0406)" autocomplete="current-password" onkeydown="if(event.key==='Enter') loginAdmin();">
     <button type="button" style="width:100%;" onclick="loginAdmin()">ログイン</button>
 </div>
 
-<!-- ============ 管理メイン画面 ============ -->
+<!-- メイン画面 -->
 <div id="scr-main" class="hidden">
     <div class="sidebar">
         <div class="brand"><i class="fa-solid fa-shield-halved"></i> Admin</div>
-        <button class="nav-btn active" data-sec="dashboard" onclick="switchSection('dashboard', this)"><i class="fa-solid fa-gauge-high"></i> ダッシュボード</button>
-        <button class="nav-btn" data-sec="users" onclick="switchSection('users', this)"><i class="fa-solid fa-users"></i> ユーザー管理</button>
-        <button class="nav-btn" data-sec="approval" onclick="switchSection('approval', this)"><i class="fa-solid fa-user-check"></i> 承認管理 <span class="nav-badge hidden" id="badge-approval">0</span></button>
-        <button class="nav-btn" data-sec="ban" onclick="switchSection('ban', this)"><i class="fa-solid fa-user-slash"></i> BAN管理</button>
-        <button class="nav-btn" data-sec="chat" onclick="switchSection('chat', this)"><i class="fa-solid fa-comments"></i> 個別チャット <span class="nav-badge hidden" id="badge-chat">0</span></button>
-        <button class="nav-btn" data-sec="broadcast" onclick="switchSection('broadcast', this)"><i class="fa-solid fa-bullhorn"></i> 一斉通知</button>
-        <button class="nav-btn" data-sec="online" onclick="switchSection('online', this)"><i class="fa-solid fa-signal"></i> オンライン管理</button>
-        <button class="nav-btn" data-sec="logs" onclick="switchSection('logs', this)"><i class="fa-solid fa-server"></i> ログ / サーバー情報</button>
-        <button class="nav-btn danger" style="margin-top:auto;" onclick="logoutAdmin()"><i class="fa-solid fa-right-from-bracket"></i> ログアウト</button>
+        <button class="nav-btn active" onclick="switchSection('dashboard', this)"><i class="fa-solid fa-gauge-high"></i> ダッシュボード</button>
+        <button class="nav-btn" onclick="switchSection('users', this)"><i class="fa-solid fa-users"></i> ユーザー管理</button>
+        <button class="nav-btn" onclick="switchSection('approval', this)"><i class="fa-solid fa-user-check"></i> 承認管理 <span class="nav-badge hidden" id="badge-approval">0</span></button>
+        <button class="nav-btn" onclick="switchSection('ban', this)"><i class="fa-solid fa-user-slash"></i> BAN管理</button>
+        <button class="nav-btn" onclick="switchSection('chat', this)"><i class="fa-solid fa-comments"></i> 個別チャット <span class="nav-badge hidden" id="badge-chat">0</span></button>
+        <button class="nav-btn" onclick="switchSection('broadcast', this)"><i class="fa-solid fa-bullhorn"></i> 一斉通知</button>
+        <button class="nav-btn" onclick="switchSection('online', this)"><i class="fa-solid fa-signal"></i> オンライン管理</button>
+        <button class="nav-btn danger" style="margin-top:auto;" onclick="location.reload()"><i class="fa-solid fa-right-from-bracket"></i> ログアウト</button>
     </div>
 
     <div class="main-content">
         <div class="top-bar">
-            <div>
-                <h2 id="top-title" style="margin-bottom:4px;">ダッシュボード</h2>
-                <div class="small">Friend Station 管理コンソール</div>
-            </div>
+            <div><h2 id="top-title" style="margin-bottom:4px;">ダッシュボード</h2><div class="small">Friend Station 管理コンソール</div></div>
             <div class="conn-pill"><span class="conn-dot" id="conn-dot"></span><span id="conn-text">Firebase接続確認中...</span></div>
         </div>
 
         <div class="content-area">
 
-            <!-- ---------------- ダッシュボード ---------------- -->
+            <!-- ダッシュボード -->
             <div id="section-dashboard" class="sec">
                 <div class="stats-grid">
                     <div class="stat-card"><div class="label"><i class="fa-solid fa-users"></i> 総ユーザー数</div><div class="value" id="stat-total">0</div></div>
@@ -172,26 +159,15 @@
                     <div class="stat-card d-warn"><div class="label"><i class="fa-solid fa-clock"></i> 承認待ち</div><div class="value" id="stat-pending">0</div></div>
                     <div class="stat-card d-danger"><div class="label"><i class="fa-solid fa-ban"></i> BAN人数</div><div class="value" id="stat-banned">0</div></div>
                     <div class="stat-card"><div class="label"><i class="fa-solid fa-signal"></i> オンライン</div><div class="value" id="stat-online">0</div></div>
-                    <div class="stat-card"><div class="label"><i class="fa-solid fa-plug"></i> Firebase接続</div><div class="value" id="stat-fbstate" style="font-size:18px;">-</div></div>
-                </div>
-
-                <div class="panel">
-                    <div class="panel-header"><h3><i class="fa-solid fa-clock"></i> 承認待ちユーザー（最新）</h3></div>
-                    <div id="dash-pending-list" class="small">読み込み中...</div>
-                </div>
-
-                <div class="panel">
-                    <div class="panel-header"><h3><i class="fa-solid fa-bullhorn"></i> 直近の一斉通知</h3></div>
-                    <div id="dash-broadcast-list" class="small">「一斉通知」セクションを開くと読み込まれます</div>
                 </div>
             </div>
 
-            <!-- ---------------- ユーザー管理 ---------------- -->
+            <!-- ユーザー管理 -->
             <div id="section-users" class="sec hidden">
                 <div class="panel">
                     <div class="panel-header">
                         <h3>ユーザーアカウント管理</h3>
-                        <input type="text" id="user-search" placeholder="ユーザー名・ニックネームで検索" style="max-width:260px;margin-bottom:0;" oninput="renderUsersTable()">
+                        <input type="text" id="user-search" placeholder="ユーザー名・ニックネームで検索" style="max-width:260px;margin:0;" oninput="renderUsersTable()">
                     </div>
                     <div style="overflow-x:auto;">
                         <table>
@@ -202,33 +178,29 @@
                 </div>
             </div>
 
-            <!-- ---------------- 承認管理 ---------------- -->
+            <!-- 承認管理 -->
             <div id="section-approval" class="sec hidden">
                 <div class="panel">
                     <div class="panel-header">
                         <h3>承認待ちユーザー</h3>
                         <div class="row-flex">
-                            <button class="sub-btn" onclick="toggleSelectAllPending()">全選択/解除</button>
                             <button class="success" onclick="bulkApproval('approved')"><i class="fa-solid fa-check"></i> 一括承認</button>
                             <button class="danger" onclick="bulkApproval('rejected')"><i class="fa-solid fa-xmark"></i> 一括拒否（削除）</button>
                         </div>
                     </div>
                     <div style="overflow-x:auto;">
                         <table>
-                            <thead><tr><th class="checkbox-cell"></th><th>ユーザー</th><th>氏名 / ニックネーム</th><th>登録日</th><th>操作</th></tr></thead>
+                            <thead><tr><th style="width:40px;"><input type="checkbox" onclick="toggleSelectAll(this)"></th><th>ユーザー</th><th>氏名 / ニックネーム</th><th>登録日</th><th>操作</th></tr></thead>
                             <tbody id="ui-approval"></tbody>
                         </table>
                     </div>
                 </div>
             </div>
 
-            <!-- ---------------- BAN管理 ---------------- -->
+            <!-- BAN管理 -->
             <div id="section-ban" class="sec hidden">
                 <div class="panel">
-                    <div class="panel-header">
-                        <h3>BANユーザー一覧</h3>
-                        <input type="text" id="ban-search" placeholder="ユーザー名で検索" style="max-width:260px;margin-bottom:0;" oninput="renderBanTable()">
-                    </div>
+                    <div class="panel-header"><h3>BANユーザー一覧</h3></div>
                     <div style="overflow-x:auto;">
                         <table>
                             <thead><tr><th>ユーザー</th><th>理由</th><th>BAN日時</th><th>操作</th></tr></thead>
@@ -238,27 +210,27 @@
                 </div>
             </div>
 
-            <!-- ---------------- 個別チャット ---------------- -->
+            <!-- ★完全対応: 個別チャット (Inbox土管モデル) -->
             <div id="section-chat" class="sec hidden">
                 <div class="panel" style="flex:1;display:flex;flex-direction:column;">
                     <div class="panel-header">
-                        <h3>個別チャット（adminとして応対）</h3>
-                        <div class="small">Firebaseにチャット内容は保存されません（受信後すぐ削除）</div>
+                        <h3>ユーザーとの個別チャット</h3>
+                        <div class="small">※ Firebaseに履歴は保存されません。ブラウザを閉じると消去されます。</div>
                     </div>
                     <div class="chat-wrap">
                         <div class="chat-user-list" id="chat-user-list"><div class="small" style="padding:10px;">読み込み中...</div></div>
                         <div class="chat-window">
                             <div id="chat-empty" class="chat-empty"><i class="fa-solid fa-comment-dots" style="font-size:32px;"></i><div>左の一覧からユーザーを選択してください</div></div>
                             <div id="chat-active" class="hidden" style="display:flex;flex-direction:column;height:100%;">
-                                <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">
+                                <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;background:rgba(8,11,16,0.7);">
                                     <img id="chat-target-icon" class="avatar" src="./icon.jpeg">
                                     <div><strong id="chat-target-name">-</strong><div class="small" id="chat-target-status">-</div></div>
                                 </div>
                                 <div class="chat-msgs" id="chat-msgs"></div>
                                 <div class="chat-input-bar">
-                                    <label style="cursor:pointer;font-size:20px;color:var(--text-sub);"><i class="fa-solid fa-image"></i><input type="file" id="chat-img-input" accept="image/*" class="hidden" onchange="sendAdminImage(this)"></label>
+                                    <label style="cursor:pointer;font-size:22px;color:var(--text-sub);"><i class="fa-solid fa-image"></i><input type="file" id="chat-img-input" accept="image/*" class="hidden" onchange="sendAdminImage(this)"></label>
                                     <input type="text" id="chat-input" placeholder="メッセージを入力（管理者として送信）" onkeydown="if(event.key==='Enter') sendAdminText();">
-                                    <button onclick="sendAdminText()"><i class="fa-solid fa-paper-plane"></i></button>
+                                    <button style="border-radius:24px;" onclick="sendAdminText()">送信</button>
                                 </div>
                             </div>
                         </div>
@@ -266,117 +238,58 @@
                 </div>
             </div>
 
-            <!-- ---------------- 一斉通知 ---------------- -->
+            <!-- 一斉通知 -->
             <div id="section-broadcast" class="sec hidden">
                 <div class="panel">
                     <div class="panel-header"><h3>新規一斉通知の作成</h3></div>
-                    <input type="text" id="bc-title" placeholder="通知タイトル" oninput="updateBroadcastPreview()">
-                    <textarea id="bc-message" placeholder="本文を入力してください" oninput="updateBroadcastPreview()"></textarea>
-                    <div class="row-flex" style="margin:12px 0;">
-                        <select id="bc-importance" style="max-width:200px;" onchange="updateBroadcastPreview()">
-                            <option value="normal">通常通知</option>
-                            <option value="important">重要通知</option>
-                        </select>
-                        <label class="small" style="display:flex;align-items:center;gap:6px;width:auto;"><input type="checkbox" id="bc-banner" style="width:18px;" checked> 画面上部のお知らせバナーにも表示する</label>
-                    </div>
-                    <div class="preview-box" id="bc-preview">
-                        <div class="p-title">お知らせ</div>
-                        <div class="small">プレビューはここに表示されます</div>
-                    </div>
+                    <input type="text" id="bc-title" placeholder="通知タイトル">
+                    <textarea id="bc-message" placeholder="本文を入力してください"></textarea>
                     <div class="row-flex" style="margin-top:14px;">
-                        <button class="success" onclick="sendBroadcast()"><i class="fa-solid fa-paper-plane"></i> 配信する</button>
-                        <button class="sub-btn" onclick="clearBannerAnnouncement()"><i class="fa-solid fa-eraser"></i> 現在のバナーをクリア</button>
+                        <button class="success" onclick="sendBroadcast()"><i class="fa-solid fa-paper-plane"></i> 全員に配信する</button>
+                        <button class="sub-btn" onclick="clearBannerAnnouncement()"><i class="fa-solid fa-eraser"></i> バナーをクリア</button>
                     </div>
                 </div>
                 <div class="panel">
-                    <div class="panel-header"><h3>配信履歴</h3><div class="small">最新30件</div></div>
-                    <div id="ui-broadcast-history" class="small">「一斉通知」セクションを開くと読み込まれます</div>
+                    <div class="panel-header"><h3>配信履歴</h3></div>
+                    <div id="ui-broadcast-history" class="small">読み込み中...</div>
                 </div>
             </div>
 
-            <!-- ---------------- オンライン管理 ---------------- -->
+            <!-- オンライン管理 -->
             <div id="section-online" class="sec hidden">
                 <div class="panel">
-                    <div class="panel-header"><h3>現在オンラインのユーザー</h3><div class="small">経過時間はこの管理画面を開いてからの観測時間です</div></div>
+                    <div class="panel-header"><h3>現在オンラインのユーザー</h3></div>
                     <div style="overflow-x:auto;">
                         <table>
-                            <thead><tr><th>ユーザー</th><th>状態</th><th>観測経過時間</th><th>操作</th></tr></thead>
+                            <thead><tr><th>ユーザー</th><th>状態</th><th>操作</th></tr></thead>
                             <tbody id="ui-online"></tbody>
                         </table>
                     </div>
                 </div>
             </div>
 
-            <!-- ---------------- ログ / サーバー情報 ---------------- -->
-            <div id="section-logs" class="sec hidden">
-                <div class="stats-grid">
-                    <div class="stat-card"><div class="label">Realtime Database</div><div class="value" id="log-rtdb-state" style="font-size:16px;">-</div></div>
-                    <div class="stat-card"><div class="label">プロジェクトID</div><div class="value" id="log-project-id" style="font-size:14px;word-break:break-all;">-</div></div>
-                    <div class="stat-card"><div class="label">SDK Version</div><div class="value" id="log-sdk-version" style="font-size:16px;">-</div></div>
-                    <div class="stat-card"><div class="label">送信メッセージ数（このセッション）</div><div class="value" id="log-sent">0</div></div>
-                    <div class="stat-card"><div class="label">受信メッセージ数（このセッション）</div><div class="value" id="log-received">0</div></div>
-                    <div class="stat-card"><div class="label">再接続回数</div><div class="value" id="log-reconnects">0</div></div>
-                </div>
-                <div class="panel">
-                    <div class="panel-header"><h3>操作ログ（このブラウザのみ・Firebaseには保存されません）</h3><button class="sub-btn" onclick="clearActionLog()">クリア</button></div>
-                    <div class="log-box" id="ui-action-log">ログはまだありません</div>
-                </div>
-                <div class="panel">
-                    <div class="small">
-                        <i class="fa-solid fa-circle-info"></i>
-                        クライアント（ブラウザ）からは Storage の使用容量や正確な帯域使用量を取得できません。詳細は
-                        <a href="https://console.firebase.google.com/" target="_blank" style="color:var(--accent);">Firebaseコンソール</a>
-                        の使用量ダッシュボードをご確認ください。
-                    </div>
-                </div>
-            </div>
-
         </div>
     </div>
 </div>
 
-<!-- ============ ユーザー詳細モーダル ============ -->
-<div id="modal-user-detail" class="modal-overlay hidden">
-    <div class="modal">
-        <div class="row-flex" style="justify-content:space-between;">
-            <h3>ユーザー詳細</h3>
-            <button class="sub-btn icon-only" onclick="closeModal('modal-user-detail')"><i class="fa-solid fa-xmark"></i></button>
-        </div>
-        <div class="row-flex">
-            <img id="ud-icon" class="avatar lg" src="./icon.jpeg">
-            <div>
-                <div style="font-weight:bold;font-size:16px;" id="ud-name">-</div>
-                <div class="small" id="ud-nickname">-</div>
-            </div>
-        </div>
-        <div class="profile-grid" id="ud-grid"></div>
-        <div class="modal-actions">
-            <button class="sub-btn" style="flex:1;" onclick="closeModal('modal-user-detail')">閉じる</button>
-        </div>
-    </div>
-</div>
-
-<!-- ============ BAN理由入力モーダル ============ -->
+<!-- モーダル群 -->
 <div id="modal-ban-reason" class="modal-overlay hidden">
     <div class="modal">
         <h3>BANの理由</h3>
-        <p class="small" style="margin-bottom:10px;">対象ユーザーを停止する理由を記録できます（任意）。</p>
+        <p class="small" style="margin-bottom:10px;">対象ユーザーを停止する理由を記録できます。</p>
         <input type="text" id="ban-reason-input" placeholder="例: 迷惑行為のため">
-        <div class="modal-actions">
+        <div class="row-flex" style="margin-top:20px;">
             <button class="sub-btn" style="flex:1;" onclick="closeModal('modal-ban-reason')">キャンセル</button>
-            <button class="danger" style="flex:1;" onclick="confirmBan()"><i class="fa-solid fa-ban"></i> BANを実行</button>
+            <button class="danger" style="flex:1;" onclick="confirmBan()"><i class="fa-solid fa-ban"></i> 停止する</button>
         </div>
     </div>
 </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-    import {
-        getDatabase, ref, set, get, update, remove, push,
-        onValue, onChildAdded, query, limitToLast
-    } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+    import { getDatabase, ref, set, get, update, remove, push, onValue, onChildAdded, query, limitToLast } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
-    // --- Firebase初期化（index.htmlと同一プロジェクト。互換性維持のため変更不可）---
+    // --- Firebase初期化 ---
     const firebaseConfig = {
         apiKey: "AIzaSyDVTNVO9gcXKQkauOF3NNZ36d2voyvGscA",
         authDomain: "study-station-8f0aa.firebaseapp.com",
@@ -389,431 +302,204 @@
 
     const app = initializeApp(firebaseConfig);
     const dbFirebase = getDatabase(app);
-    const SDK_VERSION = "10.8.1";
 
-    // ============ アプリ状態（メモリ内のみ。Firebaseへは必要な項目のみ書き込む）============
-    let allUsers = {};          // users/ の内容（onValueで購読、常時必要な最小限の監視）
-    let onlineStatus = {};      // presence/ の内容
-    let firstSeenOnline = {};   // uid -> このブラウザで最初にオンライン検知した時刻（表示用途のみ）
-
-    let chatMessages = {};      // uid -> [{id, sender, senderName, text, type, time}]
-    let unreadByUser = {};      // uid -> 未読件数
+    // --- 状態管理（すべてメモリ保存。DB負担ゼロ）---
+    let allUsers = {};          
+    let onlineStatus = {};      
+    let broadcastCache = {};    
+    
+    // 【重要】チャットデータのローカルキャッシュ
+    let chatMessages = {};      // uid -> [{id, sender, text, type, time, reaction}]
+    let unreadByUser = {};      // uid -> 未読数
     let currentChatUid = null;
-
-    let broadcastCache = {};    // pushKey -> {id,title,message,important,timestamp}
-
-    let sectionUnsub = { chat: null, broadcast: null }; // セクション滞在中のみ張る購読の解除関数
-    const evergreenUnsub = [];  // ログイン中は張りっぱなしにする最小限の購読（users/presence/接続状態）
-
-    let actionLog = [];
-    let sessionStats = { sent: 0, received: 0, reconnects: 0 };
-    let wasConnected = null;
 
     const toast = document.getElementById('toast');
     const getEl = id => document.getElementById(id);
 
     function showToast(message) {
-        toast.textContent = message;
-        toast.classList.add('show');
-        clearTimeout(showToast.timer);
-        showToast.timer = setTimeout(() => toast.classList.remove('show'), 2200);
+        toast.textContent = message; toast.classList.add('show');
+        clearTimeout(showToast.timer); showToast.timer = setTimeout(() => toast.classList.remove('show'), 2200);
     }
-
-    function escapeHTML(str = '') {
-        return String(str)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-    }
-
-    function fmtDate(ts) {
-        if (!ts) return '不明';
-        try { return new Date(ts).toLocaleString('ja-JP'); } catch (e) { return '不明'; }
-    }
-
-    function addLog(text) {
-        actionLog.unshift({ time: Date.now(), text });
-        if (actionLog.length > 300) actionLog.length = 300;
-        if (currentSectionName === 'logs') renderActionLog();
-    }
-    window.clearActionLog = () => { actionLog = []; renderActionLog(); };
-
-    function renderActionLog() {
-        const box = getEl('ui-action-log');
-        if (!box) return;
-        if (!actionLog.length) { box.innerHTML = 'ログはまだありません'; return; }
-        box.innerHTML = actionLog.map(l => `<div><span class="muted">[${new Date(l.time).toLocaleTimeString('ja-JP')}]</span> ${escapeHTML(l.text)}</div>`).join('');
-    }
-
-    // ============ ログイン ============
-    window.loginAdmin = () => {
-        const pass = getEl('admin-pass').value;
-        // 注意: これはクライアント側のみの簡易チェックです。実運用では
-        // Firebase Authentication + Security Rules による保護が必須です。
-        if (pass === '0406') {
-            getEl('scr-auth').classList.add('hidden');
-            getEl('scr-main').classList.remove('hidden');
-            startAdminSession();
-            showToast('管理者ログインしました');
-        } else {
-            showToast('パスワードが違います');
-        }
-    };
-
-    window.logoutAdmin = () => {
-        // ログイン中に張っていた購読はすべて解除してから離脱する
-        evergreenUnsub.forEach(u => { try { u(); } catch (e) {} });
-        evergreenUnsub.length = 0;
-        if (sectionUnsub.chat) { try { sectionUnsub.chat(); } catch (e) {} sectionUnsub.chat = null; }
-        if (sectionUnsub.broadcast) { try { sectionUnsub.broadcast(); } catch (e) {} sectionUnsub.broadcast = null; }
-        location.reload();
-    };
-
-    // ============ セクション切り替え ============
-    let currentSectionName = 'dashboard';
-    const sectionTitles = {
-        dashboard: 'ダッシュボード', users: 'ユーザー管理', approval: '承認管理',
-        ban: 'BAN管理', chat: '個別チャット', broadcast: '一斉通知',
-        online: 'オンライン管理', logs: 'ログ / サーバー情報'
-    };
-
-    window.switchSection = (section, button) => {
-        currentSectionName = section;
-        document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
-        if (button) button.classList.add('active');
-        document.querySelectorAll('.sec').forEach(el => el.classList.add('hidden'));
-        getEl('section-' + section).classList.remove('hidden');
-        getEl('top-title').textContent = sectionTitles[section] || '';
-
-        // 「必要になった時だけ監視、離れたら解除」— チャットと配信履歴のみオンデマンド購読
-        if (section === 'chat') {
-            renderChatUserList();
-            if (!sectionUnsub.chat) sectionUnsub.chat = subscribeAdminMsgs();
-        } else if (sectionUnsub.chat) {
-            sectionUnsub.chat(); sectionUnsub.chat = null;
-        }
-
-        if (section === 'broadcast') {
-            if (!sectionUnsub.broadcast) sectionUnsub.broadcast = subscribeBroadcastHistory();
-        } else if (sectionUnsub.broadcast) {
-            sectionUnsub.broadcast(); sectionUnsub.broadcast = null;
-        }
-
-        if (section === 'users') renderUsersTable();
-        if (section === 'approval') renderApprovalTable();
-        if (section === 'ban') renderBanTable();
-        if (section === 'online') renderOnlineTable();
-        if (section === 'logs') renderActionLog();
-        if (section === 'dashboard') renderDashboard();
-    };
-
     window.closeModal = id => getEl(id).classList.add('hidden');
 
-    // ============ 常時監視（最小限）: users / presence / 接続状態 ============
+    function escapeHTML(str = '') {
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+    function fmtDate(ts) { return ts ? new Date(ts).toLocaleString('ja-JP') : '不明'; }
+
+    // --- ログイン処理 ---
+    window.loginAdmin = () => {
+        const pass = getEl('admin-pass').value;
+        if (pass === '0406') {
+            getEl('scr-auth').classList.add('hidden'); getEl('scr-main').classList.remove('hidden');
+            startAdminSession(); showToast('管理者としてログインしました');
+        } else { showToast('パスワードが違います'); }
+    };
+
+    // --- メイン監視開始 ---
     function startAdminSession() {
-        const unsubUsers = onValue(ref(dbFirebase, 'users'), snap => {
+        // ユーザーリスト監視
+        onValue(ref(dbFirebase, 'users'), snap => {
             allUsers = snap.val() || {};
-            renderDashboard();
-            if (currentSectionName === 'users') renderUsersTable();
-            if (currentSectionName === 'approval') renderApprovalTable();
-            if (currentSectionName === 'ban') renderBanTable();
-            if (currentSectionName === 'chat') renderChatUserList();
+            renderDashboard(); renderUsersTable(); renderApprovalTable(); renderBanTable(); renderChatUserList();
         });
-        evergreenUnsub.push(unsubUsers);
 
-        const unsubPresence = onValue(ref(dbFirebase, 'presence'), snap => {
-            const prev = onlineStatus;
+        // プレゼンス（オンライン）監視
+        onValue(ref(dbFirebase, 'presence'), snap => {
             onlineStatus = snap.val() || {};
-            const now = Date.now();
-            Object.keys(onlineStatus).forEach(uid => {
-                if (onlineStatus[uid] && !prev[uid]) firstSeenOnline[uid] = now;
-            });
-            Object.keys(firstSeenOnline).forEach(uid => { if (!onlineStatus[uid]) delete firstSeenOnline[uid]; });
-            renderDashboard();
-            if (currentSectionName === 'online') renderOnlineTable();
-            if (currentSectionName === 'chat') renderChatUserList();
+            renderDashboard(); renderOnlineTable(); renderChatUserList();
+            if(currentChatUid) getEl('chat-target-status').textContent = onlineStatus[currentChatUid] ? 'オンライン' : 'オフライン';
         });
-        evergreenUnsub.push(unsubPresence);
 
-        const unsubConn = onValue(ref(dbFirebase, '.info/connected'), snap => {
+        // 接続状態監視
+        onValue(ref(dbFirebase, '.info/connected'), snap => {
             const connected = snap.val() === true;
-            const dot = getEl('conn-dot'), text = getEl('conn-text');
-            dot.classList.toggle('on', connected);
-            text.textContent = connected ? 'Firebase接続中' : 'Firebase切断中';
-            getEl('stat-fbstate').textContent = connected ? '接続中' : '切断中';
-            getEl('log-rtdb-state').textContent = connected ? '接続中' : '切断中';
-            if (wasConnected === false && connected) { sessionStats.reconnects++; addLog('Firebase再接続を検知しました'); }
-            wasConnected = connected;
-            getEl('log-reconnects').textContent = sessionStats.reconnects;
+            getEl('conn-dot').classList.toggle('on', connected);
+            getEl('conn-text').textContent = connected ? 'Firebase接続中' : 'Firebase切断中';
         });
-        evergreenUnsub.push(unsubConn);
 
-        getEl('log-project-id').textContent = firebaseConfig.projectId;
-        getEl('log-sdk-version').textContent = SDK_VERSION;
-        addLog('管理者がログインしました');
-        renderDashboard();
+        // お知らせ監視
+        onValue(query(ref(dbFirebase, 'announcements/broadcasts'), limitToLast(30)), snap => {
+            broadcastCache = snap.val() || {}; renderBroadcastHistory();
+        });
+
+        // 【極めて重要】管理者のInbox（受信トレイ）監視
+        // ユーザーから届いたメッセージを受け取ったら即座にメモリに保存し、Firebaseから削除する
+        onChildAdded(ref(dbFirebase, `inbox/admin`), snap => {
+            const packet = snap.val();
+            if(packet) {
+                const senderId = packet.sender;
+                if (!chatMessages[senderId]) chatMessages[senderId] = [];
+                
+                if (packet.type === 'text' || packet.type === 'image') {
+                    chatMessages[senderId].push(packet);
+                    if (currentChatUid === senderId) {
+                        renderChatWindow(senderId);
+                    } else {
+                        unreadByUser[senderId] = (unreadByUser[senderId] || 0) + 1;
+                        updateChatBadge(); renderChatUserList();
+                    }
+                } else if (packet.type === 'react') {
+                    const msg = chatMessages[senderId].find(m => m.id === packet.msgId);
+                    if (msg) { msg.reaction = packet.emoji; if (currentChatUid === senderId) renderChatWindow(senderId); }
+                }
+                // 受け取ったらFirebaseから削除して通信量と容量を節約
+                remove(snap.ref);
+            }
+        });
     }
 
-    // ============ ダッシュボード ============
+    // --- セクション切り替え ---
+    window.switchSection = (section, button) => {
+        document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active')); button.classList.add('active');
+        document.querySelectorAll('.sec').forEach(el => el.classList.add('hidden'));
+        getEl('section-' + section).classList.remove('hidden');
+        
+        const titles = { dashboard: 'ダッシュボード', users: 'ユーザー管理', approval: '承認管理', ban: 'BAN管理', chat: '個別チャット', broadcast: '一斉通知', online: 'オンライン管理' };
+        getEl('top-title').textContent = titles[section];
+        
+        if (section === 'chat') renderChatUserList();
+    };
+
+    // --- ダッシュボード更新 ---
     function renderDashboard() {
         const users = Object.values(allUsers);
         const approved = users.filter(u => u.status === 'approved' && !u.is_banned).length;
         const pending = users.filter(u => u.status === 'pending').length;
-        const banned = users.filter(u => !!u.is_banned).length;
-        const online = Object.values(onlineStatus).filter(Boolean).length;
-
         getEl('stat-total').textContent = users.length;
         getEl('stat-approved').textContent = approved;
         getEl('stat-pending').textContent = pending;
-        getEl('stat-banned').textContent = banned;
-        getEl('stat-online').textContent = online;
+        getEl('stat-banned').textContent = users.filter(u => !!u.is_banned).length;
+        getEl('stat-online').textContent = Object.values(onlineStatus).filter(Boolean).length;
 
-        const badgeApproval = getEl('badge-approval');
-        badgeApproval.textContent = pending;
-        badgeApproval.classList.toggle('hidden', pending === 0);
-
-        const pendingEntries = Object.entries(allUsers).filter(([, u]) => u.status === 'pending').slice(0, 6);
-        getEl('dash-pending-list').innerHTML = pendingEntries.length
-            ? pendingEntries.map(([id, u]) => `<div class="row-flex" style="justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
-                <span class="user-cell"><img class="avatar" src="${escapeHTML(u.icon || './icon.jpeg')}">${escapeHTML(u.nickname || u.username || id)}</span>
-                <button class="success" style="padding:6px 12px;font-size:13px;" onclick="actionUser('approve','${id}')">承認</button>
-               </div>`).join('')
-            : '承認待ちのユーザーはいません';
+        const badge = getEl('badge-approval'); badge.textContent = pending; badge.classList.toggle('hidden', pending === 0);
     }
 
-    // ============ ユーザー管理 ============
-    function buildProfileFieldsHTML(u) {
-        // index.htmlの登録フォームにある学校/学年/組/出席番号は現行のクライアント実装では
-        // usersオブジェクトに保存されないため、存在する場合のみ表示します。
-        const rows = [
-            ['ユーザーID', u.__id],
-            ['ユーザー名', u.username],
-            ['氏名', `${u.first_name || ''} ${u.last_name || ''}`.trim() || '-'],
-            ['ニックネーム', u.nickname],
-            ['学校', u.school], ['学年', u.grade], ['組', u.class_name || u.class],
-            ['出席番号', u.attendance_no || u.att],
-            ['登録日', fmtDate(u.timestamp)],
-            ['状態', u.is_banned ? 'BAN中' : (u.status === 'pending' ? '承認待ち' : '承認済み')]
-        ];
-        return rows.filter(r => r[1] !== undefined && r[1] !== null && r[1] !== '')
-            .map(r => `<div class="k">${escapeHTML(r[0])}</div><div class="v">${escapeHTML(String(r[1]))}</div>`).join('');
-    }
-
-    window.showUserDetail = id => {
-        const u = allUsers[id]; if (!u) return;
-        getEl('ud-icon').src = u.icon || './icon.jpeg';
-        getEl('ud-name').textContent = `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.username || id;
-        getEl('ud-nickname').textContent = u.nickname || '-';
-        getEl('ud-grid').innerHTML = buildProfileFieldsHTML({ ...u, __id: id });
-        getEl('modal-user-detail').classList.remove('hidden');
-    };
-
-    window.renderUsersTable = renderUsersTable;
-    function renderUsersTable() {
-        const query_ = (getEl('user-search').value || '').toLowerCase();
-        const entries = Object.entries(allUsers).filter(([id, u]) => {
-            const hay = `${u.username || ''} ${u.first_name || ''} ${u.last_name || ''} ${u.nickname || ''}`.toLowerCase();
-            return hay.includes(query_);
-        });
-        if (!entries.length) {
-            getEl('ui-users').innerHTML = '<tr><td colspan="5" class="muted">該当ユーザーがいません</td></tr>';
-            return;
-        }
+    // --- ユーザー管理 ---
+    window.renderUsersTable = () => {
+        const q = (getEl('user-search').value || '').toLowerCase();
+        const entries = Object.entries(allUsers).filter(([id, u]) => `${u.username||''} ${u.nickname||''}`.toLowerCase().includes(q));
         getEl('ui-users').innerHTML = entries.map(([id, u]) => {
-            const badge = u.is_banned ? '<span class="badge danger">停止中</span>'
-                : (u.status === 'pending' ? '<span class="badge warn">承認待ち</span>' : '<span class="badge ok">承認済</span>');
-            let actions = '';
-            if (u.status === 'pending') actions += `<button class="success" onclick="actionUser('approve','${id}')">承認</button>`;
-            else if (u.is_banned) actions += `<button class="success" onclick="actionUser('unban','${id}')">BAN解除</button>`;
-            else actions += `<button class="danger" onclick="openBanModal('${id}')">BAN</button>`;
-            return `<tr>
-                <td><span class="user-cell"><img class="avatar" src="${escapeHTML(u.icon || './icon.jpeg')}">
-                    <span><strong>${escapeHTML(u.username || id)}</strong><div class="small">ID: ${escapeHTML(id)}</div></span></span></td>
-                <td>${escapeHTML(`${u.first_name || ''} ${u.last_name || ''}`.trim())}<div class="small">${escapeHTML(u.nickname || '')}</div></td>
-                <td class="small">${fmtDate(u.timestamp)}</td>
-                <td>${badge}</td>
-                <td class="row-flex">
-                    <button class="sub-btn" onclick="showUserDetail('${id}')"><i class="fa-solid fa-eye"></i></button>
-                    ${actions}
-                    <button class="sub-btn" onclick="actionUser('delete','${id}')"><i class="fa-solid fa-trash"></i></button>
-                </td>
-            </tr>`;
-        }).join('');
-    }
+            const badge = u.is_banned ? '<span class="badge danger">停止中</span>' : (u.status === 'pending' ? '<span class="badge warn">承認待ち</span>' : '<span class="badge ok">承認済</span>');
+            let acts = u.status === 'pending' ? `<button class="success" onclick="actionUser('approve','${id}')">承認</button>` : (u.is_banned ? `<button class="success" onclick="actionUser('unban','${id}')">解除</button>` : `<button class="danger" onclick="openBanModal('${id}')">BAN</button>`);
+            return `<tr><td><span class="user-cell"><img class="avatar" src="${escapeHTML(u.icon||'./icon.jpeg')}"><span><strong>${escapeHTML(u.username||id)}</strong></span></span></td><td>${escapeHTML(u.nickname||'-')}</td><td class="small">${fmtDate(u.timestamp)}</td><td>${badge}</td><td class="row-flex">${acts}<button class="sub-btn" onclick="actionUser('delete','${id}')"><i class="fa-solid fa-trash"></i></button></td></tr>`;
+        }).join('') || '<tr><td colspan="5" class="muted">該当なし</td></tr>';
+    };
 
     window.actionUser = (type, id) => {
-        if (!confirm('この操作を実行しますか？')) return;
-        if (type === 'approve') {
-            set(ref(dbFirebase, `users/${id}/status`), 'approved');
-            addLog(`ユーザー ${id} を承認しました`);
-            showToast('承認しました');
-        } else if (type === 'unban') {
-            update(ref(dbFirebase, `users/${id}`), { is_banned: 0, ban_reason: null, banned_at: null });
-            addLog(`ユーザー ${id} のBANを解除しました`);
-            showToast('BANを解除しました');
-        } else if (type === 'delete') {
-            if (!confirm('本当にこのユーザーを削除しますか？元に戻せません。')) return;
-            remove(ref(dbFirebase, `users/${id}`));
-            addLog(`ユーザー ${id} を削除しました`);
-            showToast('ユーザーを削除しました');
-        }
+        if (!confirm('実行しますか？')) return;
+        if (type === 'approve') { set(ref(dbFirebase, `users/${id}/status`), 'approved'); showToast('承認しました'); }
+        else if (type === 'unban') { update(ref(dbFirebase, `users/${id}`), { is_banned: 0, ban_reason: null }); showToast('解除しました'); }
+        else if (type === 'delete') { remove(ref(dbFirebase, `users/${id}`)); showToast('削除しました'); }
     };
 
-    // BANはワンクッション置いて理由を記録する
     let banTargetId = null;
-    window.openBanModal = id => {
-        banTargetId = id;
-        getEl('ban-reason-input').value = '';
-        getEl('modal-ban-reason').classList.remove('hidden');
-    };
+    window.openBanModal = id => { banTargetId = id; getEl('ban-reason-input').value = ''; getEl('modal-ban-reason').classList.remove('hidden'); };
     window.confirmBan = () => {
         if (!banTargetId) return;
-        const reason = getEl('ban-reason-input').value.trim();
-        update(ref(dbFirebase, `users/${banTargetId}`), {
-            is_banned: 1,
-            ban_reason: reason || '(理由未記入)',
-            banned_at: Date.now()
-        });
-        addLog(`ユーザー ${banTargetId} をBANしました（理由: ${reason || '未記入'}）`);
-        showToast('ユーザーを停止しました');
-        closeModal('modal-ban-reason');
-        banTargetId = null;
+        update(ref(dbFirebase, `users/${banTargetId}`), { is_banned: 1, ban_reason: getEl('ban-reason-input').value || '未記入', banned_at: Date.now() });
+        showToast('停止しました'); closeModal('modal-ban-reason'); banTargetId = null;
     };
 
-    // ============ 承認管理 ============
+    // --- 承認管理 ---
     function renderApprovalTable() {
         const entries = Object.entries(allUsers).filter(([, u]) => u.status === 'pending');
-        if (!entries.length) {
-            getEl('ui-approval').innerHTML = '<tr><td colspan="5" class="muted">承認待ちのユーザーはいません</td></tr>';
-            return;
-        }
-        getEl('ui-approval').innerHTML = entries.map(([id, u]) => `<tr>
-            <td class="checkbox-cell"><input type="checkbox" class="approval-check" data-id="${id}" style="width:18px;"></td>
-            <td><span class="user-cell"><img class="avatar" src="${escapeHTML(u.icon || './icon.jpeg')}">${escapeHTML(u.username || id)}</span></td>
-            <td>${escapeHTML(`${u.first_name || ''} ${u.last_name || ''}`.trim())}<div class="small">${escapeHTML(u.nickname || '')}</div></td>
-            <td class="small">${fmtDate(u.timestamp)}</td>
-            <td class="row-flex">
-                <button class="success" onclick="actionUser('approve','${id}')">承認</button>
-                <button class="danger" onclick="actionUser('delete','${id}')">拒否</button>
-            </td>
-        </tr>`).join('');
+        getEl('ui-approval').innerHTML = entries.map(([id, u]) => `<tr><td><input type="checkbox" class="approval-check" data-id="${id}" style="width:18px;"></td><td><span class="user-cell"><img class="avatar" src="${escapeHTML(u.icon||'./icon.jpeg')}">${escapeHTML(u.username||id)}</span></td><td>${escapeHTML(u.nickname||'-')}</td><td class="small">${fmtDate(u.timestamp)}</td><td><button class="success" onclick="actionUser('approve','${id}')">承認</button></td></tr>`).join('') || '<tr><td colspan="5" class="muted">承認待ちはありません</td></tr>';
     }
-
-    window.toggleSelectAllPending = () => {
-        const boxes = document.querySelectorAll('.approval-check');
-        const allChecked = Array.from(boxes).every(b => b.checked);
-        boxes.forEach(b => b.checked = !allChecked);
-    };
-
+    window.toggleSelectAll = (cb) => document.querySelectorAll('.approval-check').forEach(b => b.checked = cb.checked);
     window.bulkApproval = (mode) => {
         const ids = Array.from(document.querySelectorAll('.approval-check:checked')).map(b => b.dataset.id);
-        if (!ids.length) return showToast('対象を選択してください');
-        if (!confirm(`${ids.length}件を${mode === 'approved' ? '一括承認' : '一括拒否（削除）'}しますか？`)) return;
-
-        if (mode === 'approved') {
-            const updates = {};
-            ids.forEach(id => { updates[`users/${id}/status`] = 'approved'; });
-            update(ref(dbFirebase), updates);
-            addLog(`${ids.length}件のユーザーを一括承認しました`);
-        } else {
-            ids.forEach(id => remove(ref(dbFirebase, `users/${id}`)));
-            addLog(`${ids.length}件のユーザーを一括拒否（削除）しました`);
-        }
-        showToast('一括処理を実行しました');
+        if (!ids.length) return showToast('選択してください');
+        if (mode === 'approved') { const up = {}; ids.forEach(id => up[`users/${id}/status`] = 'approved'); update(ref(dbFirebase), up); }
+        else ids.forEach(id => remove(ref(dbFirebase, `users/${id}`)));
+        showToast('一括処理しました');
     };
 
-    // ============ BAN管理 ============
     function renderBanTable() {
-        const q = (getEl('ban-search').value || '').toLowerCase();
-        const entries = Object.entries(allUsers).filter(([id, u]) => u.is_banned &&
-            `${u.username || ''} ${u.nickname || ''}`.toLowerCase().includes(q));
-        if (!entries.length) {
-            getEl('ui-ban').innerHTML = '<tr><td colspan="4" class="muted">BAN中のユーザーはいません</td></tr>';
-            return;
-        }
-        getEl('ui-ban').innerHTML = entries.map(([id, u]) => `<tr>
-            <td><span class="user-cell"><img class="avatar" src="${escapeHTML(u.icon || './icon.jpeg')}">${escapeHTML(u.username || id)}</span></td>
-            <td class="small">${escapeHTML(u.ban_reason || '記録なし')}</td>
-            <td class="small">${fmtDate(u.banned_at)}</td>
-            <td><button class="success" onclick="actionUser('unban','${id}')">BAN解除</button></td>
-        </tr>`).join('');
+        const entries = Object.entries(allUsers).filter(([, u]) => u.is_banned);
+        getEl('ui-ban').innerHTML = entries.map(([id, u]) => `<tr><td><span class="user-cell"><img class="avatar" src="${escapeHTML(u.icon||'./icon.jpeg')}">${escapeHTML(u.username||id)}</span></td><td class="small">${escapeHTML(u.ban_reason)}</td><td class="small">${fmtDate(u.banned_at)}</td><td><button class="success" onclick="actionUser('unban','${id}')">解除</button></td></tr>`).join('') || '<tr><td colspan="4" class="muted">BANユーザーはいません</td></tr>';
     }
 
-    // ============ 個別チャット（既存の admin_msgs / offline_msgs 経路を使用）============
-    // index.html は「admin」という名前の常設連絡先を持ち、ユーザーが自分でそのルームを
-    // 開いて送信したメッセージだけが admin_msgs/{uid} に届きます（本人が能動的に選んで
-    // 送った内容のみ・盗み見ではありません）。返信は offline_msgs/{uid} に書き込みます。
-    function subscribeAdminMsgs() {
-        const processed = new Set();
-        const unsub = onValue(ref(dbFirebase, 'admin_msgs'), snap => {
-            const data = snap.val() || {};
-            Object.entries(data).forEach(([uid, msgsObj]) => {
-                if (!msgsObj) return;
-                Object.entries(msgsObj).forEach(([pushKey, packet]) => {
-                    const uniqueKey = uid + '/' + pushKey;
-                    if (processed.has(uniqueKey)) return;
-                    processed.add(uniqueKey);
-
-                    if (!chatMessages[uid]) chatMessages[uid] = [];
-                    chatMessages[uid].push(packet);
-                    sessionStats.received++;
-                    getEl('log-received') && (getEl('log-received').textContent = sessionStats.received);
-
-                    if (uid === currentChatUid) {
-                        renderChatWindow(uid);
-                    } else {
-                        unreadByUser[uid] = (unreadByUser[uid] || 0) + 1;
-                    }
-                    // 受信後はFirebase上のメッセージ本体を削除（チャット内容を保存しない設計）
-                    remove(ref(dbFirebase, `admin_msgs/${uid}/${pushKey}`));
-                });
-            });
-            renderChatUserList();
-            updateChatBadge();
-        });
-        return unsub;
+    function renderOnlineTable() {
+        const entries = Object.entries(onlineStatus).filter(([, v]) => !!v);
+        getEl('ui-online').innerHTML = entries.map(([id]) => {
+            const u = allUsers[id] || {};
+            return `<tr><td><span class="user-cell"><img class="avatar" src="${escapeHTML(u.icon||'./icon.jpeg')}">${escapeHTML(u.nickname||id)}</span></td><td><span class="badge ok">オンライン</span></td><td><button class="sub-btn" onclick="switchSection('chat', document.querySelectorAll('.nav-btn')[4]); openAdminChat('${id}')">メッセージ</button></td></tr>`;
+        }).join('') || '<tr><td colspan="3" class="muted">オンラインはいません</td></tr>';
     }
 
+    // --- 個別チャット機能 (Inboxモデル対応) ---
     function updateChatBadge() {
         const total = Object.values(unreadByUser).reduce((a, b) => a + b, 0);
-        const badge = getEl('badge-chat');
-        badge.textContent = total;
-        badge.classList.toggle('hidden', total === 0);
+        const badge = getEl('badge-chat'); badge.textContent = total; badge.classList.toggle('hidden', total === 0);
     }
 
     function renderChatUserList() {
-        const list = getEl('chat-user-list');
-        if (!list) return;
-        // 表示対象: 承認済みユーザー全員（メッセージが無くても選んでこちらから話しかけられる）
+        const list = getEl('chat-user-list'); if (!list) return;
         const entries = Object.entries(allUsers).filter(([, u]) => u.status === 'approved' && !u.is_banned);
-        if (!entries.length) { list.innerHTML = '<div class="small" style="padding:10px;">対象ユーザーがいません</div>'; return; }
-        list.innerHTML = entries.map(([id, u]) => {
-            const isOnline = !!onlineStatus[id];
-            const unread = unreadByUser[id] || 0;
-            return `<div class="chat-user-item ${currentChatUid === id ? 'active' : ''}" onclick="openAdminChat('${id}')">
+        
+        entries.sort((a, b) => {
+            const unreadDiff = (unreadByUser[b[0]] || 0) - (unreadByUser[a[0]] || 0);
+            if(unreadDiff !== 0) return unreadDiff;
+            const timeA = chatMessages[a[0]]?.length ? chatMessages[a[0]][chatMessages[a[0]].length-1].time : 0;
+            const timeB = chatMessages[b[0]]?.length ? chatMessages[b[0]][chatMessages[b[0]].length-1].time : 0;
+            return timeB - timeA;
+        });
+
+        list.innerHTML = entries.map(([id, u]) => `
+            <div class="chat-user-item ${currentChatUid === id ? 'active' : ''}" onclick="openAdminChat('${id}')">
                 <img class="avatar" src="${escapeHTML(u.icon || './icon.jpeg')}">
-                <div style="overflow:hidden;">
-                    <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHTML(u.nickname || u.username || id)}</div>
-                    <div class="small">${isOnline ? 'オンライン' : 'オフライン'}</div>
-                </div>
-                ${unread ? `<span class="unread">${unread}</span>` : ''}
-            </div>`;
-        }).join('');
+                <div style="overflow:hidden;"><div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHTML(u.nickname || id)}</div><div class="small">${onlineStatus[id] ? 'オンライン' : 'オフライン'}</div></div>
+                ${unreadByUser[id] ? `<span class="unread">${unreadByUser[id]}</span>` : ''}
+            </div>`).join('') || '<div class="small" style="padding:10px;">ユーザーがいません</div>';
     }
 
     window.openAdminChat = uid => {
-        currentChatUid = uid;
-        unreadByUser[uid] = 0;
-        updateChatBadge();
-        renderChatUserList();
-
+        currentChatUid = uid; unreadByUser[uid] = 0; updateChatBadge(); renderChatUserList();
         const u = allUsers[uid] || {};
-        getEl('chat-empty').classList.add('hidden');
-        getEl('chat-active').classList.remove('hidden');
+        getEl('chat-empty').classList.add('hidden'); getEl('chat-active').classList.remove('hidden');
         getEl('chat-target-icon').src = u.icon || './icon.jpeg';
-        getEl('chat-target-name').textContent = u.nickname || u.username || uid;
+        getEl('chat-target-name').textContent = u.nickname || uid;
         getEl('chat-target-status').textContent = onlineStatus[uid] ? 'オンライン' : 'オフライン';
         renderChatWindow(uid);
     };
@@ -821,166 +507,66 @@
     function renderChatWindow(uid) {
         if (currentChatUid !== uid) return;
         const box = getEl('chat-msgs');
-        const msgs = (chatMessages[uid] || []).slice().sort((a, b) => (a.time || 0) - (b.time || 0));
+        const msgs = chatMessages[uid] || [];
         box.innerHTML = msgs.map(m => {
             const own = m.sender === 'admin';
-            const body = m.type === 'image'
-                ? `<img src="${m.text}">`
-                : escapeHTML(m.text || '');
-            return `<div class="chat-msg ${own ? 'own' : 'other'}">
-                <div>${body}</div>
-                <div class="meta">${own ? '管理者' : escapeHTML(m.senderName || uid)} ・ ${new Date(m.time || Date.now()).toLocaleTimeString('ja-JP')}</div>
+            const body = m.type === 'image' ? `<img src="${m.text}">` : escapeHTML(m.text || '');
+            const react = `<div class="reactions" id="react-${m.id}" style="display:${m.reaction?'block':'none'}">${m.reaction||''}</div>`;
+            const actionHtml = !own ? `<div class="reaction-menu hidden" id="rmenu-${m.id}"><button class="react-btn" onclick="sendAdminReact('${m.id}','❤️')">❤️</button><button class="react-btn" onclick="sendAdminReact('${m.id}','👍')">👍</button></div>` : '';
+            return `<div class="msg-wrap ${own ? 'my-msg' : 'other-msg'}">
+                ${actionHtml}
+                <div class="msg" oncontextmenu="event.preventDefault(); document.getElementById('rmenu-${m.id}').classList.toggle('hidden')">${body}${react}</div>
+                <div class="msg-info">${own ? '管理者' : escapeHTML(m.senderName || uid)} ・ ${new Date(m.time).toLocaleTimeString('ja-JP')}</div>
             </div>`;
         }).join('') || '<div class="small" style="text-align:center;margin-top:20px;">まだメッセージはありません</div>';
         box.scrollTop = box.scrollHeight;
     }
 
+    // 管理者からの送信 (対象のInboxへ直接Push)
     window.sendAdminText = () => {
-        const input = getEl('chat-input');
-        const text = input.value.trim();
+        const input = getEl('chat-input'); const text = input.value.trim();
         if (!text || !currentChatUid) return;
-        const packet = { id: Date.now().toString(), sender: 'admin', senderName: '管理者', text, type: 'text', time: Date.now() };
-        push(ref(dbFirebase, `offline_msgs/${currentChatUid}`), packet);
-        if (!chatMessages[currentChatUid]) chatMessages[currentChatUid] = [];
-        chatMessages[currentChatUid].push(packet);
-        sessionStats.sent++;
-        getEl('log-sent') && (getEl('log-sent').textContent = sessionStats.sent);
-        addLog(`${currentChatUid} へメッセージを送信しました`);
-        renderChatWindow(currentChatUid);
-        input.value = '';
+        const packet = { type: 'text', id: Date.now().toString(), room: 'admin', sender: 'admin', senderName: '管理者', text: text, time: Date.now() };
+        push(ref(dbFirebase, `inbox/${currentChatUid}`), packet);
+        if (!chatMessages[currentChatUid]) chatMessages[currentChatUid] = []; chatMessages[currentChatUid].push(packet);
+        renderChatWindow(currentChatUid); renderChatUserList(); input.value = '';
     };
-
-    function resizeImageToDataURL(file, maxSize, cb) {
-        const r = new FileReader();
-        r.onload = e => {
-            const img = new Image();
-            img.onload = () => {
-                const cv = document.createElement('canvas');
-                let w = img.width, h = img.height;
-                if (w > maxSize || h > maxSize) { if (w > h) { h *= maxSize / w; w = maxSize; } else { w *= maxSize / h; h = maxSize; } }
-                cv.width = w; cv.height = h;
-                cv.getContext('2d').drawImage(img, 0, 0, w, h);
-                cb(cv.toDataURL('image/jpeg', 0.6));
-            };
-            img.src = e.target.result;
-        };
-        r.readAsDataURL(file);
-    }
 
     window.sendAdminImage = inp => {
-        const file = inp.files[0];
-        if (!file || !currentChatUid) return;
-        resizeImageToDataURL(file, 800, base64 => {
-            const packet = { id: Date.now().toString(), sender: 'admin', senderName: '管理者', text: base64, type: 'image', time: Date.now() };
-            push(ref(dbFirebase, `offline_msgs/${currentChatUid}`), packet);
-            if (!chatMessages[currentChatUid]) chatMessages[currentChatUid] = [];
-            chatMessages[currentChatUid].push(packet);
-            sessionStats.sent++;
-            getEl('log-sent') && (getEl('log-sent').textContent = sessionStats.sent);
-            addLog(`${currentChatUid} へ画像を送信しました`);
-            renderChatWindow(currentChatUid);
-        });
-        inp.value = '';
+        const file = inp.files[0]; if (!file || !currentChatUid) return;
+        const r = new FileReader(); r.onload = e => {
+            const img = new Image(); img.onload = () => {
+                const cv = document.createElement('canvas'); let w = img.width, h = img.height;
+                if(w>800||h>800){if(w>h){h*=800/w;w=800;}else{w*=800/h;h=800;}} cv.width=w; cv.height=h; cv.getContext('2d').drawImage(img,0,0,w,h);
+                const packet = { type: 'image', id: Date.now().toString(), room: 'admin', sender: 'admin', senderName: '管理者', text: cv.toDataURL('image/jpeg', 0.6), time: Date.now() };
+                push(ref(dbFirebase, `inbox/${currentChatUid}`), packet);
+                if (!chatMessages[currentChatUid]) chatMessages[currentChatUid] = []; chatMessages[currentChatUid].push(packet);
+                renderChatWindow(currentChatUid); renderChatUserList();
+            }; img.src = e.target.result;
+        }; r.readAsDataURL(file); inp.value = '';
     };
 
-    // ============ 一斉通知 ============
-    window.updateBroadcastPreview = () => {
-        const title = getEl('bc-title').value.trim() || 'お知らせ';
-        const message = getEl('bc-message').value.trim() || 'プレビューはここに表示されます';
-        const important = getEl('bc-importance').value === 'important';
-        getEl('bc-preview').innerHTML = `
-            <div class="p-title">${important ? '🔴 【重要】' : '🔔'} ${escapeHTML(title)}</div>
-            <div style="font-size:13px;">${escapeHTML(message)}</div>
-            <div class="small" style="margin-top:6px;">${new Date().toLocaleString('ja-JP')}</div>`;
+    window.sendAdminReact = (msgId, emoji) => {
+        document.getElementById(`rmenu-${msgId}`).classList.add('hidden');
+        const packet = { type: 'react', msgId: msgId, room: 'admin', emoji: emoji, sender: 'admin' };
+        push(ref(dbFirebase, `inbox/${currentChatUid}`), packet);
+        const msg = chatMessages[currentChatUid].find(m => m.id === msgId);
+        if(msg) { msg.reaction = emoji; renderChatWindow(currentChatUid); }
     };
 
+    // --- 一斉通知 ---
     window.sendBroadcast = () => {
-        const title = getEl('bc-title').value.trim();
-        const message = getEl('bc-message').value.trim();
+        const title = getEl('bc-title').value.trim(); const message = getEl('bc-message').value.trim();
         if (!message) return showToast('本文を入力してください');
-        const important = getEl('bc-importance').value === 'important';
-        const useBanner = getEl('bc-banner').checked;
-        const timestamp = Date.now();
-
-        const data = { id: 'bc_' + timestamp, title: title || 'お知らせ', message, important, timestamp };
-        push(ref(dbFirebase, 'announcements/broadcasts'), data);
-
-        if (useBanner) {
-            set(ref(dbFirebase, 'announcements/current'), title ? `${title}: ${message}` : message);
-        }
-
-        addLog(`一斉通知を配信しました: ${title || '(無題)'}`);
-        showToast('配信しました');
-        getEl('bc-title').value = ''; getEl('bc-message').value = '';
-        updateBroadcastPreview();
+        push(ref(dbFirebase, 'announcements/broadcasts'), { id: 'bc_'+Date.now(), title: title || 'お知らせ', message, timestamp: Date.now() });
+        set(ref(dbFirebase, 'announcements/current'), title ? `${title}: ${message}` : message);
+        showToast('配信しました'); getEl('bc-title').value = ''; getEl('bc-message').value = '';
     };
-
-    window.clearBannerAnnouncement = () => {
-        if (!confirm('現在表示中のお知らせバナーを消去しますか？')) return;
-        remove(ref(dbFirebase, 'announcements/current'));
-        addLog('お知らせバナーをクリアしました');
-        showToast('バナーをクリアしました');
-    };
-
-    function subscribeBroadcastHistory() {
-        const q = query(ref(dbFirebase, 'announcements/broadcasts'), limitToLast(30));
-        const unsub = onValue(q, snap => {
-            broadcastCache = snap.val() || {};
-            renderBroadcastHistory();
-            renderDashboardBroadcasts();
-        });
-        return unsub;
-    }
-
+    window.clearBannerAnnouncement = () => { remove(ref(dbFirebase, 'announcements/current')); showToast('バナーをクリアしました'); };
     function renderBroadcastHistory() {
-        const box = getEl('ui-broadcast-history');
         const entries = Object.entries(broadcastCache).sort((a, b) => (b[1].timestamp || 0) - (a[1].timestamp || 0));
-        if (!entries.length) { box.innerHTML = '配信履歴はありません'; return; }
-        box.innerHTML = entries.map(([key, d]) => `
-            <div class="row-flex" style="justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);">
-                <div>
-                    <div style="font-weight:bold;">${d.important ? '🔴 ' : ''}${escapeHTML(d.title || '(無題)')}</div>
-                    <div class="small">${escapeHTML(d.message || '')}</div>
-                    <div class="small">${fmtDate(d.timestamp)}</div>
-                </div>
-                <button class="sub-btn" onclick="deleteBroadcast('${key}')"><i class="fa-solid fa-trash"></i></button>
-            </div>`).join('');
+        getEl('ui-broadcast-history').innerHTML = entries.map(([key, d]) => `<div class="row-flex" style="justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);"><div><div style="font-weight:bold;">${escapeHTML(d.title || '(無題)')}</div><div class="small">${escapeHTML(d.message || '')}</div><div class="small">${fmtDate(d.timestamp)}</div></div><button class="sub-btn" onclick="remove(ref(dbFirebase, 'announcements/broadcasts/${key}'))"><i class="fa-solid fa-trash"></i></button></div>`).join('') || '配信履歴はありません';
     }
-
-    function renderDashboardBroadcasts() {
-        const box = getEl('dash-broadcast-list');
-        const entries = Object.entries(broadcastCache).sort((a, b) => (b[1].timestamp || 0) - (a[1].timestamp || 0)).slice(0, 3);
-        box.innerHTML = entries.length
-            ? entries.map(([, d]) => `<div style="padding:6px 0;border-bottom:1px solid var(--border);">${d.important ? '🔴 ' : ''}<strong>${escapeHTML(d.title || '')}</strong> - ${escapeHTML(d.message || '')}</div>`).join('')
-            : '配信履歴はありません';
-    }
-
-    window.deleteBroadcast = key => {
-        if (!confirm('この配信履歴を削除しますか？')) return;
-        remove(ref(dbFirebase, `announcements/broadcasts/${key}`));
-        addLog('配信履歴を1件削除しました');
-    };
-
-    // ============ オンライン管理 ============
-    function renderOnlineTable() {
-        const entries = Object.entries(onlineStatus).filter(([, v]) => !!v);
-        if (!entries.length) { getEl('ui-online').innerHTML = '<tr><td colspan="4" class="muted">オンラインのユーザーはいません</td></tr>'; return; }
-        getEl('ui-online').innerHTML = entries.map(([id]) => {
-            const u = allUsers[id] || {};
-            const elapsed = firstSeenOnline[id] ? Math.floor((Date.now() - firstSeenOnline[id]) / 1000) : 0;
-            const mm = String(Math.floor(elapsed / 60)).padStart(2, '0');
-            const ss = String(elapsed % 60).padStart(2, '0');
-            return `<tr>
-                <td><span class="user-cell"><img class="avatar" src="${escapeHTML(u.icon || './icon.jpeg')}">${escapeHTML(u.nickname || u.username || id)}</span></td>
-                <td><span class="badge ok">オンライン</span></td>
-                <td class="small">${mm}:${ss}</td>
-                <td><button class="sub-btn" onclick="switchSection('chat', document.querySelector('[data-sec=chat]')); openAdminChat('${id}')">メッセージ</button></td>
-            </tr>`;
-        }).join('');
-    }
-    // オンライン表示の経過時間を定期更新
-    setInterval(() => { if (currentSectionName === 'online') renderOnlineTable(); }, 1000);
-
 </script>
 </body>
 </html>
