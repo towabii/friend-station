@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Friend Station</title>
-    <!-- 【新規機能7】ファビコン等のアイコンに tag.jpg を設定 -->
+    <!-- ファビコン等のアイコン -->
     <link rel="icon" href="./tag.jpg" type="image/jpeg">
     <link rel="apple-touch-icon" href="./tag.jpg">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -244,7 +244,7 @@
         <div id="panel-search" class="scroll-area hidden">
             <div class="panel-header">ユーザー検索</div>
             <div style="padding:15px;">
-                <input type="text" id="s-query" placeholder="キーワード(オフライン検索対応)..." style="border-radius:20px;margin-bottom:15px;">
+                <input type="text" id="s-query" placeholder="キーワードで検索..." style="border-radius:20px;margin-bottom:15px;">
                 <button type="button" onclick="execSearch()" style="width:100%;border-radius:20px;">検索</button>
             </div>
             <div id="ui-search-res"></div>
@@ -364,7 +364,6 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
     import { getDatabase, ref, set, get, update, push, onChildAdded, remove, onDisconnect, onValue, goOffline } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
-    // 【重要セキュリティ制限】本アプリはフロントエンドのみで動作するため、Firebase Realtime Database の Security Rules（セキュリティルール）にて、各ユーザーが「自分のデータ」および「自分が所属するグループのデータ」のみを読み書きできるように厳格に制限してください。また、GCPコンソール側で本APIキーに対しHTTPリファラ（ドメイン制限）を必ず設定してください。
     const firebaseConfig = {
         apiKey: "AIzaSyDVTNVO9gcXKQkauOF3NNZ36d2voyvGscA",
         authDomain: "study-station-8f0aa.firebaseapp.com",
@@ -378,25 +377,91 @@
     const dbFirebase = getDatabase(app);
     
     let myInfo = JSON.parse(localStorage.getItem('myInfo'));
-    let currentRoom = null; let onlineStatusCache = {}; let dbLocal = null;
-    let allUsersCache = {}; 
+    let currentRoom = null; 
+    let onlineStatusCache = {}; 
     
-    let firebaseUnsubscribes = {
-        pending: null,
-        users: null,
-        presence: null,
-        webrtcP2p: null,
-        webrtcCall: null,
-        friendRequests: null,
-        broadcasts: null,
-        offlineMsgs: null
-    };
+    // 【重要】IndexedDB と In-Memory フォールバックのハイブリッド実装
+    let dbLocal = null;
+    let useMemDB = false;
+    let memDB = { msgs: [], friends: [], blocked_users: [] };
 
-    let peerConnections = {}; 
-    let dataChannels = {};     
-    let groupHostsCache = {};  
+    function initDB() {
+        return new Promise((resolve) => {
+            if (dbLocal || useMemDB) { resolve(); return; }
+            try {
+                const req = indexedDB.open('ChatDB', 3);
+                req.onupgradeneeded = e => {
+                    const db = e.target.result;
+                    if(!db.objectStoreNames.contains('msgs')) {
+                        const s = db.createObjectStore('msgs', {keyPath: 'id'});
+                        s.createIndex('room', 'room', {unique: false});
+                    }
+                    if(!db.objectStoreNames.contains('friends')) db.createObjectStore('friends', {keyPath: 'id'});
+                    if(!db.objectStoreNames.contains('blocked_users')) db.createObjectStore('blocked_users', {keyPath: 'id'});
+                };
+                req.onsuccess = e => { dbLocal = e.target.result; resolve(); };
+                req.onerror = e => { 
+                    console.warn("IndexedDBブロック環境です。メモリ保存モードで起動します。");
+                    useMemDB = true; resolve(); 
+                };
+            } catch(e) {
+                console.warn("IndexedDBエラー。メモリ保存モードで起動します。");
+                useMemDB = true; resolve();
+            }
+        });
+    }
+
+    const dbGet = (store, key) => new Promise(res => { 
+        if (useMemDB) { res(memDB[store].find(i => i.id === key) || null); return; }
+        if (!dbLocal) { res(null); return; } 
+        const t = dbLocal.transaction(store,"readonly").objectStore(store).get(key); 
+        t.onsuccess = () => res(t.result); 
+    });
+    
+    const dbPut = (store, val) => new Promise(res => { 
+        if (useMemDB) { 
+            const idx = memDB[store].findIndex(i => i.id === val.id);
+            if(idx > -1) memDB[store][idx] = val; else memDB[store].push(val);
+            res(); return; 
+        }
+        if (!dbLocal) { res(); return; } 
+        const t = dbLocal.transaction(store,"readwrite").objectStore(store).put(val); 
+        t.onsuccess = () => res(); 
+    });
+    
+    const dbGetAll = (store) => new Promise(res => { 
+        if (useMemDB) { res([...memDB[store]]); return; }
+        if (!dbLocal) { res([]); return; } 
+        const t = dbLocal.transaction(store,"readonly").objectStore(store).getAll(); 
+        t.onsuccess = () => res(t.result); 
+    });
+
+    const dbGetAllByIndex = (store, indexName, key) => new Promise(res => {
+        if (useMemDB) { res(memDB[store].filter(i => i[indexName] === key)); return; }
+        if (!dbLocal) { res([]); return; }
+        const t = dbLocal.transaction(store,"readonly").objectStore(store).index(indexName).getAll(key);
+        t.onsuccess = () => res(t.result);
+    });
+
+    async function updateLocalMsgField(msgId, field, value) {
+        if (useMemDB) {
+            const m = memDB.msgs.find(i => i.id === msgId);
+            if(m) m[field] = value;
+            return;
+        }
+        return new Promise(resolve => {
+            if (!dbLocal) { resolve(); return; }
+            const tx = dbLocal.transaction('msgs', 'readwrite');
+            const req = tx.objectStore('msgs').get(msgId);
+            req.onsuccess = () => {
+                const m = req.result; if(m) { m[field] = value; tx.objectStore('msgs').put(m); }
+                resolve();
+            };
+        });
+    }
+
+    let firebaseUnsubscribes = { pending: null, presence: null, inbox: null, calls: null, friendRequests: null, broadcasts: null };
     let localUnreadCounts = {};
-
     let isTabActive = true;
     let unreadTotal = 0;
     let blinkInterval = null;
@@ -406,108 +471,25 @@
     ['mousemove','keydown','touchstart','scroll'].forEach(e => document.addEventListener(e, resetIdle));
     setInterval(() => { idleTime += 60000; if(idleTime >= MAX_IDLE_TIME) { goOffline(dbFirebase); document.getElementById('modal-timeout').classList.remove('hidden'); } }, 60000);
 
-    let peerConnection = null; 
-    let localStream = null; 
-    let callSession = null; 
-    let isVideoCall = false;
-    let currentCallAudio = null;
-    let incomingOfferSDP = null;
-    let incomingCallSender = null;
-    
+    let peerConnection = null; let localStream = null; let isVideoCall = false;
+    let currentCallAudio = null; let incomingCallData = null; let callAnswerUnsub = null; let callIceUnsub = null;
     const servers = { iceServers: [{urls:'stun:stun.l.google.com:19302'}] };
+    
     const getEl = id => document.getElementById(id);
     const safeHtml = (id, html) => { const el = getEl(id); if (el) el.innerHTML = html; };
 
-    document.addEventListener("visibilitychange", () => {
-        isTabActive = !document.hidden;
-        if (isTabActive) {
-            clearInterval(blinkInterval);
-            document.title = "Friend Station";
-            unreadTotal = 0;
-        }
-    });
-    window.addEventListener('focus', () => {
-        isTabActive = true;
-        clearInterval(blinkInterval);
-        document.title = "Friend Station";
-        unreadTotal = 0;
-    });
-    window.addEventListener('blur', () => {
-        isTabActive = false;
-    });
-
-    function triggerTitleBlink() {
-        clearInterval(blinkInterval);
-        let toggle = false;
-        blinkInterval = setInterval(() => {
-            document.title = toggle ? `新着通知(${unreadTotal})` : "Friend Station";
-            toggle = !toggle;
-        }, 1000);
-    }
-
+    document.addEventListener("visibilitychange", () => { isTabActive = !document.hidden; if (isTabActive) { clearInterval(blinkInterval); document.title = "Friend Station"; unreadTotal = 0; } });
+    window.addEventListener('focus', () => { isTabActive = true; clearInterval(blinkInterval); document.title = "Friend Station"; unreadTotal = 0; });
+    window.addEventListener('blur', () => { isTabActive = false; });
+    function triggerTitleBlink() { clearInterval(blinkInterval); let toggle = false; blinkInterval = setInterval(() => { document.title = toggle ? `新着通知(${unreadTotal})` : "Friend Station"; toggle = !toggle; }, 1000); }
     function resizeImage(file, maxSize, callback) {
-        const r = new FileReader();
-        r.onload = e => {
-            const img = new Image();
-            img.onload = () => {
+        const r = new FileReader(); r.onload = e => {
+            const img = new Image(); img.onload = () => {
                 const cv = document.createElement('canvas'); let w = img.width, h = img.height;
                 if(w > maxSize || h > maxSize) { if(w > h) { h *= maxSize / w; w = maxSize; } else { w *= maxSize / h; h = maxSize; } }
-                cv.width = w; cv.height = h; cv.getContext('2d').drawImage(img, 0, 0, w, h);
-                callback(cv.toDataURL('image/jpeg', 0.6));
-            };
-            img.src = e.target.result;
-        };
-        r.readAsDataURL(file);
-    }
-
-    function initDB() {
-        return new Promise((resolve, reject) => {
-            if (dbLocal) { resolve(); return; }
-            const req = indexedDB.open('ChatDB', 3);
-            req.onupgradeneeded = e => {
-                const db = e.target.result;
-                if(!db.objectStoreNames.contains('msgs')) {
-                    const s = db.createObjectStore('msgs', {keyPath: 'id'});
-                    s.createIndex('room', 'room', {unique: false});
-                }
-                if(!db.objectStoreNames.contains('friends')) {
-                    db.createObjectStore('friends', {keyPath: 'id'});
-                }
-                if(!db.objectStoreNames.contains('blocked_users')) {
-                    db.createObjectStore('blocked_users', {keyPath: 'id'});
-                }
-            };
-            req.onsuccess = e => { dbLocal = e.target.result; resolve(); };
-            req.onerror = e => { reject(e); };
-        });
-    }
-
-    const dbGet = (store, key) => new Promise(res => { if (!dbLocal) { res(null); return; } const t = dbLocal.transaction(store,"readonly").objectStore(store).get(key); t.onsuccess = () => res(t.result); });
-    const dbPut = (store, val) => new Promise(res => { if (!dbLocal) { res(); return; } const t = dbLocal.transaction(store,"readwrite").objectStore(store).put(val); t.onsuccess = () => res(); });
-    const dbGetAll = (store) => new Promise(res => { if (!dbLocal) { res([]); return; } const t = dbLocal.transaction(store,"readonly").objectStore(store).getAll(); t.onsuccess = () => res(t.result); });
-    const dbDelete = (store, key) => new Promise(res => { if (!dbLocal) { res(); return; } const t = dbLocal.transaction(store,"readwrite").objectStore(store).delete(key); t.onsuccess = () => res(); });
-
-    async function saveLocalMsg(m) {
-        return new Promise((resolve, reject) => {
-            if (!dbLocal) { reject(); return; }
-            const tx = dbLocal.transaction('msgs', 'readwrite');
-            tx.objectStore('msgs').put(m);
-            tx.oncomplete = () => { loadChatList(); resolve(); };
-            tx.onerror = () => reject();
-        });
-    }
-
-    async function updateLocalMsgField(msgId, field, value) {
-        return new Promise(resolve => {
-            if (!dbLocal) { resolve(); return; }
-            const tx = dbLocal.transaction('msgs', 'readwrite');
-            const store = tx.objectStore('msgs');
-            const req = store.get(msgId);
-            req.onsuccess = () => {
-                const m = req.result; if(m) { m[field] = value; store.put(m); }
-                resolve();
-            };
-        });
+                cv.width = w; cv.height = h; cv.getContext('2d').drawImage(img, 0, 0, w, h); callback(cv.toDataURL('image/jpeg', 0.6));
+            }; img.src = e.target.result;
+        }; r.readAsDataURL(file);
     }
 
     window.showToast = msg => { const t = getEl('toast'); if (t) { t.innerText = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000); } };
@@ -515,87 +497,43 @@
     window.nextStep = n => { document.querySelectorAll('.reg-step').forEach(el=>el.classList.add('hidden')); const stepEl = getEl('step'+n); if (stepEl) stepEl.classList.remove('hidden'); };
     
     window.switchNav = (m, targetBtn) => { 
-        document.querySelectorAll('.nav-btn').forEach(el=>el.classList.remove('active')); 
-        if (targetBtn) { targetBtn.classList.add('active'); }
-        
-        const panelChat = getEl('panel-chat'); const panelSearch = getEl('panel-search'); const panelNotif = getEl('panel-notif'); const panelSettings = getEl('panel-settings');
-        if (panelChat) panelChat.classList.add('hidden');
-        if (panelSearch) panelSearch.classList.add('hidden');
-        if (panelNotif) panelNotif.classList.add('hidden');
-        if (panelSettings) panelSettings.classList.add('hidden');
-
-        if (m === 'chat') {
-            if (panelChat) panelChat.classList.remove('hidden');
-            switchMainPanel('chat');
-        } else if (m === 'search') {
-            if (panelSearch) panelSearch.classList.remove('hidden');
-            switchMainPanel('chat');
-        } else if (m === 'notif') {
-            if (panelNotif) panelNotif.classList.remove('hidden');
-            switchMainPanel('chat');
-        } else if (m === 'settings') {
-            if (panelSettings) panelSettings.classList.remove('hidden');
-            switchMainPanel('settings');
-        }
+        document.querySelectorAll('.nav-btn').forEach(el=>el.classList.remove('active')); if (targetBtn) targetBtn.classList.add('active');
+        const panels = ['panel-chat', 'panel-search', 'panel-notif', 'panel-settings'];
+        panels.forEach(p => { const el = getEl(p); if(el) el.classList.add('hidden'); });
+        if (m === 'chat') { getEl('panel-chat')?.classList.remove('hidden'); switchMainPanel('chat'); }
+        else if (m === 'search') { getEl('panel-search')?.classList.remove('hidden'); switchMainPanel('chat'); }
+        else if (m === 'notif') { getEl('panel-notif')?.classList.remove('hidden'); switchMainPanel('chat'); }
+        else if (m === 'settings') { getEl('panel-settings')?.classList.remove('hidden'); switchMainPanel('settings'); }
     };
     
     window.switchMainPanel = p => { 
         document.querySelectorAll('.main-screen').forEach(el=>el.classList.add('hidden', 'active'));
-        const mainPanel = getEl('main-'+p);
-        if (mainPanel) { mainPanel.classList.remove('hidden'); mainPanel.classList.add('active'); }
+        const mainPanel = getEl('main-'+p); if (mainPanel) { mainPanel.classList.remove('hidden'); mainPanel.classList.add('active'); }
         if(p==='chat'){ const chatActive = getEl('chat-active'); const chatEmpty = getEl('chat-empty'); if (chatActive) chatActive.classList.toggle('hidden', !currentRoom); if (chatEmpty) chatEmpty.classList.toggle('hidden', !!currentRoom); }
     };
     window.closeChatMobile = () => { const mainContainer = getEl('main-container'); if (mainContainer) mainContainer.classList.remove('active'); };
-
-    window.switchSettingsSection = (secId, btn) => {
-        document.querySelectorAll(".settings-tab-btn").forEach(b => b.classList.remove("active"));
-        if (btn) btn.classList.add("active");
-        document.querySelectorAll(".settings-sec").forEach(s => s.classList.add("hidden"));
-        const secEl = getEl(secId);
-        if (secEl) secEl.classList.remove("hidden");
-    };
-
+    window.switchSettingsSection = (secId, btn) => { document.querySelectorAll(".settings-tab-btn").forEach(b => b.classList.remove("active")); if (btn) btn.classList.add("active"); document.querySelectorAll(".settings-sec").forEach(s => s.classList.add("hidden")); const secEl = getEl(secId); if (secEl) secEl.classList.remove("hidden"); };
+    
     let currentTestAudio = null;
     window.testSound = (type) => {
-        const selectEl = getEl(type === "notif" ? "sel-notif-sound" : "sel-call-sound");
-        if (!selectEl) return;
-        
-        if (currentTestAudio) {
-            try {
-                currentTestAudio.pause();
-                currentTestAudio.currentTime = 0;
-            } catch(e) {}
-        }
-        
-        const fileBase = selectEl.value;
-        currentTestAudio = new Audio(`./${fileBase}.mp3`);
-        currentTestAudio.play().catch(e => console.log("再生制限:", e));
+        const selectEl = getEl(type === "notif" ? "sel-notif-sound" : "sel-call-sound"); if (!selectEl) return;
+        if (currentTestAudio) { try { currentTestAudio.pause(); currentTestAudio.currentTime = 0; } catch(e) {} }
+        currentTestAudio = new Audio(`./${selectEl.value}.mp3`); currentTestAudio.play().catch(e => {});
     };
+    function playNotifSound() { const selectEl = getEl("sel-notif-sound"); if (!selectEl) return; try { const audio = new Audio(`./${selectEl.value}.mp3`); audio.play().catch(e => {}); } catch(e) {} }
 
+    // --- 認証 ---
     function startPendingMonitor(uid) {
         const authScreen = getEl('scr-auth'); const pendingScreen = getEl('scr-pending');
-        if (authScreen) authScreen.classList.add('hidden');
-        if (pendingScreen) pendingScreen.classList.remove('hidden');
-        
+        if (authScreen) authScreen.classList.add('hidden'); if (pendingScreen) pendingScreen.classList.remove('hidden');
         if (firebaseUnsubscribes.pending) { firebaseUnsubscribes.pending(); }
-        
         const statusRef = ref(dbFirebase, `users/${uid}/status`);
         firebaseUnsubscribes.pending = onValue(statusRef, snap => {
             if(snap.val() === 'approved') {
                 if (firebaseUnsubscribes.pending) { firebaseUnsubscribes.pending(); firebaseUnsubscribes.pending = null; }
-                remove(statusRef);
                 get(ref(dbFirebase, `users/${uid}`)).then(uSnap => { 
                     myInfo = uSnap.val(); 
-                    try {
-                        localStorage.setItem('myInfo', JSON.stringify(myInfo));
-                    } catch (e) {
-                        if (e.name === 'QuotaExceededError') {
-                            myInfo.icon = '';
-                            localStorage.setItem('myInfo', JSON.stringify(myInfo));
-                            showToast("容量制限に達したため、過去のアイコン写真を自動削除してデータを保護しました。");
-                        }
-                    } 
-                    location.reload(); 
+                    saveMyInfo(); location.reload(); 
                 });
             }
         });
@@ -603,10 +541,8 @@
 
     document.getElementById('btn-submit-login').onclick = async (e) => {
         e.preventDefault();
-        const lUser = document.getElementById('l-user');
-        const lPass = document.getElementById('l-pass');
+        const lUser = document.getElementById('l-user'); const lPass = document.getElementById('l-pass');
         if(!lUser.value || !lPass.value) return showToast("IDとパスワードを入力してください");
-
         const btn = document.getElementById('btn-submit-login'); btn.innerText="認証中...";
         const uid = lUser.value; const pass = lPass.value;
         const snap = await get(ref(dbFirebase, `users/${uid}`));
@@ -614,66 +550,40 @@
         if(snap.exists() && snap.val().password === pass) {
             if(snap.val().is_banned) return showToast('アカウントが停止されています');
             if(snap.val().status === 'pending') startPendingMonitor(uid);
-            else { 
-                myInfo = snap.val(); 
-                try {
-                    localStorage.setItem('myInfo', JSON.stringify(myInfo));
-                } catch (e) {
-                    if (e.name === 'QuotaExceededError') {
-                        myInfo.icon = '';
-                        localStorage.setItem('myInfo', JSON.stringify(myInfo));
-                        showToast("容量制限に達したため、過去のアイコン写真を自動削除してデータを保護しました。");
-                    }
-                }
-                initApp(); 
-            }
+            else { myInfo = snap.val(); saveMyInfo(); initApp(); }
         } else { document.getElementById('auth-msg').innerText = "IDかパスワードが違います"; document.getElementById('auth-msg').style.display='block'; }
     };
 
     document.getElementById('btn-submit-reg').onclick = async (e) => {
         e.preventDefault();
-        const uid = document.getElementById('r-user').value;
-        const pass = document.getElementById('r-pass').value;
+        const uid = document.getElementById('r-user').value; const pass = document.getElementById('r-pass');
         if(!uid || !pass) return showToast("必要な項目を入力してください");
-
         const btn = document.getElementById('btn-submit-reg'); btn.innerText="登録中...";
         const snap = await get(ref(dbFirebase, `users/${uid}`));
         if(snap.exists()) { btn.innerText="登録"; return showToast('そのIDは既に存在します'); }
-        
         const file = document.getElementById('r-icon').files[0];
         const registerUser = async (iconBase64 = '') => {
             const user = { id: uid, username: uid, nickname: document.getElementById('r-nick').value, first_name: document.getElementById('r-fn').value, last_name: document.getElementById('r-ln').value, password: pass, is_banned: 0, status: 'pending', icon: iconBase64, timestamp: Date.now() };
-            await set(ref(dbFirebase, `users/${uid}`), user);
-            startPendingMonitor(uid);
+            await set(ref(dbFirebase, `users/${uid}`), user); startPendingMonitor(uid);
         };
-        
         if(file) resizeImage(file, 150, registerUser); else registerUser();
     };
 
+    function saveMyInfo() {
+        try { localStorage.setItem('myInfo', JSON.stringify(myInfo)); }
+        catch (e) {
+            if (e.name === 'QuotaExceededError') {
+                myInfo.icon = ''; localStorage.setItem('myInfo', JSON.stringify(myInfo));
+                showToast("容量制限のため、過去のアイコン写真を削除してデータを保護しました。");
+            }
+        }
+    }
     window.logout = () => { if(myInfo) remove(ref(dbFirebase, `presence/${myInfo.id}`)); localStorage.clear(); location.reload(); };
 
+    // --- メイン初期化 ---
     async function initApp() {
-        const appLaunchTime = Date.now();
-
-        for (let targetId in dataChannels) {
-            try { if (dataChannels[targetId]) dataChannels[targetId].close(); } catch(e){}
-            dataChannels[targetId] = null;
-        }
-        for (let targetId in peerConnections) {
-            try { if (peerConnections[targetId]) peerConnections[targetId].close(); } catch(e){}
-            peerConnections[targetId] = null;
-        }
-        dataChannels = {};
-        peerConnections = {};
-        groupHostsCache = {};
         forceEndCall();
-
-        Object.keys(firebaseUnsubscribes).forEach(key => {
-            if (firebaseUnsubscribes[key]) {
-                firebaseUnsubscribes[key]();
-                firebaseUnsubscribes[key] = null;
-            }
-        });
+        Object.keys(firebaseUnsubscribes).forEach(key => { if (firebaseUnsubscribes[key]) { firebaseUnsubscribes[key](); firebaseUnsubscribes[key] = null; } });
 
         const authScreen = getEl('scr-auth'); const pendingScreen = getEl('scr-pending'); const mainScreen = getEl('scr-main');
         if (authScreen) authScreen.classList.add('hidden');
@@ -690,17 +600,13 @@
         await initDB();
 
         const existingAdmin = await dbGet("friends", "admin");
-        if(!existingAdmin) {
-            await dbPut("friends", { id: "admin", nickname: "管理者", icon: "./tag.jpg", isGroup: false });
-        }
+        if(!existingAdmin) await dbPut("friends", { id: "admin", nickname: "管理者", icon: "./tag.jpg", isGroup: false });
         
         const uiAnnouncement = getEl("ui-announcement");
         if (uiAnnouncement) { uiAnnouncement.classList.add("hidden"); uiAnnouncement.innerHTML = ""; }
-
         const announcementSnap = await get(ref(dbFirebase, 'announcements/current'));
         if(announcementSnap.exists() && announcementSnap.val() && uiAnnouncement) {
-            uiAnnouncement.innerHTML = `<i class="fa-solid fa-bullhorn"></i> <span>${announcementSnap.val()}</span>`;
-            uiAnnouncement.classList.remove("hidden");
+            uiAnnouncement.innerHTML = `<i class="fa-solid fa-bullhorn"></i> <span>${announcementSnap.val()}</span>`; uiAnnouncement.classList.remove("hidden");
         }
 
         safeHtml('ui-rooms', '<div class="ui-placeholder">ルームを読み込み中...</div>');
@@ -708,191 +614,99 @@
         safeHtml("ui-sent-requests", '<div class="ui-placeholder">読み込み中...</div>');
         safeHtml('ui-notifications', '');
 
-        // 【修正1】 usersの監視をやめて、1回だけ取得する
-        const usersSnap = await get(ref(dbFirebase, 'users'));
-        if(usersSnap.exists()){
-            allUsersCache = usersSnap.val()||{};
-        }
-
         await loadChatList();
-        await loadRecommendUsers();
-
+        
         const myRef = ref(dbFirebase, `presence/${myInfo.id}`);
         onDisconnect(myRef).remove(); set(myRef, true);
         
-        firebaseUnsubscribes.presence = onValue(ref(dbFirebase, 'presence'), snap => { 
-            onlineStatusCache = snap.val()||{}; 
-            updateOnlineBadges(); 
-            reEvaluateGroupHosts();
-        });
-
-        firebaseUnsubscribes.friendRequests = onValue(ref(dbFirebase, `friend_requests/${myInfo.id}`), snap => {
-            renderNotifications();
-        });
-
-        onValue(ref(dbFirebase, `friends/${myInfo.id}`), async snap => {
-            if(snap.exists()) {
-                const data = snap.val();
-                for(let friendId in data) {
-                    await dbPut('friends', data[friendId]);
-                }
-                loadChatList();
-            }
-        });
-
-        firebaseUnsubscribes.broadcasts = onChildAdded(ref(dbFirebase, 'announcements/broadcasts'), snap => {
-            const data = snap.val();
-            if (data) {
-                renderBroadcastNotification(data);
-            }
-        });
-
-        firebaseUnsubscribes.offlineMsgs = onChildAdded(ref(dbFirebase, `offline_msgs/${myInfo.id}`), async snap => {
+        firebaseUnsubscribes.presence = onValue(ref(dbFirebase, 'presence'), snap => { onlineStatusCache = snap.val()||{}; updateOnlineBadges(); });
+        firebaseUnsubscribes.friendRequests = onValue(ref(dbFirebase, `friend_requests/${myInfo.id}`), snap => { renderNotifications(snap.val()); });
+        firebaseUnsubscribes.broadcasts = onChildAdded(ref(dbFirebase, 'announcements/broadcasts'), snap => { if (snap.val()) renderBroadcastNotification(snap.val()); });
+        firebaseUnsubscribes.calls = onValue(ref(dbFirebase, `calls/${myInfo.id}`), handleCallSignaling);
+        
+        // 【重要】Inbox (土管) 監視処理
+        firebaseUnsubscribes.inbox = onChildAdded(ref(dbFirebase, `inbox/${myInfo.id}`), async snap => {
             const packet = snap.val();
             if(packet) {
                 const blocked = await dbGet("blocked_users", packet.sender);
                 if(!blocked) {
-                    if(packet.type === 'relay') {
-                        const orig = packet.original;
-                        const gId = packet.groupId;
-                        if (orig.type === 'react') {
-                            updateLocalMsgField(orig.msgId, 'reaction', orig.emoji);
-                            if (currentRoom === gId) {
-                                const el = document.getElementById(`react-${orig.msgId}`);
-                                if(el){ el.innerText=orig.emoji; el.style.display='block'; }
-                            }
-                        } else {
-                            await handleIncomingMessagePacket(orig, gId);
+                    if (packet.type === 'text' || packet.type === 'image') {
+                        const msg = { id: packet.id, room: packet.room, sender: packet.sender, senderName: packet.senderName, text: packet.text, type: packet.type, time: packet.time, read: false };
+                        await dbPut('msgs', msg);
+                        if(currentRoom === packet.room) displayMsg(msg);
+                        else { localUnreadCounts[packet.room] = (localUnreadCounts[packet.room] || 0) + 1; }
+                        
+                        if(!isTabActive || currentRoom !== packet.room) {
+                            unreadTotal++; triggerTitleBlink(); playNotifSound();
                         }
-                    } else if(packet.type === 'react') {
-                        const targetRoom = packet.groupId ? packet.groupId : packet.sender;
-                        updateLocalMsgField(packet.msgId, 'reaction', packet.emoji);
-                        if(currentRoom === targetRoom) {
+                    } else if (packet.type === 'react') {
+                        await updateLocalMsgField(packet.msgId, 'reaction', packet.emoji);
+                        if(currentRoom === packet.room) {
                             const el = document.getElementById(`react-${packet.msgId}`);
                             if(el){ el.innerText=packet.emoji; el.style.display='block'; }
                         }
-                    } else {
-                        await handleIncomingMessagePacket(packet, packet.groupId || packet.sender);
+                    } else if (packet.type === 'group_create') {
+                        await dbPut("friends", packet.groupObj);
                     }
+                    loadChatList();
                 }
+                // 受け取ったら即Firebaseから削除（容量・帯域の究極節約）
                 remove(snap.ref);
             }
         });
 
-        firebaseUnsubscribes.webrtcP2p = onChildAdded(ref(dbFirebase, `webrtc_p2p/${myInfo.id}`), async snap => {
-            const data = snap.val();
-            if(!data) return;
-            if ((data.time || data.timestamp) && (data.time || data.timestamp) < appLaunchTime) {
-                remove(snap.ref);
-                return;
-            }
-
-            const blocked = await dbGet("blocked_users", data.sender);
-            if(blocked) { remove(snap.ref); return; }
-
-            if(data.type === 'offer') {
-                handleP2POffer(data.sender, data.sdp);
-            } else if(data.type === 'answer') {
-                if(peerConnections[data.sender]) {
-                    await peerConnections[data.sender].setRemoteDescription(new RTCSessionDescription({type:'answer', sdp:data.sdp}));
-                }
-            } else if(data.type === 'candidate') {
-                if(peerConnections[data.sender]) {
-                    await peerConnections[data.sender].addIceCandidate(new RTCIceCandidate(data.candidate));
-                }
-            }
-            remove(snap.ref);
-        });
-
-        firebaseUnsubscribes.webrtcCall = onChildAdded(ref(dbFirebase, `webrtc/${myInfo.id}`), async snap => {
-            const data = snap.val();
-            if(!data) return;
-            if ((data.time || data.timestamp) && (data.time || data.timestamp) < appLaunchTime) {
-                remove(snap.ref);
-                return;
-            }
-            remove(snap.ref);
-
-            if(data.type === 'offer') {
-                const blocked = await dbGet("blocked_users", data.sender);
-                if(blocked) return;
-
-                callSession = data.session; 
-                isVideoCall = data.video;
-                incomingOfferSDP = data.sdp;
-                incomingCallSender = data.sender;
-
-                let callerName = allUsersCache[data.sender]?.nickname;
-                let callerIcon = allUsersCache[data.sender]?.icon;
-
-                if (!callerName || !callerIcon) {
-                    const fallbackSnap = await get(ref(dbFirebase, `users/${data.sender}`));
-                    if (fallbackSnap.exists()) {
-                        const fallbackData = fallbackSnap.val();
-                        callerName = callerName || fallbackData.nickname;
-                        callerIcon = callerIcon || fallbackData.icon;
-                    }
-                }
-
-                document.getElementById('inc-name').innerText = callerName || '着信';
-                document.getElementById('inc-icon').src = callerIcon || './icon.jpeg';
-                document.getElementById('inc-type').innerHTML = data.video ? '<i class="fa-solid fa-video"></i> ビデオ通話' : '<i class="fa-solid fa-phone"></i> 音声通話';
-                document.getElementById('modal-incoming').classList.remove('hidden');
-                
-                if (currentCallAudio) {
-                    currentCallAudio.pause();
-                    currentCallAudio.currentTime = 0;
-                }
-                const callSoundSelect = getEl('sel-call-sound');
-                if (callSoundSelect) {
-                    currentCallAudio = new Audio(`./${callSoundSelect.value}.mp3`);
-                    currentCallAudio.loop = true;
-                    currentCallAudio.play().catch(e => console.log('着信音再生エラー:', e));
-                }
-            } 
-            else if(data.type === 'answer' && peerConnection) { 
-                if (currentCallAudio) {
-                    currentCallAudio.pause();
-                    currentCallAudio.currentTime = 0;
-                    currentCallAudio = null;
-                }
-                await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp)); 
-                const statusText = document.getElementById('call-status-text');
-                if(statusText) statusText.classList.add('hidden');
-            }
-            else if(data.type === 'candidate' && peerConnection) { 
-                await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate)); 
-            }
-            else if(data.type === 'cancel') {
-                forceEndCall();
-            }
-        });
-        
-        // 【修正2】 initiateP2PMesh() は呼び出さない（オンデマンド接続へ変更）
+        loadRecommendUsers();
     }
 
-    async function renderNotifications() {
-        const notifContainer = document.getElementById('ui-notifications');
-        if(!notifContainer) return;
+    // --- チャットルーム一覧 (ローカルDBから読み込み) ---
+    async function loadChatList() {
+        const msgs = await dbGetAll('msgs');
+        const lastMsgs = {};
+        localUnreadCounts = {}; 
         
-        const snap = await get(ref(dbFirebase, `friend_requests/${myInfo.id}`));
+        msgs.forEach(m => { 
+            if (!lastMsgs[m.room] || m.time > lastMsgs[m.room].time) lastMsgs[m.room] = m; 
+            if (!m.read && m.sender !== myInfo.id) localUnreadCounts[m.room] = (localUnreadCounts[m.room] || 0) + 1;
+        });
         
+        const friendsList = await dbGetAll("friends");
+        const blockedList = await dbGetAll("blocked_users");
+        
+        const listContainer = getEl('ui-rooms'); if (!listContainer) return;
+        const validFriends = friendsList.filter(u => !blockedList.some(b => b.id === u.id));
+        
+        if (validFriends.length === 0) { listContainer.innerHTML = '<div class="ui-placeholder">メッセージルームがありません。検索からフレンドを探しましょう！</div>'; return; }
+
+        validFriends.sort((a,b) => {
+            const timeA = lastMsgs[a.id] ? lastMsgs[a.id].time : 0;
+            const timeB = lastMsgs[b.id] ? lastMsgs[b.id].time : 0;
+            return timeB - timeA;
+        });
+
+        listContainer.innerHTML = validFriends.map(u => {
+            const m = lastMsgs[u.id];
+            const lText = m ? (m.type === 'image' ? '[画像]' : m.text) : 'メッセージはありません';
+            const count = localUnreadCounts[u.id] || 0;
+            const unreadHtml = count > 0 ? `<span class="room-unread-badge">${count}</span>` : '';
+            
+            return `<div class="room-item" data-uid="${u.id}" onclick="openRoom('${u.id}', '${u.nickname}')">
+                <div style="position:relative;"><img src="${u.icon||'./icon.jpeg'}"><div class="online-badge"></div></div>
+                <div style="flex:1;"><b>${u.nickname}</b>${unreadHtml}<div style="font-size:13px;color:var(--text-sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${lText}</div></div>
+            </div>`;
+        }).join('');
+        updateOnlineBadges();
+    }
+
+    // --- 通知 ---
+    function renderNotifications(requestsData) {
+        const notifContainer = document.getElementById('ui-notifications'); if(!notifContainer) return;
         let reqWrapper = document.getElementById('ui-notif-requests-wrapper');
-        if(!reqWrapper) {
-            notifContainer.insertAdjacentHTML('afterbegin', '<div id="ui-notif-requests-wrapper"></div>');
-            reqWrapper = document.getElementById('ui-notif-requests-wrapper');
-        }
+        if(!reqWrapper) { notifContainer.insertAdjacentHTML('afterbegin', '<div id="ui-notif-requests-wrapper"></div>'); reqWrapper = document.getElementById('ui-notif-requests-wrapper'); }
+        if(!requestsData) { reqWrapper.innerHTML = ''; checkNotifEmpty(); return; }
 
-        if(!snap.exists() || !snap.val()) {
-            reqWrapper.innerHTML = '';
-            checkNotifEmpty();
-            return;
-        }
-
-        const data = snap.val();
         let html = '';
-        for(let fromId in data) {
-            const req = data[fromId];
+        for(let fromId in requestsData) {
+            const req = requestsData[fromId];
             html += `<div class="notif-card" id="freq-${fromId}">
                 <p><strong>${req.from_nick || fromId}</strong> からのフレンド申請</p>
                 <div class="notif-actions">
@@ -901,16 +715,12 @@
                 </div>
             </div>`;
         }
-        reqWrapper.innerHTML = html;
-        checkNotifEmpty();
+        reqWrapper.innerHTML = html; checkNotifEmpty();
     }
 
     function renderBroadcastNotification(data) {
         const notifContainer = document.getElementById('ui-notifications');
-        const cardId = `bc-${data.id || Date.now()}`;
-        
-        if(document.getElementById(cardId)) return;
-
+        const cardId = `bc-${data.id || Date.now()}`; if(document.getElementById(cardId)) return;
         const d = new Date(data.timestamp || Date.now()).toLocaleString();
         const html = `<div class="notif-card" id="${cardId}" data-timestamp="${data.timestamp || 0}">
             <button class="notif-close-btn" onclick="document.getElementById('${cardId}').remove(); checkNotifEmpty();"><i class="fa-solid fa-xmark"></i></button>
@@ -918,560 +728,63 @@
             <p style="font-size:13px; color:var(--text-main);">${data.message || ''}</p>
             <span class="notif-time">${d}</span>
         </div>`;
-
         const cards = Array.from(notifContainer.querySelectorAll('.notif-card[data-timestamp]'));
         const targetCard = cards.find(c => parseInt(c.dataset.timestamp) < (data.timestamp || 0));
-        
-        if (targetCard) {
-            targetCard.insertAdjacentHTML('beforebegin', html);
-        } else {
-            notifContainer.insertAdjacentHTML('beforeend', html);
-        }
+        if (targetCard) targetCard.insertAdjacentHTML('beforebegin', html); else notifContainer.insertAdjacentHTML('beforeend', html);
         checkNotifEmpty();
     }
 
-    function checkNotifEmpty() {
+    window.checkNotifEmpty = () => {
         const notifContainer = document.getElementById('ui-notifications');
         const hasReqs = document.getElementById('ui-notif-requests-wrapper')?.children.length > 0;
         const hasBCs = notifContainer.querySelectorAll('.notif-card[id^="bc-"]').length > 0;
-        
         let placeholder = document.getElementById('ui-notif-placeholder');
-        if(!hasReqs && !hasBCs) {
-            if(!placeholder) {
-                notifContainer.insertAdjacentHTML('beforeend', '<div class="ui-placeholder" id="ui-notif-placeholder">新しい通知はありません</div>');
-            }
-        } else {
-            if(placeholder) placeholder.remove();
-        }
-    }
+        if(!hasReqs && !hasBCs) { if(!placeholder) notifContainer.insertAdjacentHTML('beforeend', '<div class="ui-placeholder" id="ui-notif-placeholder">新しい通知はありません</div>'); } 
+        else { if(placeholder) placeholder.remove(); }
+    };
 
     window.acceptFriendRequest = async (fromId, fromNick) => {
-        const friendIcon = allUsersCache[fromId]?.icon || './icon.jpeg';
+        const snap = await get(ref(dbFirebase, `users/${fromId}`));
+        const friendIcon = snap.exists() ? (snap.val().icon || './icon.jpeg') : './icon.jpeg';
         await dbPut('friends', { id: fromId, nickname: fromNick, icon: friendIcon, isGroup: false });
-        
-        await set(ref(dbFirebase, `friends/${myInfo.id}/${fromId}`), { id: fromId, nickname: fromNick, icon: friendIcon, isGroup: false });
-        await set(ref(dbFirebase, `friends/${fromId}/${myInfo.id}`), { id: myInfo.id, nickname: myInfo.nickname, icon: myInfo.icon || './icon.jpeg', isGroup: false });
-        
-        createPeerConnection(fromId, true);
+        // 相手に承認通知(フレンド自動追加用パケット等があれば送るが今回はシンプル化)
         await remove(ref(dbFirebase, `friend_requests/${myInfo.id}/${fromId}`));
-        
-        showToast("フレンド申請を承認しました");
-        loadChatList();
-        renderNotifications();
+        showToast("フレンド申請を承認しました"); loadChatList();
     };
 
     window.rejectFriendRequest = async (fromId) => {
-        await remove(ref(dbFirebase, `friend_requests/${myInfo.id}/${fromId}`));
-        showToast("フレンド申請を拒否しました");
-        renderNotifications();
+        await remove(ref(dbFirebase, `friend_requests/${myInfo.id}/${fromId}`)); showToast("フレンド申請を拒否しました");
     };
 
-    function createPeerConnection(targetId, isOfferor) {
-        if(peerConnections[targetId]) {
-            const state = peerConnections[targetId].connectionState;
-            const dcReady = dataChannels[targetId] && dataChannels[targetId].readyState === 'open';
-            if (state === 'failed' || state === 'closed' || !dcReady) {
-                try { peerConnections[targetId].close(); } catch(e){}
-                delete peerConnections[targetId];
-                if (dataChannels[targetId]) {
-                    try { dataChannels[targetId].close(); } catch(e){}
-                    delete dataChannels[targetId];
-                }
-            } else {
-                return;
-            }
-        }
-
-        const pc = new RTCPeerConnection(servers);
-        peerConnections[targetId] = pc;
-
-        pc.onicecandidate = e => {
-            if(e.candidate) {
-                push(ref(dbFirebase, `webrtc_p2p/${targetId}`), {
-                    type: 'candidate',
-                    sender: myInfo.id,
-                    candidate: e.candidate.toJSON()
-                });
-            }
-        };
-
-        pc.onconnectionstatechange = () => {
-            if(pc.connectionState === "connected") {
-                const roomEl = document.querySelector(`[data-uid="${targetId}"]`);
-                if(roomEl) roomEl.classList.add("is-online");
-                updateOnlineBadges();
-            } else if(pc.connectionState === "failed" || pc.connectionState === "disconnected") {
-                const roomEl = document.querySelector(`[data-uid="${targetId}"]`);
-                if(roomEl) roomEl.classList.remove("is-online");
-                updateOnlineBadges();
-            }
-        };
-
-        if(isOfferor) {
-            const dc = pc.createDataChannel("chat-channel");
-            setupDataChannel(targetId, dc);
-            pc.createOffer().then(async offer => {
-                await pc.setLocalDescription(offer);
-                push(ref(dbFirebase, `webrtc_p2p/${targetId}`), {
-                    type: 'offer',
-                    sender: myInfo.id,
-                    sdp: offer.sdp
-                });
-            });
-        } else {
-            pc.ondatachannel = e => {
-                setupDataChannel(targetId, e.channel);
-            };
-        }
-    }
-
-    async function handleP2POffer(senderId, sdp) {
-        createPeerConnection(senderId, false);
-        const pc = peerConnections[senderId];
-        await pc.setRemoteDescription(new RTCSessionDescription({type:'offer', sdp: sdp}));
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-        push(ref(dbFirebase, `webrtc_p2p/${senderId}`), {
-            type: 'answer',
-            sender: myInfo.id,
-            sdp: answer.sdp
-        });
-    }
-
-    function setupDataChannel(targetId, dc) {
-        dataChannels[targetId] = dc;
-        dc.onmessage = async e => {
-            const blocked = await dbGet("blocked_users", targetId);
-            if(blocked) return;
-
-            const packet = JSON.parse(e.data);
-            if(packet.type === 'text' || packet.type === 'image') {
-                if(packet.groupId) {
-                    await handleIncomingMessagePacket(packet, packet.groupId);
-                } else {
-                    await handleIncomingMessagePacket(packet, targetId);
-                }
-            } else if(packet.type === 'relay') {
-                const orig = packet.original;
-                const gId = packet.groupId;
-                
-                if (orig.type === 'react') {
-                    updateLocalMsgField(orig.msgId, 'reaction', orig.emoji);
-                    if (currentRoom === gId) {
-                        const el = document.getElementById(`react-${orig.msgId}`);
-                        if(el){ el.innerText=orig.emoji; el.style.display='block'; }
-                    }
-                } else {
-                    await handleIncomingMessagePacket(orig, gId);
-                }
-                
-                const hostId = groupHostsCache[gId];
-                if(hostId === myInfo.id) {
-                    const friendObj = await dbGet("friends", gId);
-                    if(friendObj) {
-                        friendObj.members.forEach(mId => {
-                            if (mId !== myInfo.id && mId !== orig.sender) {
-                                orig.groupId = gId;
-                                if (dataChannels[mId] && dataChannels[mId].readyState === 'open') {
-                                    dataChannels[mId].send(JSON.stringify(orig));
-                                } else {
-                                    push(ref(dbFirebase, 'offline_msgs/' + mId), orig);
-                                }
-                            }
-                        });
-                    }
-                }
-            } else if(packet.type === 'react') {
-                const targetRoom = packet.groupId ? packet.groupId : targetId;
-                updateLocalMsgField(packet.msgId, 'reaction', packet.emoji);
-                if(currentRoom === targetRoom) {
-                    const el = document.getElementById(`react-${packet.msgId}`);
-                    if(el){ el.innerText=packet.emoji; el.style.display='block'; }
-                }
-            } else if(packet.type === 'system_group_create') {
-                await dbPut("friends", packet.groupObj);
-                await reEvaluateGroupHosts();
-                loadChatList();
-            }
-        };
-        
-        dc.onopen = () => { updateOnlineBadges(); };
-        dc.onclose = () => { updateOnlineBadges(); };
-    }
-
-    async function handleIncomingMessagePacket(packet, roomId) {
-        const msg = { id: packet.id, room: roomId, sender: packet.sender, senderName: packet.senderName, text: packet.text, type: packet.type, time: packet.time, read: false };
-        await saveLocalMsg(msg);
-        
-        if(currentRoom === roomId) {
-            displayMsg(msg);
-        } else {
-            localUnreadCounts[roomId] = (localUnreadCounts[roomId] || 0) + 1;
-            loadChatList();
-        }
-
-        if(!isTabActive) {
-            unreadTotal++;
-            triggerTitleBlink();
-            const notifSoundSelect = getEl('sel-notif-sound');
-            if (notifSoundSelect) {
-                const soundFile = notifSoundSelect.value;
-                try {
-                    const audio = new Audio(`./${soundFile}.mp3`);
-                    audio.play().catch(e => console.log('通知音再生エラー:', e));
-                } catch(e) {
-                    console.log('通知音再生失敗:', e);
-                }
-            }
-        }
-    }
-
-    async function reEvaluateGroupHosts() {
-        if (!dbLocal) return;
-        const friends = await dbGetAll("friends");
-        const groups = friends.filter(f => f.isGroup);
-        for(let g of groups) {
-            const members = g.members;
-            const onlineMembers = members.filter(m => onlineStatusCache[m] || m === myInfo.id);
-            onlineMembers.sort();
-            const host = onlineMembers[0] || members[0];
-            groupHostsCache[g.id] = host;
-        }
-    }
-
-    async function loadChatList() {
-        if(!dbLocal) return;
-        const tx = dbLocal.transaction('msgs', 'readonly');
-        tx.objectStore('msgs').getAll().onsuccess = async e => {
-            const msgs = e.target.result; const lastMsgs = {};
-            localUnreadCounts = {}; 
-            msgs.forEach(m => { 
-                if (!lastMsgs[m.room] || m.time > lastMsgs[m.room].time) {
-                    lastMsgs[m.room] = m; 
-                }
-                if (!m.read && m.sender !== myInfo.id) {
-                    localUnreadCounts[m.room] = (localUnreadCounts[m.room] || 0) + 1;
-                }
-            });
-            
-            const friendsList = await dbGetAll("friends");
-            const blockedList = await dbGetAll("blocked_users");
-            
-            const listContainer = getEl('ui-rooms');
-            if (!listContainer) return;
-            const validFriends = friendsList.filter(u => !blockedList.some(b => b.id === u.id));
-            
-            if (validFriends.length === 0) {
-                listContainer.innerHTML = '<div class="ui-placeholder">メッセージルームがありません。検索からフレンドを探しましょう！</div>';
-                return;
-            }
-
-            listContainer.innerHTML = validFriends.map(u => {
-                const m = lastMsgs[u.id];
-                const lText = m ? (m.type === 'image' ? '[画像]' : m.text) : 'メッセージはありません';
-                const count = localUnreadCounts[u.id] || 0;
-                const unreadHtml = count > 0 ? `<span class="room-unread-badge">${count}</span>` : '';
-                
-                return `<div class="room-item" data-uid="${u.id}" onclick="openRoom('${u.id}', '${u.nickname}')">
-                    <div style="position:relative;"><img src="${u.icon||'./icon.jpeg'}"><div class="online-badge"></div></div>
-                    <div style="flex:1;"><b>${u.nickname}</b>${unreadHtml}<div style="font-size:13px;color:var(--text-sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${lText}</div></div>
-                </div>`;
-            }).join('');
-            updateOnlineBadges();
-        };
-    }
-
-    async function loadRecommendUsers() {
-        const recommendContainer = getEl("ui-recommend-users");
-        if (!recommendContainer) return;
-        const snap = await get(ref(dbFirebase, 'users'));
-        if(!snap.exists()) {
-            recommendContainer.innerHTML = '<div style="font-size:12px; color:var(--text-sub);">おすすめユーザーはいません</div>';
-            return;
-        }
-        const data = snap.val();
-        const friends = await dbGetAll("friends");
-        const blocked = await dbGetAll("blocked_users");
-        
-        let html = '';
-        let count = 0;
-        for(let uid in data) {
-            if(uid === myInfo.id) continue;
-            if(friends.some(f => f.id === uid)) continue;
-            if(blocked.some(b => b.id === uid)) continue;
-            if(count >= 10) break;
-
-            const u = data[uid];
-            html += `<div class="user-list-card">
-                <div><b>${u.nickname}</b> (ID: ${u.id})</div>
-                <button type="button" style="padding:5px 10px; font-size:12px;" onclick="sendFriendRequest('${u.id}')">申請</button>
-            </div>`;
-            count++;
-        }
-        recommendContainer.innerHTML = html || '<div style="font-size:12px; color:var(--text-sub);">おすすめユーザーはいません</div>';
-        loadSentRequests();
-    }
-
-    window.sendFriendRequest = async (targetId) => {
-        await set(ref(dbFirebase, `friend_requests/${targetId}/${myInfo.id}`), {
-            from_id: myInfo.id,
-            from_nick: myInfo.nickname,
-            time: Date.now()
-        });
-        showToast("フレンド申請を送信しました");
-        loadRecommendUsers();
-    };
-
-    async function loadSentRequests() {
-        const sentRequestsContainer = getEl("ui-sent-requests");
-        if (!sentRequestsContainer) return;
-        const snap = await get(ref(dbFirebase, 'friend_requests'));
-        if(!snap.exists()) {
-            sentRequestsContainer.innerHTML = '<div style="font-size:12px; color:var(--text-sub);">保留中の申請はありません</div>';
-            return;
-        }
-        const data = snap.val();
-        let html = '';
-        for(let targetId in data) {
-            if(data[targetId] && data[targetId][myInfo.id]) {
-                html += `<div class="user-list-card">
-                    <div>@${targetId}</div>
-                    <button type="button" class="danger" style="padding:5px 10px; font-size:12px;" onclick="cancelFriendRequest('${targetId}')">キャンセル</button>
-                </div>`;
-            }
-        }
-        sentRequestsContainer.innerHTML = html || '<div style="font-size:12px; color:var(--text-sub);">保留中の申請はありません</div>';
-    }
-
-    window.cancelFriendRequest = async (targetId) => {
-        await remove(ref(dbFirebase, `friend_requests/${targetId}/${myInfo.id}`));
-        showToast("申請を取り消しました");
-        loadRecommendUsers();
-    };
-
-    window.showGroupCreateModal = async () => {
-        const friends = await dbGetAll("friends");
-        const normalFriends = friends.filter(f => !f.isGroup && f.id !== 'admin');
-        const listDiv = document.getElementById("g-friends-list");
-        
-        if(!listDiv) return console.error("g-friends-list element not found");
-        
-        if(normalFriends.length === 0) {
-            listDiv.innerHTML = '<p style="font-size:13px; color:var(--text-sub);">グループに追加可能な友達がいません。</p>';
-        } else {
-            listDiv.innerHTML = normalFriends.map(f => `
-                <label style="display:flex; align-items:center; gap:10px; margin-bottom:8px; cursor:pointer;">
-                    <input type="checkbox" name="g-member" value="${f.id}" style="width:auto; margin:0;">
-                    <span>${f.nickname} (@${f.id})</span>
-                </label>
-            `).join('');
-        }
-        
-        const modalEl = document.getElementById('modal-group-create');
-        if(modalEl) {
-            modalEl.classList.remove('hidden');
-        }
-    };
-
-    window.submitCreateGroup = async () => {
-        const gName = document.getElementById("g-name").value.trim();
-        if(!gName) return alert("グループ名を入力してください");
-        
-        const checkedBoxes = document.querySelectorAll('input[name="g-member"]:checked');
-        if(checkedBoxes.length === 0 || checkedBoxes.length > 5) {
-            return alert("グループメンバーは自分を除いて1〜5人選択してください（合計最大6人）。");
-        }
-
-        const members = [myInfo.id];
-        checkedBoxes.forEach(cb => members.push(cb.value));
-
-        const groupId = "group_" + Date.now();
-        const groupObj = { id: groupId, nickname: gName, isGroup: true, members: members, icon: './icon.jpeg' };
-        
-        await dbPut("friends", groupObj);
-        
-        const updates = {};
-        members.forEach(mId => {
-            updates[`friends/${mId}/${groupId}`] = groupObj;
-        });
-        await update(ref(dbFirebase), updates);
-
-        document.getElementById('modal-group-create').classList.add('hidden');
-        document.getElementById("g-name").value = "";
-        showToast("グループを作成しました");
-        await reEvaluateGroupHosts();
-        loadChatList();
-    };
-
-    window.blockCurrentTarget = async () => {
-        if(!currentRoom) return;
-        if(currentRoom === 'admin') return alert("管理者をブロックすることはできません。");
-        if(!confirm("このユーザーをブロックしますか？相手からの接続やメッセージはすべて遮断されます。")) return;
-
-        await dbPut("blocked_users", { id: currentRoom, time: Date.now() });
-        
-        if(dataChannels[currentRoom]) { try{ dataChannels[currentRoom].close(); }catch(e){} delete dataChannels[currentRoom]; }
-        if(peerConnections[currentRoom]) { try{ peerConnections[currentRoom].close(); }catch(e){} delete peerConnections[currentRoom]; }
-        
-        showToast("ユーザーをブロックしました");
-        document.getElementById('chat-active').classList.add('hidden');
-        document.getElementById('chat-empty').classList.remove('hidden');
-        currentRoom = null;
-        loadChatList();
-    };
-
-    window.generateTransferCode = async () => {
-        if(!confirm("現在の全チャット履歴と友達データをサーバーへバックアップし、8桁の引き継ぎコードを発行しますか？")) return;
-
-        const friends = await dbGetAll("friends");
-        const msgs = await dbGetAll("msgs");
-        const payloadStr = btoa(unescape(encodeURIComponent(JSON.stringify({ friends, msgs }))));
-
-        const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-        let code = "";
-        for(let i=0; i<8; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
-
-        await set(ref(dbFirebase, `backups/${code}`), {
-            user_id: myInfo.id,
-            payload: payloadStr,
-            timestamp: Date.now()
-        });
-
-        document.getElementById("backup-code-display").classList.remove("hidden");
-        document.getElementById("txt-generated-code").innerText = code;
-        alert(`【引き継ぎコード発行完了】\n\nコード: ${code}\n\n※有効期限は50日間です。復元後は自動削除されます。`);
-    };
-
-    document.getElementById("btn-transfer-login").onclick = async () => {
-        const code = document.getElementById("t-code").value.trim().toUpperCase();
-        if(code.length !== 8) return alert("正しい8桁の引き継ぎコードを入力してください。");
-
-        const snap = await get(ref(dbFirebase, `backups/${code}`));
-        if(!snap.exists()) return alert("コードが無効か、50日の保存期間が切れています。");
-
-        const backupData = snap.val();
-        const userSnap = await get(ref(dbFirebase, `users/${backupData.user_id}`));
-        
-        if(!userSnap.exists()) return alert("ユーザーデータが見つかりません。");
-
-        try {
-            const decodedData = JSON.parse(decodeURIComponent(escape(atob(backupData.payload))));
-            await initDB();
-
-            if(decodedData.friends) {
-                for(let f of decodedData.friends) await dbPut("friends", f);
-            }
-            if(decodedData.msgs) {
-                for(let m of decodedData.msgs) await dbPut("msgs", m);
-            }
-
-            myInfo = userSnap.val();
-            try {
-                localStorage.setItem('myInfo', JSON.stringify(myInfo));
-            } catch (e) {
-                if (e.name === 'QuotaExceededError') {
-                    myInfo.icon = '';
-                    localStorage.setItem('myInfo', JSON.stringify(myInfo));
-                    showToast("容量制限に達したため、過去のアイコン写真を自動削除してデータを保護しました。");
-                }
-            }
-
-            await remove(ref(dbFirebase, `backups/${code}`));
-
-            alert("データの一括復旧に成功しました！");
-            initApp();
-        } catch(e) {
-            console.error(e);
-            alert("データの復元に失敗しました。");
-        }
-    };
-
-    // 【修正1】 usersの監視をやめて検索時のみ最新のユーザー一覧を取得する（通信量節約）
-    window.execSearch = async () => {
-        const q = document.getElementById('s-query').value.toLowerCase(); if(!q) return;
-        
-        const snap = await get(ref(dbFirebase, 'users'));
-        if(snap.exists()) allUsersCache = snap.val();
-
-        let html = '';
-        Object.values(allUsersCache).forEach(u => {
-            if(u.id !== myInfo.id && u.status === 'approved' && (u.nickname.toLowerCase().includes(q) || u.username.toLowerCase().includes(q))) {
-                html += `<div class="room-item" onclick="openRoom('${u.id}', '${u.nickname}')"><img src="${u.icon||'./icon.jpeg'}"><div><b>${u.nickname}</b><br><span style="font-size:12px;color:var(--text-sub);">@${u.username}</span></div></div>`;
-            }
-        });
-        document.getElementById('ui-search-res').innerHTML = html || '<div style="padding:20px;text-align:center;color:var(--text-sub);">見つかりませんでした</div>';
-    };
-
-    function updateOnlineBadges() {
-        document.querySelectorAll('.room-item').forEach(el => { 
-            const uid = el.dataset.uid; 
-            if(uid) { 
-                const isOnline = onlineStatusCache[uid] || dataChannels[uid]?.readyState === 'open' || peerConnections[uid]?.connectionState === 'connected';
-                if(isOnline) el.classList.add('is-online'); 
-                else el.classList.remove('is-online'); 
-            } 
-        });
-        if(currentRoom) {
-            const isP2P = dataChannels[currentRoom] && dataChannels[currentRoom].readyState === 'open';
-            const isOnline = onlineStatusCache[currentRoom] || isP2P || peerConnections[currentRoom]?.connectionState === 'connected';
-            
-            if (currentRoom.startsWith("group_")) {
-                document.getElementById('chat-status').innerText = 'グループチャット';
-                document.getElementById('chat-target-online').style.display = 'none';
-            } else {
-                document.getElementById('chat-status').innerText = isP2P ? 'オンライン (P2P直接接続中)' : (isOnline ? 'オンライン (サーバー経由待機)' : 'オフライン');
-                document.getElementById('chat-target-online').style.display = isOnline ? 'block' : 'none';
-            }
-        }
-    }
-
+    // --- チャットルーム ---
     window.openRoom = async (uid, uname) => {
         currentRoom = uid; document.getElementById('chat-title').innerText = uname; 
         const friendObj = await dbGet("friends", uid);
-        document.getElementById('chat-target-icon').src = allUsersCache[uid]?.icon || friendObj?.icon || './icon.jpeg'; 
+        document.getElementById('chat-target-icon').src = friendObj?.icon || './icon.jpeg'; 
         
-        if(uid === 'admin') {
-            document.getElementById("btn-block-user").classList.add("hidden");
-        } else {
-            document.getElementById("btn-block-user").classList.remove("hidden");
-        }
+        if(uid === 'admin') document.getElementById("btn-block-user").classList.add("hidden");
+        else document.getElementById("btn-block-user").classList.remove("hidden");
 
         document.getElementById('chat-active').classList.remove('hidden'); document.getElementById('chat-empty').classList.add('hidden');
         document.getElementById('ui-msgs').innerHTML = '';
         if(window.innerWidth <= 768) { document.getElementById('main-container').classList.add('active'); document.getElementById('btn-back-chat').classList.remove('hidden'); }
+        localUnreadCounts[uid] = 0; updateOnlineBadges();
 
-        localUnreadCounts[uid] = 0;
-
-        if (dbLocal) {
-            const tx = dbLocal.transaction('msgs', 'readwrite');
-            const store = tx.objectStore('msgs');
-            store.index('room').getAll(uid).onsuccess = e => { 
-                const msgs = e.target.result.sort((a,b)=>a.time-b.time);
-                msgs.forEach(m => {
-                    displayMsg(m);
-                    if(!m.read && m.sender !== myInfo.id) {
-                        m.read = true; store.put(m);
-                    }
-                });
-                loadChatList();
-                updateOnlineBadges();
-            };
-        } else {
-            updateOnlineBadges();
+        const msgs = await dbGetAllByIndex('msgs', 'room', uid);
+        msgs.sort((a,b)=>a.time-b.time);
+        
+        for (let m of msgs) {
+            displayMsg(m);
+            if(!m.read && m.sender !== myInfo.id) { m.read = true; await dbPut('msgs', m); }
         }
-
-        // 【修正2】 チャットルームを開いた相手とだけP2P接続を試みる（オンデマンド接続）
-        if(uid !== 'admin' && !uid.startsWith('group_')) {
-            if(friendObj && !dataChannels[uid]) {
-                createPeerConnection(uid, true);
-            }
-        }
+        loadChatList();
     };
 
     function displayMsg(m) {
+        if(document.getElementById(`wrap-${m.id}`)) return;
         const isMe = m.sender === myInfo.id; const cls = isMe ? 'my-msg' : 'other-msg';
         const d = new Date(m.time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-        const rd = isMe ? `<span class="is-read" id="rd-${m.id}">既読</span>` : '';
+        const rd = isMe ? `<span class="is-read" id="rd-${m.id}">送信済</span>` : '';
         const content = m.type === 'image' ? `<img src="${m.text}">` : m.text.replace(/</g,"&lt;");
         const react = `<div class="reactions" id="react-${m.id}" style="display:${m.reaction?'block':'none'}">${m.reaction||''}</div>`;
         const actionHtml = !isMe ? `<div class="reaction-menu hidden" id="rmenu-${m.id}"><button class="react-btn" onclick="sendReact('${m.id}','❤️')">❤️</button><button class="react-btn" onclick="sendReact('${m.id}','👍')">👍</button></div>` : '';
@@ -1485,353 +798,393 @@
         document.getElementById('ui-msgs').scrollTop = document.getElementById('ui-msgs').scrollHeight;
     }
 
-    window.sendReact = async (msgId, emoji) => {
-        document.getElementById(`rmenu-${msgId}`).classList.add('hidden');
-        updateLocalMsgField(msgId, 'reaction', emoji);
-        const el = document.getElementById(`react-${msgId}`); if(el){ el.innerText=emoji; el.style.display='block'; }
-        
-        const friendObj = await dbGet("friends", currentRoom);
-        const isGroup = friendObj && friendObj.isGroup;
-        const packet = { type: 'react', msgId, emoji, sender: myInfo.id };
-
-        if(isGroup) {
-            packet.groupId = currentRoom;
-            const hostId = groupHostsCache[currentRoom];
-            if(hostId === myInfo.id) {
-                friendObj.members.forEach(mId => {
-                    if(mId !== myInfo.id) {
-                        if (dataChannels[mId] && dataChannels[mId].readyState === 'open') {
-                            dataChannels[mId].send(JSON.stringify(packet));
-                        } else {
-                            push(ref(dbFirebase, `offline_msgs/${mId}`), packet);
-                        }
-                    }
-                });
-            } else {
-                if(dataChannels[hostId] && dataChannels[hostId].readyState === 'open') {
-                    dataChannels[hostId].send(JSON.stringify({ type: 'relay', groupId: currentRoom, original: packet }));
-                } else {
-                    push(ref(dbFirebase, `offline_msgs/${hostId}`), { type: 'relay', groupId: currentRoom, original: packet });
-                }
-            }
-        } else {
-            if(dataChannels[currentRoom] && dataChannels[currentRoom].readyState === 'open') {
-                dataChannels[currentRoom].send(JSON.stringify(packet));
-            } else if (!isGroup && currentRoom !== 'admin') {
-                push(ref(dbFirebase, `offline_msgs/${currentRoom}`), packet);
-            } else if (currentRoom === 'admin') {
-                push(ref(dbFirebase, `admin_msgs/${myInfo.id}`), packet);
-            }
-        }
-    };
+    async function sendPacketToInbox(targetId, packet) {
+        if(targetId === myInfo.id) return;
+        await push(ref(dbFirebase, `inbox/${targetId}`), packet);
+    }
 
     document.getElementById('btn-send-msg').onclick = async () => {
         const txt = document.getElementById('msg-input').value.trim(); if(!txt || !currentRoom) return;
         
         const friendObj = await dbGet("friends", currentRoom);
-        const isGroup = friendObj && friendObj.isGroup;
-
-        if(!isGroup && currentRoom !== 'admin') {
-            if(!dataChannels[currentRoom] || dataChannels[currentRoom].readyState !== 'open') {
-                showToast("接続が確立されていません。再接続を試みています...");
-                createPeerConnection(currentRoom, true);
-            }
-        }
-
         const msgId = Date.now().toString();
-        const packet = { id: msgId, sender: myInfo.id, senderName: myInfo.nickname, text: txt, type: 'text', time: Date.now() };
+        const packet = { type: 'text', id: msgId, room: currentRoom, sender: myInfo.id, senderName: myInfo.nickname, text: txt, time: Date.now() };
 
-        const localMsg = { ...packet, room: currentRoom, read: true };
-        displayMsg(localMsg); 
-        await saveLocalMsg(localMsg); 
-        document.getElementById('msg-input').value = '';
+        const localMsg = { ...packet, read: true };
+        displayMsg(localMsg); await dbPut('msgs', localMsg);
+        document.getElementById('msg-input').value = ''; loadChatList();
 
-        if(isGroup) {
-            packet.groupId = currentRoom;
-            const hostId = groupHostsCache[currentRoom];
-            if(hostId === myInfo.id) {
-                friendObj.members.forEach(mId => {
-                    if(mId !== myInfo.id) {
-                        if(dataChannels[mId] && dataChannels[mId].readyState === 'open') {
-                            dataChannels[mId].send(JSON.stringify(packet));
-                        } else {
-                            push(ref(dbFirebase, `offline_msgs/${mId}`), packet);
-                        }
-                    }
-                });
-            } else {
-                if(dataChannels[hostId] && dataChannels[hostId].readyState === 'open') {
-                    dataChannels[hostId].send(JSON.stringify({ type: 'relay', groupId: currentRoom, original: packet }));
-                } else {
-                    push(ref(dbFirebase, `offline_msgs/${hostId}`), { type: 'relay', groupId: currentRoom, original: packet });
-                }
-            }
+        if (friendObj && friendObj.isGroup) {
+            for(let mId of friendObj.members) sendPacketToInbox(mId, packet);
         } else {
-            if(dataChannels[currentRoom] && dataChannels[currentRoom].readyState === 'open') {
-                dataChannels[currentRoom].send(JSON.stringify(packet));
-            } else if(!isGroup && currentRoom !== 'admin') {
-                push(ref(dbFirebase, `offline_msgs/${currentRoom}`), packet);
-            } else if(currentRoom === 'admin') {
-                push(ref(dbFirebase, `admin_msgs/${myInfo.id}`), packet);
-            }
+            sendPacketToInbox(currentRoom, packet);
         }
     };
 
     window.sendImage = inp => {
         const file = inp.files[0]; if(!file || !currentRoom) return;
-        
         resizeImage(file, 800, async base64 => {
             const friendObj = await dbGet("friends", currentRoom);
-            const isGroup = friendObj && friendObj.isGroup;
-
-            if(!isGroup && currentRoom !== 'admin') {
-                if(!dataChannels[currentRoom] || dataChannels[currentRoom].readyState !== 'open') {
-                    showToast("接続が確立されていません。再接続を試みています...");
-                    createPeerConnection(currentRoom, true);
-                }
-            }
-
             const msgId = Date.now().toString();
-            const packet = { id: msgId, sender: myInfo.id, senderName: myInfo.nickname, text: base64, type: 'image', time: Date.now() };
+            const packet = { type: 'image', id: msgId, room: currentRoom, sender: myInfo.id, senderName: myInfo.nickname, text: base64, time: Date.now() };
 
-            const localMsg = { ...packet, room: currentRoom, read: true };
-            displayMsg(localMsg); 
-            await saveLocalMsg(localMsg);
+            const localMsg = { ...packet, read: true };
+            displayMsg(localMsg); await dbPut('msgs', localMsg); loadChatList();
 
-            if(isGroup) {
-                packet.groupId = currentRoom;
-                const hostId = groupHostsCache[currentRoom];
-                if(hostId === myInfo.id) {
-                    friendObj.members.forEach(mId => {
-                        if(mId !== myInfo.id) {
-                            if(dataChannels[mId] && dataChannels[mId].readyState === 'open') {
-                                dataChannels[mId].send(JSON.stringify(packet));
-                            } else {
-                                push(ref(dbFirebase, `offline_msgs/${mId}`), packet);
-                            }
-                        }
-                    });
-                } else {
-                    if(dataChannels[hostId] && dataChannels[hostId].readyState === 'open') {
-                        dataChannels[hostId].send(JSON.stringify({ type: 'relay', groupId: currentRoom, original: packet }));
-                    } else {
-                        push(ref(dbFirebase, `offline_msgs/${hostId}`), { type: 'relay', groupId: currentRoom, original: packet });
-                    }
-                }
+            if (friendObj && friendObj.isGroup) {
+                for(let mId of friendObj.members) sendPacketToInbox(mId, packet);
             } else {
-                if(dataChannels[currentRoom] && dataChannels[currentRoom].readyState === 'open') {
-                    dataChannels[currentRoom].send(JSON.stringify(packet));
-                } else if (!isGroup && currentRoom !== 'admin') {
-                    push(ref(dbFirebase, `offline_msgs/${currentRoom}`), packet);
-                } else if (currentRoom === 'admin') {
-                    push(ref(dbFirebase, `admin_msgs/${myInfo.id}`), packet);
-                }
+                sendPacketToInbox(currentRoom, packet);
             }
         });
         inp.value = '';
     };
 
+    window.sendReact = async (msgId, emoji) => {
+        document.getElementById(`rmenu-${msgId}`).classList.add('hidden');
+        await updateLocalMsgField(msgId, 'reaction', emoji);
+        const el = document.getElementById(`react-${msgId}`); if(el){ el.innerText=emoji; el.style.display='block'; }
+        
+        const friendObj = await dbGet("friends", currentRoom);
+        const packet = { type: 'react', msgId: msgId, room: currentRoom, emoji: emoji, sender: myInfo.id };
+
+        if (friendObj && friendObj.isGroup) {
+            for(let mId of friendObj.members) sendPacketToInbox(mId, packet);
+        } else {
+            sendPacketToInbox(currentRoom, packet);
+        }
+    };
+
     document.getElementById('msg-input').onkeydown = e => { if(e.key === 'Enter') document.getElementById('btn-send-msg').click(); };
 
+    // --- WebRTC 音声・ビデオ通話 (Meeting 堅牢シグナリング) ---
     window.startCall = async (video) => {
-        const isOnline = onlineStatusCache[currentRoom] || dataChannels[currentRoom]?.readyState === 'open' || peerConnections[currentRoom]?.connectionState === 'connected';
-        if(!currentRoom || !isOnline) return showToast("相手がオフラインです");
-        isVideoCall = video; 
-        callSession = 'call_' + Date.now();
+        if(!currentRoom) return showToast("相手を選択してください");
         
+        const isOnline = onlineStatusCache[currentRoom];
+        if(!currentRoom.startsWith("group_") && !isOnline && currentRoom !== 'admin') {
+            showToast("相手がオフラインです。繋がらない可能性があります。");
+        }
+
+        isVideoCall = video; 
         document.getElementById('video-overlay').classList.remove('hidden');
         document.getElementById('local-video').style.display = video ? 'block' : 'none';
         
         const statusText = document.getElementById('call-status-text');
-        if(statusText) {
-            statusText.innerText = "呼び出し中...";
-            statusText.classList.remove('hidden');
-        }
+        if(statusText) { statusText.innerText = "呼び出し中..."; statusText.classList.remove('hidden'); }
         
         try {
             localStream = await navigator.mediaDevices.getUserMedia({video: video, audio: true});
             document.getElementById('local-video').srcObject = localStream;
         } catch(e) {
             showToast("カメラ・マイクへのアクセスに失敗しました");
-            document.getElementById('video-overlay').classList.add('hidden');
-            return;
+            document.getElementById('video-overlay').classList.add('hidden'); return;
         }
         
-        if (currentCallAudio) {
-            currentCallAudio.pause();
-            currentCallAudio.currentTime = 0;
-        }
+        if (currentCallAudio) { currentCallAudio.pause(); currentCallAudio.currentTime = 0; }
         const callSoundSelect = getEl('sel-call-sound');
         if (callSoundSelect) {
             currentCallAudio = new Audio(`./${callSoundSelect.value}.mp3`);
-            currentCallAudio.loop = true;
-            currentCallAudio.play().catch(e => console.log('呼び出し音再生エラー:', e));
+            currentCallAudio.loop = true; currentCallAudio.play().catch(e => {});
         }
         
         peerConnection = new RTCPeerConnection(servers);
         localStream.getTracks().forEach(t => peerConnection.addTrack(t, localStream));
         
+        peerConnection.ontrack = e => { document.getElementById('remote-video').srcObject = e.streams[0]; };
         peerConnection.onicecandidate = e => { 
-            if(e.candidate) {
-                push(ref(dbFirebase, `webrtc/${currentRoom}`), {
-                    type: 'candidate', 
-                    candidate: e.candidate.toJSON(), 
-                    sender: myInfo.id
-                });
-            } 
-        };
-        peerConnection.ontrack = e => { 
-            document.getElementById('remote-video').srcObject = e.streams[0]; 
+            if(e.candidate) push(ref(dbFirebase, `calls/${currentRoom}/ice_caller`), e.candidate.toJSON());
         };
         
         const offer = await peerConnection.createOffer();
         await peerConnection.setLocalDescription(offer);
         
-        push(ref(dbFirebase, `webrtc/${currentRoom}`), { 
-            type: 'offer', 
-            sdp: offer, 
-            sender: myInfo.id, 
-            video: video, 
-            session: callSession 
+        await set(ref(dbFirebase, `calls/${currentRoom}`), { 
+            caller: myInfo.id, type: 'offer', sdp: { type: offer.type, sdp: offer.sdp }, video: video, time: Date.now() 
+        });
+
+        if(callAnswerUnsub) callAnswerUnsub();
+        callAnswerUnsub = onValue(ref(dbFirebase, `calls/${currentRoom}`), snap => {
+            const data = snap.val();
+            if(data && data.type === 'answer' && peerConnection && peerConnection.signalingState !== 'stable') {
+                if(currentCallAudio) { currentCallAudio.pause(); currentCallAudio.currentTime = 0; }
+                if(statusText) statusText.classList.add('hidden');
+                peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
+            }
+            if(!data) { forceEndCall(); }
+        });
+
+        if(callIceUnsub) callIceUnsub();
+        callIceUnsub = onChildAdded(ref(dbFirebase, `calls/${currentRoom}/ice_callee`), snap => {
+            if(snap.val() && peerConnection) peerConnection.addIceCandidate(new RTCIceCandidate(snap.val()));
         });
     };
 
+    function handleCallSignaling(snap) {
+        const data = snap.val();
+        if(!data) { forceEndCall(); return; }
+        
+        if(data.type === 'offer' && data.caller !== myInfo.id) {
+            incomingCallData = data;
+            dbGet("friends", data.caller).then(friendObj => {
+                const callerInfo = friendObj || { nickname: '着信', icon: './icon.jpeg' };
+                document.getElementById('inc-name').innerText = callerInfo.nickname;
+                document.getElementById('inc-icon').src = callerInfo.icon;
+                document.getElementById('inc-type').innerHTML = data.video ? '<i class="fa-solid fa-video"></i> ビデオ通話' : '<i class="fa-solid fa-phone"></i> 音声通話';
+                document.getElementById('modal-incoming').classList.remove('hidden');
+                
+                if (currentCallAudio) { currentCallAudio.pause(); currentCallAudio.currentTime = 0; }
+                const callSoundSelect = getEl('sel-call-sound');
+                if (callSoundSelect) {
+                    currentCallAudio = new Audio(`./${callSoundSelect.value}.mp3`);
+                    currentCallAudio.loop = true; currentCallAudio.play().catch(e => {});
+                }
+            });
+        }
+    }
+
     window.answerCall = async (accept) => {
         document.getElementById('modal-incoming').classList.add('hidden');
+        if (currentCallAudio) { currentCallAudio.pause(); currentCallAudio.currentTime = 0; currentCallAudio = null; }
         
-        if (currentCallAudio) {
-            currentCallAudio.pause();
-            currentCallAudio.currentTime = 0;
-            currentCallAudio = null;
-        }
-        
-        if(!accept) { 
-            if (incomingCallSender) {
-                push(ref(dbFirebase, `webrtc/${incomingCallSender}`), { type: 'cancel', sender: myInfo.id });
-            }
-            forceEndCall();
-            return; 
-        }
+        if(!accept) { remove(ref(dbFirebase, `calls/${myInfo.id}`)); forceEndCall(); return; }
         
         document.getElementById('video-overlay').classList.remove('hidden');
-        document.getElementById('local-video').style.display = isVideoCall ? 'block' : 'none';
+        document.getElementById('local-video').style.display = incomingCallData.video ? 'block' : 'none';
         
         const statusText = document.getElementById('call-status-text');
         if(statusText) statusText.classList.add('hidden');
         
         try {
-            localStream = await navigator.mediaDevices.getUserMedia({video: isVideoCall, audio: true});
+            localStream = await navigator.mediaDevices.getUserMedia({video: incomingCallData.video, audio: true});
             document.getElementById('local-video').srcObject = localStream;
         } catch(e) {
             showToast("カメラ・マイクへのアクセスに失敗しました");
-            if (incomingCallSender) {
-                push(ref(dbFirebase, `webrtc/${incomingCallSender}`), { type: 'cancel', sender: myInfo.id });
-            }
-            forceEndCall();
-            return;
+            remove(ref(dbFirebase, `calls/${myInfo.id}`)); forceEndCall(); return;
         }
         
         peerConnection = new RTCPeerConnection(servers);
         localStream.getTracks().forEach(t => peerConnection.addTrack(t, localStream));
         
+        peerConnection.ontrack = e => { document.getElementById('remote-video').srcObject = e.streams[0]; };
         peerConnection.onicecandidate = e => { 
-            if(e.candidate) {
-                push(ref(dbFirebase, `webrtc/${incomingCallSender}`), {
-                    type: 'candidate', 
-                    candidate: e.candidate.toJSON(), 
-                    sender: myInfo.id
-                });
-            }
-        };
-        peerConnection.ontrack = e => { 
-            document.getElementById('remote-video').srcObject = e.streams[0]; 
+            if(e.candidate) push(ref(dbFirebase, `calls/${myInfo.id}/ice_callee`), e.candidate.toJSON());
         };
         
-        await peerConnection.setRemoteDescription(new RTCSessionDescription(incomingOfferSDP));
+        await peerConnection.setRemoteDescription(new RTCSessionDescription(incomingCallData.sdp));
         const answer = await peerConnection.createAnswer();
         await peerConnection.setLocalDescription(answer);
         
-        push(ref(dbFirebase, `webrtc/${incomingCallSender}`), { 
-            type: 'answer', 
-            sdp: answer, 
-            sender: myInfo.id 
+        await update(ref(dbFirebase, `calls/${myInfo.id}`), { type: 'answer', sdp: { type: answer.type, sdp: answer.sdp } });
+        
+        if(callIceUnsub) callIceUnsub();
+        callIceUnsub = onChildAdded(ref(dbFirebase, `calls/${myInfo.id}/ice_caller`), snap => {
+            if(snap.val() && peerConnection) peerConnection.addIceCandidate(new RTCIceCandidate(snap.val()));
         });
         
-        currentRoom = incomingCallSender;
+        currentRoom = incomingCallData.caller;
     };
 
     window.endCall = () => {
-        const target = currentRoom || incomingCallSender;
-        if (target) {
-            push(ref(dbFirebase, `webrtc/${target}`), { type: 'cancel', sender: myInfo.id });
-        }
+        if (incomingCallData) remove(ref(dbFirebase, `calls/${myInfo.id}`));
+        else if (currentRoom) remove(ref(dbFirebase, `calls/${currentRoom}`));
         forceEndCall();
     };
 
     function forceEndCall() {
-        if (currentCallAudio) {
-            try {
-                currentCallAudio.pause();
-                currentCallAudio.currentTime = 0;
-            } catch(e) {}
-            currentCallAudio = null;
-        }
-        
+        if (currentCallAudio) { try { currentCallAudio.pause(); currentCallAudio.currentTime = 0; } catch(e) {} currentCallAudio = null; }
         document.getElementById('video-overlay').classList.add('hidden');
         document.getElementById('modal-incoming').classList.add('hidden');
         
-        if(peerConnection) { 
-            try{ peerConnection.close(); }catch(e){} 
-            peerConnection = null; 
-        }
-        if(localStream) { 
-            localStream.getTracks().forEach(t => t.stop()); 
-            localStream = null; 
-        }
+        if(callAnswerUnsub) { callAnswerUnsub(); callAnswerUnsub = null; }
+        if(callIceUnsub) { callIceUnsub(); callIceUnsub = null; }
+        
+        if(peerConnection) { try{ peerConnection.close(); }catch(e){} peerConnection = null; }
+        if(localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
         document.getElementById('remote-video').srcObject = null;
         document.getElementById('local-video').srcObject = null;
-        callSession = null;
-        incomingOfferSDP = null;
-        incomingCallSender = null;
+        incomingCallData = null;
     }
 
     window.toggleMic = () => { const t = localStream?.getAudioTracks()[0]; if(t) { t.enabled = !t.enabled; document.getElementById('btn-mic').classList.toggle('danger', !t.enabled); } };
     window.toggleCam = () => { const t = localStream?.getVideoTracks()[0]; if(t) { t.enabled = !t.enabled; document.getElementById('btn-cam').classList.toggle('danger', !t.enabled); } };
 
+    // --- その他機能 ---
+    function updateOnlineBadges() {
+        document.querySelectorAll('.room-item').forEach(el => { 
+            const uid = el.dataset.uid; 
+            if(uid) { 
+                const isOnline = onlineStatusCache[uid];
+                if(isOnline) el.classList.add('is-online'); else el.classList.remove('is-online'); 
+            } 
+        });
+        if(currentRoom) {
+            const isOnline = onlineStatusCache[currentRoom];
+            if (currentRoom.startsWith("group_")) {
+                document.getElementById('chat-status').innerText = 'グループチャット';
+                document.getElementById('chat-target-online').style.display = 'none';
+            } else {
+                document.getElementById('chat-status').innerText = isOnline ? 'オンライン' : 'オフライン';
+                document.getElementById('chat-target-online').style.display = isOnline ? 'block' : 'none';
+            }
+        }
+    }
+
+    window.blockCurrentTarget = async () => {
+        if(!currentRoom) return;
+        if(currentRoom === 'admin') return alert("管理者をブロックすることはできません。");
+        if(!confirm("このユーザーをブロックしますか？")) return;
+        await dbPut("blocked_users", { id: currentRoom, time: Date.now() });
+        showToast("ユーザーをブロックしました");
+        document.getElementById('chat-active').classList.add('hidden'); document.getElementById('chat-empty').classList.remove('hidden');
+        currentRoom = null; loadChatList();
+    };
+
+    window.showGroupCreateModal = async () => {
+        const friendsList = await dbGetAll("friends");
+        const normalFriends = friendsList.filter(f => !f.isGroup && f.id !== 'admin');
+        const listDiv = document.getElementById("g-friends-list");
+        
+        if(normalFriends.length === 0) {
+            listDiv.innerHTML = '<p style="font-size:13px; color:var(--text-sub);">グループに追加可能な友達がいません。</p>';
+        } else {
+            listDiv.innerHTML = normalFriends.map(f => `
+                <label style="display:flex; align-items:center; gap:10px; margin-bottom:8px; cursor:pointer;">
+                    <input type="checkbox" name="g-member" value="${f.id}" style="width:auto; margin:0;">
+                    <span>${f.nickname} (@${f.id})</span>
+                </label>
+            `).join('');
+        }
+        document.getElementById('modal-group-create').classList.remove('hidden');
+    };
+
+    window.submitCreateGroup = async () => {
+        const gName = document.getElementById("g-name").value.trim();
+        if(!gName) return alert("グループ名を入力してください");
+        
+        const checkedBoxes = document.querySelectorAll('input[name="g-member"]:checked');
+        if(checkedBoxes.length === 0 || checkedBoxes.length > 5) return alert("メンバーは1〜5人選択してください。");
+
+        const members = [myInfo.id]; checkedBoxes.forEach(cb => members.push(cb.value));
+        const groupId = "group_" + Date.now();
+        const groupObj = { type: 'group_create', id: groupId, nickname: gName, isGroup: true, members: members, icon: './icon.jpeg' };
+        
+        await dbPut("friends", groupObj);
+        for(let mId of members) { if(mId !== myInfo.id) sendPacketToInbox(mId, groupObj); }
+
+        document.getElementById('modal-group-create').classList.add('hidden');
+        document.getElementById("g-name").value = "";
+        showToast("グループを作成しました"); loadChatList();
+    };
+
+    window.execSearch = async () => {
+        const q = document.getElementById('s-query').value.toLowerCase(); if(!q) return;
+        document.getElementById('ui-search-res').innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-sub);">検索中...</div>';
+        try {
+            const snap = await get(ref(dbFirebase, 'users'));
+            if(snap.exists()) {
+                const data = snap.val(); let html = '';
+                Object.values(data).forEach(u => {
+                    if(u.id !== myInfo.id && u.status === 'approved' && (u.nickname.toLowerCase().includes(q) || u.username.toLowerCase().includes(q))) {
+                        html += `<div class="room-item" onclick="openRoom('${u.id}', '${u.nickname}')"><img src="${u.icon||'./icon.jpeg'}"><div><b>${u.nickname}</b><br><span style="font-size:12px;color:var(--text-sub);">@${u.username}</span></div></div>`;
+                    }
+                });
+                document.getElementById('ui-search-res').innerHTML = html || '<div style="padding:20px;text-align:center;color:var(--text-sub);">見つかりませんでした</div>';
+            }
+        } catch(e) { document.getElementById('ui-search-res').innerHTML = '<div style="padding:20px;text-align:center;color:var(--danger);">通信エラー</div>'; }
+    };
+
+    async function loadRecommendUsers() {
+        const container = getEl("ui-recommend-users");
+        try {
+            const snap = await get(ref(dbFirebase, 'users'));
+            if(!snap.exists()) { container.innerHTML = '<div style="font-size:12px; color:var(--text-sub);">おすすめはいません</div>'; return; }
+            
+            const friendsList = await dbGetAll("friends");
+            const blockedList = await dbGetAll("blocked_users");
+            
+            let html = ''; let count = 0;
+            Object.values(snap.val()).forEach(u => {
+                if(u.id === myInfo.id || friendsList.some(f=>f.id===u.id) || blockedList.some(b=>b.id===u.id) || count >= 10 || u.status !== 'approved') return;
+                html += `<div class="user-list-card"><div><b>${u.nickname}</b> (ID: ${u.id})</div><button type="button" style="padding:5px 10px; font-size:12px;" onclick="sendFriendRequest('${u.id}')">申請</button></div>`;
+                count++;
+            });
+            container.innerHTML = html || '<div style="font-size:12px; color:var(--text-sub);">おすすめはいません</div>';
+            loadSentRequests();
+        } catch(e) {}
+    }
+
+    window.sendFriendRequest = async (targetId) => {
+        await set(ref(dbFirebase, `friend_requests/${targetId}/${myInfo.id}`), { from_id: myInfo.id, from_nick: myInfo.nickname, time: Date.now() });
+        showToast("フレンド申請を送信しました"); loadRecommendUsers();
+    };
+
+    async function loadSentRequests() {
+        const container = getEl("ui-sent-requests");
+        try {
+            const snap = await get(ref(dbFirebase, 'friend_requests'));
+            if(!snap.exists()) { container.innerHTML = '<div style="font-size:12px; color:var(--text-sub);">保留中はありません</div>'; return; }
+            let html = '';
+            for(let targetId in snap.val()) {
+                if(snap.val()[targetId][myInfo.id]) {
+                    html += `<div class="user-list-card"><div>@${targetId}</div><button type="button" class="danger" style="padding:5px 10px; font-size:12px;" onclick="cancelFriendRequest('${targetId}')">取消</button></div>`;
+                }
+            }
+            container.innerHTML = html || '<div style="font-size:12px; color:var(--text-sub);">保留中はありません</div>';
+        } catch(e){}
+    }
+    window.cancelFriendRequest = async (targetId) => { await remove(ref(dbFirebase, `friend_requests/${targetId}/${myInfo.id}`)); showToast("申請を取り消しました"); loadRecommendUsers(); };
+
     window.updateIcon = inp => {
         const file = inp.files[0]; if(!file) return;
         resizeImage(file, 150, async base64 => {
-            myInfo.icon = base64;
-            try {
-                localStorage.setItem('myInfo', JSON.stringify(myInfo));
-            } catch (e) {
-                if (e.name === 'QuotaExceededError') {
-                    myInfo.icon = '';
-                    localStorage.setItem('myInfo', JSON.stringify(myInfo));
-                    showToast("容量制限に達したため、過去のアイコン写真を自動削除してデータを保護しました。");
-                }
-            }
-            document.getElementById('my-icon-preview').src = base64;
-            await update(ref(dbFirebase, `users/${myInfo.id}`), { icon: base64 });
-            showToast("アイコンを更新しました");
+            myInfo.icon = base64; saveMyInfo(); document.getElementById('my-icon-preview').src = base64;
+            await update(ref(dbFirebase, `users/${myInfo.id}`), { icon: base64 }); showToast("アイコンを更新しました");
         });
     };
 
     window.updateProfile = async () => {
-        const nick = document.getElementById('set-nick').value.trim();
-        if(!nick) return;
-        myInfo.nickname = nick;
+        const nick = document.getElementById('set-nick').value.trim(); if(!nick) return;
+        myInfo.nickname = nick; saveMyInfo();
+        await update(ref(dbFirebase, `users/${myInfo.id}`), { nickname: nick }); showToast("プロフィール設定を保存しました");
+    };
+
+    // --- データバックアップ ---
+    window.generateTransferCode = async () => {
+        if(!confirm("現在のチャット履歴と友達データをサーバーへバックアップし、8桁の引き継ぎコードを発行しますか？")) return;
+        const friends = await dbGetAll("friends");
+        const msgs = await dbGetAll("msgs");
+        const payloadStr = btoa(unescape(encodeURIComponent(JSON.stringify({ friends, msgs }))));
+        const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        let code = ""; for(let i=0; i<8; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
+
+        await set(ref(dbFirebase, `backups/${code}`), { user_id: myInfo.id, payload: payloadStr, timestamp: Date.now() });
+
+        document.getElementById("backup-code-display").classList.remove("hidden");
+        document.getElementById("txt-generated-code").innerText = code;
+        alert(`【引き継ぎコード発行完了】\n\nコード: ${code}\n\n※有効期限は50日間です。復元後は自動削除されます。`);
+    };
+
+    document.getElementById("btn-transfer-login").onclick = async () => {
+        const code = document.getElementById("t-code").value.trim().toUpperCase();
+        if(code.length !== 8) return alert("正しい8桁の引き継ぎコードを入力してください。");
+        const snap = await get(ref(dbFirebase, `backups/${code}`));
+        if(!snap.exists()) return alert("コードが無効か、期間が切れています。");
+
+        const backupData = snap.val();
+        const userSnap = await get(ref(dbFirebase, `users/${backupData.user_id}`));
+        if(!userSnap.exists()) return alert("ユーザーデータが見つかりません。");
+
         try {
-            localStorage.setItem('myInfo', JSON.stringify(myInfo));
-        } catch (e) {
-            if (e.name === 'QuotaExceededError') {
-                myInfo.icon = '';
-                localStorage.setItem('myInfo', JSON.stringify(myInfo));
-                showToast("容量制限に達したため、過去のアイコン写真を自動削除してデータを保護しました。");
-            }
-        }
-        await update(ref(dbFirebase, `users/${myInfo.id}`), { nickname: nick });
-        showToast("プロフィール設定を保存しました");
+            const decodedData = JSON.parse(decodeURIComponent(escape(atob(backupData.payload))));
+            await initDB();
+            if(decodedData.friends) { for(let f of decodedData.friends) await dbPut("friends", f); }
+            if(decodedData.msgs) { for(let m of decodedData.msgs) await dbPut("msgs", m); }
+
+            myInfo = userSnap.val(); saveMyInfo();
+            await remove(ref(dbFirebase, `backups/${code}`));
+            alert("データの一括復旧に成功しました！"); location.reload();
+        } catch(e) { alert("データの復元に失敗しました。"); }
     };
 
     if(myInfo) { initApp(); }
